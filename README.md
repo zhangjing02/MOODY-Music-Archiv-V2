@@ -32,16 +32,21 @@
 | `MOODY_PORT` | 主播放服务端口 | `8080` |
 | `MOODY_ADMIN_PORT` | 管理服务端口 | `8082` |
 | `R2_BUCKET_NAME` | Cloudflare R2 Bucket 名 | `moody-music` |
-| `WORKER_ENDPOINT` | R2 透明代理 Worker 地址 | `https://proxy.xxx.workers.dev` |
-| `MIGRATE_TOKEN` | 同步系统鉴权 Token | `(详见 Notion 记录)` |
+| `R2_ACCOUNT_ID` | Cloudflare 账户 ID | `(从控制台获取)` |
+| `R2_ACCESS_KEY_ID` | R2 API 访问密钥 ID | `(从控制台获取)` |
+| `R2_SECRET_ACCESS_KEY` | R2 API 访问密钥 Secret | `(从控制台获取)` |
 
-### 2.2 Docker / Zeabur 部署
-项目支持一键 Docker 化部署。在 Zeabur 等平台上，只需关联 GitHub 仓库并配置上述环境变量即可自动完成构建。容器内部路径应保持与环境变量一致。
+### 2.2 服务端部署 (Server Deployment)
+V2 版本已全面转向标准服务端部署模式（支持 Windows/Linux）：
+1. **后端 (Go)**：编译二进制文件并作为系统服务运行。
+   - `go build -o server cmd/main.go`
+2. **前端 (Vue3)**：执行 `npm run build` 生成静态文件，通过 Nginx 或后端静态目录挂载（Zeabur 等平台已弃用，建议使用独立 VPS）。
+3. **数据管理**：利用 `migrate.mjs` 实现本地磁盘与多账号 R2 的双向同步。
 
-### 2.3 R2 透明代理 (Cloudflare Worker)
-为了实现 R2 资产的高效访问与权限隔离，项目配套了 Worker 脚本。
-- **功能**：自动将 `/lyrics/*.lrc` 和 `/music/*.mp3` 映射至 R2 相应路径。
-- **配置**：需在 Worker 中绑定 R2 Bucket 并设置 `AUTH_TOKEN`。
+### 2.3 R2 透明代理与多仓储 (Multi-Storage Support)
+V2 核心升级：
+- **智能调度**：支持通过 `storage_id` 在多个 R2 账户间无缝调度资源，支持 EB 级横向扩容。
+- **透明代理**：通过 `StorageProxyHandler` 实现 S3 优先读取，对前端屏蔽底层物理位置。
 
 ---
 
