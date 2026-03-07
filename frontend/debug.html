@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Music Player Debug Tool</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #0f0;
+        }
+
+        .section {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #333;
+        }
+
+        .error {
+            color: #f00;
+        }
+
+        .success {
+            color: #0f0;
+        }
+
+        .warning {
+            color: #ff0;
+        }
+
+        button {
+            padding: 10px;
+            margin: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>MOODY Music Player Debug Tool</h1>
+    <div class="section">
+        <h2>1. Check Backend API</h2>
+        <button onclick="checkAPI()">Test /api/songs</button>
+        <pre id="apiResult"></pre>
+    </div>
+    <div class="section">
+        <h2>2. Test Audio Playback</h2>
+        <button onclick="testFirstSong()">Play First Song from Backend</button>
+        <audio id="testAudio" controls style="width:100%"></audio>
+        <pre id="playbackResult"></pre>
+    </div>
+    <div class="section">
+        <h2>3. Network Test</h2>
+        <button onclick="testMusicFile()">Test Music File Access</button>
+        <pre id="networkResult"></pre>
+    </div>
+
+    <script>
+        async function checkAPI() {
+            const result = document.getElementById('apiResult');
+            try {
+                const response = await fetch('/api/songs');
+                const data = await response.json();
+                result.className = 'success';
+                result.textContent = 'API Response:\n' + JSON.stringify(data, null, 2);
+                window.musicData = data;
+            } catch (e) {
+                result.className = 'error';
+                result.textContent = 'Error: ' + e.message;
+            }
+        }
+
+        async function testFirstSong() {
+            const result = document.getElementById('playbackResult');
+            const audio = document.getElementById('testAudio');
+
+            if (!window.musicData) {
+                result.className = 'warning';
+                result.textContent = 'Please run "Test /api/songs" first';
+                return;
+            }
+
+            try {
+                const firstArtist = window.musicData[0];
+                const firstAlbum = firstArtist.albums[0];
+                const firstSong = firstAlbum.songs[0];
+
+                const songPath = firstSong.path;
+                const encodedPath = songPath.split(/[\\/]/).map(s => encodeURIComponent(s)).join('/');
+                const audioUrl = `/storage/music/${encodedPath}`;
+
+                result.textContent = `Artist: ${firstArtist.name}\n`;
+                result.textContent += `Album: ${firstAlbum.title}\n`;
+                result.textContent += `Song: ${firstSong.title}\n`;
+                result.textContent += `Path: ${songPath}\n`;
+                result.textContent += `Encoded URL: ${audioUrl}\n\n`;
+                result.textContent += 'Setting audio source...';
+
+                audio.src = audioUrl;
+                audio.load();
+
+                audio.onloadedmetadata = () => {
+                    result.className = 'success';
+                    result.textContent += '\n✓ Audio loaded successfully!\nDuration: ' + audio.duration + ' seconds';
+                };
+
+                audio.onerror = () => {
+                    result.className = 'error';
+                    result.textContent += '\n✗ Failed to load audio: ' + audio.error.message;
+                };
+            } catch (e) {
+                result.className = 'error';
+                result.textContent = 'Error: ' + e.message;
+            }
+        }
+
+        async function testMusicFile() {
+            const result = document.getElementById('networkResult');
+
+            if (!window.musicData) {
+                result.className = 'warning';
+                result.textContent = 'Please run "Test /api/songs" first';
+                return;
+            }
+
+            try {
+                const firstSong = window.musicData[0].albums[0].songs[0];
+                const songPath = firstSong.path;
+                const encodedPath = songPath.split(/[\\/]/).map(s => encodeURIComponent(s)).join('/');
+                const testUrl = `/storage/music/${encodedPath}`;
+
+                result.textContent = `Testing: ${testUrl}\n\n`;
+
+                const response = await fetch(testUrl, { method: 'HEAD' });
+
+                result.textContent += `Status: ${response.status}\n`;
+                result.textContent += `Content-Type: ${response.headers.get('content-type')}\n`;
+                result.textContent += `Content-Length: ${response.headers.get('content-length')}\n`;
+
+                if (response.ok) {
+                    result.className = 'success';
+                    result.textContent += '\n✓ File is accessible!';
+                } else {
+                    result.className = 'error';
+                    result.textContent += '\n✗ File not accessible!';
+                }
+            } catch (e) {
+                result.className = 'error';
+                result.textContent = 'Error: ' + e.message;
+            }
+        }
+    </script>
+</body>
+
+</html>

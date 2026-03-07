@@ -1,0 +1,57 @@
+/* Notion Compact Mode - 优化在 Notion iframe 中的显示 */
+
+body.notion-compact-mode {
+    background: transparent !important;
+    overflow: hidden;
+}
+
+/* 隐藏左侧侧边栏及其内部不必要的元素 */
+body.notion-compact-mode .sidebar {
+    width: 240px !important;
+    min-width: 240px !important;
+    border-right: 1px solid rgba(255,255,255,0.05);
+}
+
+body.notion-compact-mode .sb-brand,
+body.notion-compact-mode .user-profile,
+body.notion-compact-mode .upload-section {
+    display: none !important;
+}
+
+/* 调整主内容区域 */
+body.notion-compact-mode .main-content {
+    margin-left: 0;
+    padding: 10px;
+}
+
+/* 隐藏不需要的装饰或过大的标题 */
+body.notion-compact-mode .v-title {
+    font-size: 1.2rem !important;
+}
+
+/* 调整播放控制栏，使其更紧凑 */
+body.notion-compact-mode .player-bar {
+    height: 70px !important;
+    padding: 0 15px !important;
+}
+
+/* 隐藏次要按钮以节省空间 */
+body.notion-compact-mode .extra-controls {
+    display: none !important;
+}
+
+/* 确保黑胶唱片在小空间内依然居中且比例协调 */
+body.notion-compact-mode .vinyl-wrapper {
+    width: 180px !important;
+    height: 180px !important;
+}
+
+/* 如果宽度极窄 (例如 Notion 单栏中的小嵌入块) */
+@media (max-width: 500px) {
+    body.notion-compact-mode .sidebar {
+        display: none !important; /* 彻底隐藏侧边栏，只留播放操作 */
+    }
+    body.notion-compact-mode .main-content {
+        width: 100% !important;
+    }
+}

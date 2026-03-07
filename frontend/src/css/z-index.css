@@ -1,0 +1,233 @@
+:root {
+    /* 核心变量：根据时间动态改变 */
+    --sky-top-color: #0a1525; /* 深夜蓝 */
+    --sky-horizon-color: #1c3a5a; /* 稍亮的深蓝 */
+    --celestial-glow-color: rgba(255, 220, 150, 0.3); /* 默认金色光晕 */
+}
+
+body {
+    margin: 0;
+    background-color: #121212; /* 你的原始背景色 */
+    overflow-x: hidden;
+}
+
+/* 背景总容器 */
+.dynamic-bg-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -10; /* 确保在最底层 */
+    overflow: hidden;
+    background: #000;
+}
+
+/* 全局压暗覆盖层 */
+.bg-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4); /* 半透明黑色遮罩，降低整体亮度 */
+    z-index: 5;
+    pointer-events: none;
+}
+
+/* --- 天空与云星星 --- */
+.sky {
+    position: absolute;
+    top: 0;
+    width: 100%;
+    height: 70%; /* 天空占70% */
+    background: linear-gradient(to bottom, var(--sky-top-color), var(--sky-horizon-color));
+    transition: background 2s ease;
+}
+
+.stars {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 80%;
+    background-image: 
+        radial-gradient(1px 1px at 20px 30px, #ffffff, rgba(0,0,0,0)),
+        radial-gradient(1px 1px at 40px 70px, #ffffff, rgba(0,0,0,0)),
+        radial-gradient(2px 2px at 90px 40px, #ffffff, rgba(0,0,0,0)),
+        radial-gradient(1px 1px at 160px 120px, #ffffff, rgba(0,0,0,0));
+    background-repeat: repeat;
+    background-size: 200px 200px;
+    opacity: 0; /* 默认白天隐藏 */
+    transition: opacity 2s ease;
+}
+/* 夜晚模式下显示星星 */
+body.is-night .stars { opacity: 0.5; }
+
+.clouds {
+    position: absolute;
+    top: 10%;
+    left: 0;
+    width: 200%;
+    height: 30%;
+    /* 使用半透明的白色渐变模拟云朵，在暗背景下不会太突兀 */
+    background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 60%);
+    filter: blur(20px);
+    opacity: 0.4;
+    animation: drift 60s linear infinite;
+}
+@keyframes drift { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+
+/* --- 地面与草地 --- */
+.ground {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 35%; /* 地面稍高一点，制造纵深 */
+    background: linear-gradient(to bottom, #0d1a0d, #050a05); /* 深墨绿到近黑 */
+    z-index: 2;
+}
+
+/* 草地层级与风动动画 */
+.grass-layer {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    background-repeat: repeat-x;
+    background-position: bottom;
+    pointer-events: none;
+}
+
+/* 使用SVG Data URI生成简单的草形状 */
+:root {
+    --grass-color-back: #0a1f0a;
+    --grass-color-mid: #0e2b0e;
+    --grass-color-front: #133813;
+}
+
+.grass-back {
+    height: 60px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 60' preserveAspectRatio='none'%3E%3Cpath d='M0,60 Q5,30 10,60 M10,60 Q15,20 20,60 M20,60 Q25,35 30,60 M30,60 Q35,25 40,60 M40,60 Q45,40 50,60' stroke='%230a1f0a' fill='%230a1f0a'/%3E%3C/svg%3E");
+    opacity: 0.7;
+    animation: windSway 4s ease-in-out infinite alternate;
+}
+.grass-mid {
+    height: 45px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 45' preserveAspectRatio='none'%3E%3Cpath d='M0,45 Q5,15 10,45 M15,45 Q20,10 25,45 M30,45 Q35,20 40,45' stroke='%230e2b0e' fill='%230e2b0e'/%3E%3C/svg%3E");
+    opacity: 0.8;
+    animation: windSway 3s ease-in-out infinite alternate-reverse -1s;
+}
+.grass-front {
+    height: 30px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 30' preserveAspectRatio='none'%3E%3Cpath d='M0,30 Q8,0 16,30 M20,30 Q28,5 36,30 M40,30 Q48,0 56,30' stroke='%23133813' fill='%23133813'/%3E%3C/svg%3E");
+    animation: windSway 2.5s ease-in-out infinite alternate -0.5s;
+}
+
+@keyframes windSway {
+    0% { transform: skewX(0deg) translateX(0); }
+    100% { transform: skewX(4deg) translateX(5px); }
+}
+
+
+/* --- 天体系统 (核心机制) --- */
+.celestial-orbit-container {
+    position: absolute;
+    /* 放置在地平线交界处 */
+    top: 70%; 
+    left: 50%;
+    transform: translate(-50%, -100%); /* 向上提，让底部对齐地平线 */
+    width: 80vw; /* 轨道宽度，拉远焦距感 */
+    height: 40vw; /* 轨道高度是宽度的一半，形成半圆 */
+    max-width: 1000px;
+    max-height: 500px;
+    z-index: 3;
+    pointer-events: none;
+}
+
+/* 显示轨道和刻度 */
+.orbit-path-svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+.orbit-line-dashed {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.1); /* 非常淡的轨道线 */
+    stroke-width: 1;
+    stroke-dasharray: 5, 5;
+}
+.time-tick {
+    fill: rgba(255, 255, 255, 0.2);
+}
+
+/* 旋转臂：核心动画元素 */
+.rotator-arm {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 2px;
+    height: 100%; /* 高度等于容器高度（半圆半径） */
+    /* background: red; 测试用，看旋转中心 */
+    transform-origin: bottom center; /* 设置旋转中心在底部中心 */
+    /* 默认初始角度，会被JS覆盖 */
+    transform: rotate(-90deg); 
+    transition: transform 1s linear; /* 时间变化时的平滑过渡 */
+}
+
+.celestial-body {
+    position: absolute;
+    top: 0; /* 位于旋转臂的顶端 */
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    transition: opacity 1s ease;
+}
+
+/* 太阳样式 */
+.sun {
+    background: #ffd700;
+    box-shadow: 0 0 20px var(--celestial-glow-color), 0 0 60px var(--celestial-glow-color);
+    opacity: 0; /* 默认隐藏 */
+}
+/* 太阳内部光晕 */
+.sun-glow {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 150%; height: 150%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(255,215,0,0.4) 0%, rgba(255,215,0,0) 70%);
+    border-radius: 50%;
+    animation: pulse 4s ease-in-out infinite alternate;
+}
+
+/* 月亮样式 */
+.moon {
+    background: #e0e0e0;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.3), 0 0 40px rgba(255, 255, 255, 0.1);
+    opacity: 0; /* 默认隐藏 */
+}
+.moon-crater {
+    position: absolute;
+    top: 20%; left: 30%;
+    width: 30%; height: 30%;
+    background: rgba(0,0,0,0.1);
+    border-radius: 50%;
+}
+
+/* 白天/夜晚的状态切换 */
+body.is-day .sun { opacity: 1; }
+body.is-night .moon { opacity: 1; }
+
+@keyframes pulse {
+    0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+    100% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+}
+
+/* 响应式微调 */
+@media (max-width: 768px) {
+    .celestial-orbit-container { width: 95vw; height: 47.5vw; }
+    .celestial-body { width: 30px; height: 30px; }
+}

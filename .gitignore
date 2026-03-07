@@ -1,0 +1,59 @@
+# 1. 数据库与敏感数据 (绝对不要推送到 Github)
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+storage/db/moody.db
+.env
+*.env
+.env.*
+
+# 2. 媒体资源与备份 (仅同步代码与关键元数据)
+storage/music/*
+storage/covers/*
+storage/lyrics/*
+!storage/music/.gitkeep
+!storage/covers/.gitkeep
+!storage/lyrics/.gitkeep
+服务器上备份的资源/
+
+# 3. 后端编译产物与运行缓存
+backend/backend
+backend/backend.exe
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+node_modules/
+dist/
+
+# 4. Python/Environment
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+ENV/
+
+# 5. 系统与 IDE 相关
+.idea/
+.vscode/
+*.swp
+*.log
+.DS_Store
+.agent/brain/
+monitor-report.json
+
+# 6. 临时脚本与调试证据 (Cleanup for GitHub)
+final_hex_sync.sql
+sync_data.sql
+sync_data_utf8.sql
+sync_final_fix.sql
+sync_songs_final.sql
+out.txt
+DIAGNOSTIC_REPORT.md
+TEST_GUIDE.md
+check_*.py
+inject_test_data.py

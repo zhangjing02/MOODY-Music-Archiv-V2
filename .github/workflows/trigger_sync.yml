@@ -1,0 +1,14 @@
+name: Trigger Remote Sync
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Sync API
+        run: |
+          echo "Triggering sync on Zeabur..."
+          curl -X POST https://moodymusicfile.zeabur.app/api/sync
+          echo "Sync request sent."

@@ -1,0 +1,29 @@
+﻿<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Test</title></head>
+<body style="background:#000;color:#0f0;padding:20px;font-family:monospace;">
+<h1>Backend & Audio Test</h1>
+<button onclick="test()">Run Test</button>
+<pre id="out"></pre>
+<audio id="a" controls style="width:100%;margin-top:20px;"></audio>
+<script>
+async function test() {
+  const o = document.getElementById('out');
+  const a = document.getElementById('a');
+  o.textContent = 'Loading...\n';
+  try {
+    const r = await fetch('/api/songs');
+    const d = await r.json();
+    const s = d[0].albums[0].songs[0];
+    const u = '/storage/music/' + encodeURIComponent(s.path);
+    o.textContent = 'Song: ' + s.title + '\nPath: ' + s.path + '\nURL: ' + u + '\n\nSetting audio source...';
+    a.src = u;
+    a.onloadeddata = () => o.textContent += '\n\n SUCCESS! Click play.';
+    a.onerror = () => o.textContent += '\n\n FAILED: ' + a.error.message;
+  } catch(e) {
+    o.textContent = 'Error: ' + e.message;
+  }
+}
+</script>
+</body>
+</html>

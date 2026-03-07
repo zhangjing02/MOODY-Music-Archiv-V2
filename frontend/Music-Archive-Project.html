@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Archive - Project</title>
+    <!-- 引入 Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Serif+SC:wght@500;700&display=swap" rel="stylesheet">
+    <!-- 引入 CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sb-brand">MOO<span style="font-size:0.8em; opacity:0.6">DY</span></div>
+        <div class="search-box">
+            <svg class="search-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5.11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            <input type="text" class="search-input" id="searchInput" placeholder="Search...">
+        </div>
+
+        <div class="category-wrapper">
+            <div class="category-scroll" id="categoryList"></div>
+        </div>
+
+        <div class="list-container" id="artistList"></div>
+        <div class="index-bar" id="indexBar"></div>
+
+        <!-- 本地上传按钮 -->
+        <div class="upload-section">
+            <input type="file" id="audioUpload" accept="audio/*" multiple style="display: none;">
+            <button class="upload-btn" onclick="document.getElementById('audioUpload').click()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                上传本地音乐
+            </button>
+            <div class="uploaded-count" id="uploadedCount"></div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="content-scroll">
+            <div class="album-header">
+                <div class="ah-cover"><img id="vCover" src=""></div>
+                <div class="ah-info">
+                    <div class="ai-type">ALBUM / YEAR</div>
+                    <h1 class="ai-title" id="vTitle">Select Artist</h1>
+                    <div class="ai-meta" id="vMeta">Waiting for database query...</div>
+                </div>
+                <div class="ah-lyrics">
+                    <div class="lyrics-container">
+                        <div class="lyrics-scroll" id="albumLyrics">
+                            <div class="lyrics-empty">播放歌曲以显示歌词</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="nav-tabs" id="vTabs"></div>
+            <table class="song-table"><tbody id="vSongs"></tbody></table>
+            <div style="height: 100px;"></div>
+
+            <!-- 播放列表面板 (默认折叠) -->
+            <div class="playlist-panel collapsed" id="playlistPanel" style="display: none;">
+                <div class="playlist-header">
+                    <h3>播放列表</h3>
+                    <button class="playlist-toggle" id="playlistToggle">▼</button>
+                </div>
+                <div class="playlist-content" id="playlistContent">
+                    <div class="playlist-empty">暂无播放中的歌曲</div>
+                </div>
+            </div>
+
+            <!-- 歌词面板 (默认折叠) -->
+            <div class="lyrics-panel collapsed" id="lyricsPanel" style="display: none;">
+                <div class="lyrics-header">
+                    <h3>歌词</h3>
+                    <button class="lyrics-toggle" id="lyricsToggle">▼</button>
+                </div>
+                <div class="lyrics-content" id="lyricsContent">
+                    <div class="lyrics-empty">播放歌曲后显示歌词</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="player-bar">
+            <!-- 黑胶唱片区域 -->
+            <div class="vinyl-container">
+                <!-- 旋转黑胶唱片 -->
+                <div class="vinyl-record" id="vinylRecord">
+                    <div class="vinyl-disc">
+                        <div class="vinyl-grooves"></div>
+                        <!-- 专辑封面作为背景 -->
+                        <div class="vinyl-cover" id="vinylCover"></div>
+                        <div class="vinyl-label">
+                            <img id="pThumb" src="" alt="Album Cover">
+                        </div>
+                        <div class="vinyl-spindle"></div>
+                    </div>
+                </div>
+
+                <!-- 简约唱臂 -->
+                <div class="tonearm" id="tonearm"></div>
+            </div>
+
+            <!-- 歌曲信息（可选显示，默认隐藏） -->
+            <div class="pb-title-overlay" id="pTitleOverlay">No Track Playing</div>
+
+            <div class="pb-info">
+                <div class="pb-wrap">
+                    <div class="pb-time" id="pTime">00:00 / 00:00</div>
+                </div>
+                <!-- 可拖动的进度条 -->
+                <div class="pb-progress-container" id="progressContainer">
+                    <div class="pb-progress-bg">
+                        <div class="pb-progress-fill" id="pBar"></div>
+                        <!-- 拖动手柄 -->
+                        <div class="pb-progress-handle" id="progressHandle"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="pb-ctrl-btns">
+                <!-- 播放模式 -->
+                <button class="pb-ctrl-btn mode-btn" id="modeBtn" title="播放模式">↺</button>
+                <!-- 上一首 -->
+                <button class="pb-ctrl-btn" id="prevBtn" title="上一首">⏮</button>
+                <!-- 播放/暂停 -->
+                <button class="pb-ctrl-btn main-play" id="playPauseBtn" title="播放">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path class="play-pause-path" d="M8 6 L8 18 L18 12 L8 6 Z"/>
+                    </svg>
+                </button>
+                <!-- 下一首 -->
+                <button class="pb-ctrl-btn" id="nextBtn" title="下一首">⏭</button>
+                <!-- 音量 -->
+                <div class="volume-control">
+                    <button class="pb-ctrl-btn volume-btn" id="volumeBtn" title="音量">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                            <path d="M15.54 8.46c.78-.78 2.05-.78 2.83 0"/>
+                            <path d="M19.07 5c1.56-1.56 4.09-1.56 5.66 0"/>
+                        </svg>
+                    </button>
+                    <div class="volume-slider" id="volumeSlider">
+                        <div class="volume-fill" id="volumeFill" style="width: 70%"></div>
+                    </div>
+                </div>
+                <!-- 收藏 -->
+                <button class="pb-ctrl-btn favorite-btn" id="favoriteBtn" title="收藏">
+                    <span class="heart-icon">♡</span>
+                    <div class="star-animation-container" id="starContainer"></div>
+                </button>
+            </div>
+        </div>
+
+        <!-- 隐藏的音频播放器 -->
+        <audio id="audioPlayer" preload="auto"></audio>
+    </div>
+
+    <!-- 注意：加载顺序很重要，先加载数据，再加载逻辑 -->
+    <script src="data.js"></script>
+    <script src="lyrics.js"></script>
+    <!-- 懒加载模块（优先加载） -->
+    <script src="lazy-loader.js"></script>
+    <script src="storage.js"></script>
+    <script src="app.js"></script>
+    <script src="player.js"></script>
+    <script>
+        // 统一初始化 - 等待 app 加载完成后再初始化播放器
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('开始初始化应用...');
+
+            // 等待 initApp 完成（包括从 IndexedDB 加载音乐）
+            if (typeof initApp === 'function') {
+                await initApp();
+                console.log('app.js 初始化完成');
+            }
+
+            // 再初始化播放器（也是异步的）
+            if (typeof initPlayer === 'function') {
+                await initPlayer();
+                console.log('player.js 初始化完成');
+            }
+
+            console.log('应用初始化完成');
+        });
+    </script>
+</body>
+</html>

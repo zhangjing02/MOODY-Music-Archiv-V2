@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Quick Test</title>
+</head>
+
+<body style="background:#000;color:#0f0;padding:20px;font-family:monospace;">
+    <h1>Quick Backend Test</h1>
+    <button onclick="testBackend()" style="padding:10px;font-size:16px;">Test Backend API</button>
+    <button onclick="testAudio()" style="padding:10px;font-size:16px;margin-left:10px;">Test Audio Playback</button>
+    <pre id="output"></pre>
+    <audio id="audio" controls style="width:100%;margin-top:20px;"></audio>
+
+    <script>
+        async function testBackend() {
+            const output = document.getElementById('output');
+            output.textContent = 'Loading...\n';
+
+            try {
+                const r = await fetch('/api/songs');
+                const data = await response.json();
+                output.textContent = 'Response:\n' + JSON.stringify(data, null, 2);
+                window.testData = data;
+            } catch (e) {
+                output.textContent = 'Error: ' + e.message;
+            }
+        }
+
+        async function testAudio() {
+            const output = document.getElementById('output');
+            const audio = document.getElementById('audio');
+
+            if (!window.testData) {
+                output.textContent = 'Run "Test Backend API" first!';
+                return;
+            }
+
+            try {
+                const song = window.testData[0].albums[0].songs[0];
+                const path = song.path;
+                const url = '/storage/music/' + encodeURIComponent(path);
+
+                output.textContent = `Song: ${song.title}\nPath: ${path}\nURL: ${url}\n\nLoading audio...`;
+
+                audio.src = url;
+                audio.load();
+
+                audio.onloadeddata = () => {
+                    output.textContent += '\n\n✓ Audio loaded! Click play button to hear it.';
+                };
+
+                audio.onerror = (e) => {
+                    output.textContent += '\n\n✗ Error loading audio: ' + audio.error?.message;
+                };
+            } catch (e) {
+                output.textContent = 'Error: ' + e.message + '\n' + e.stack;
+            }
+        }
+    </script>
+</body>
+
+</html>

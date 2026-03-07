@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOODY CMS | 管理控制台</title>
+    <link rel="stylesheet" href="admin.css">
+</head>
+
+<body>
+    <div class="cms-container">
+        <!-- 左侧导航 -->
+        <aside class="sidebar">
+            <div class="logo">MOODY <span class="badge">CMS</span></div>
+            <nav class="nav-menu">
+                <a href="#dashboard" class="nav-item active" data-target="dashboard">
+                    <span class="icon">📊</span> 运行大盘
+                </a>
+                <a href="#upload" class="nav-item" data-target="upload">
+                    <span class="icon">☁️</span> 超级上传
+                </a>
+                <a href="#fixer" class="nav-item" data-target="fixer">
+                    <span class="icon">🔧</span> 数据纠偏
+                </a>
+                <a href="#governance" class="nav-item" data-target="governance">
+                    <span class="icon">🧹</span> 运维治理
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                Port: 8082 🟢
+            </div>
+        </aside>
+
+        <!-- 右侧主内容 -->
+        <main class="main-content">
+            <!-- Dashboard 板块 -->
+            <section id="dashboard" class="panel active">
+                <header>
+                    <h2>运行大盘 <small>Dashboard</small></h2>
+                </header>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Artists</h3>
+                        <div class="value" id="stat-artists">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Albums</h3>
+                        <div class="value" id="stat-albums">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Tracks</h3>
+                        <div class="value" id="stat-tracks">--</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 超级上传 板块 -->
+            <section id="upload" class="panel hidden">
+                <header>
+                    <h2>超级上传 <small>Upload Center</small></h2>
+                    <p class="subtitle">支持批量拖入音频及歌词，实现精准的目录挂载入库。</p>
+                </header>
+
+                <div class="upload-container">
+                    <div class="upload-params">
+                        <div class="form-group">
+                            <label>强制挂载歌手 (Artist)</label>
+                            <input type="text" id="up-artist" placeholder="留空则智能识别">
+                        </div>
+                        <div class="form-group">
+                            <label>强制挂载专辑 (Album)</label>
+                            <input type="text" id="up-album" placeholder="留空则智能识别">
+                        </div>
+                    </div>
+
+                    <div class="dropzone" id="dropzone">
+                        <div class="dz-message">
+                            💿 拖拽音乐/歌词文件到此处，或点击选择
+                        </div>
+                        <input type="file" id="file-input" multiple accept=".mp3,.flac,.lrc" hidden>
+                    </div>
+
+                    <div class="file-list" id="file-list"></div>
+
+                    <button class="btn btn-primary" id="btn-trigger-upload" disabled>🚀 执行入库</button>
+                    <div class="progress-bar-container hidden" id="upload-progress-container">
+                        <div class="progress-bar" id="upload-progress"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 数据纠偏 板块 -->
+            <section id="fixer" class="panel hidden">
+                <header>
+                    <h2>数据纠偏 <small>Data Fixer</small></h2>
+                    <p class="subtitle">强制定向修正脏数据与错别字名称。</p>
+                </header>
+                <div class="form-card">
+                    <h3>专辑错别字覆盖</h3>
+                    <div class="form-group">
+                        <label>歌手名</label>
+                        <input type="text" id="fix-artist" placeholder="例：陈小春">
+                    </div>
+                    <div class="form-group">
+                        <label>原错误专辑名</label>
+                        <input type="text" id="fix-old-album" placeholder="匹配脏数据">
+                    </div>
+                    <div class="form-group">
+                        <label>新正确专辑名</label>
+                        <input type="text" id="fix-new-album" placeholder="目标名称">
+                    </div>
+                    <button class="btn btn-warning" id="btn-fix-album">应用修正</button>
+                </div>
+            </section>
+
+            <!-- 运维治理 板块 -->
+            <section id="governance" class="panel hidden">
+                <header>
+                    <h2>运维治理 <small>Governance</small></h2>
+                    <p class="subtitle">执行批量后台任务。</p>
+                </header>
+
+                <div class="gov-grid">
+                    <div class="gov-card">
+                        <h3>孤儿清理</h3>
+                        <p>一键扫描并删除所有零歌曲的空壳专辑，绝对安全。</p>
+                        <button class="btn btn-primary" id="btn-clean-orphans">执行清理</button>
+                    </div>
+                    <div class="gov-card">
+                        <h3>简繁重名合并</h3>
+                        <p>扫描同名但简繁体不同的歌手，强制归一化并迁移关系。</p>
+                        <button class="btn btn-primary" id="btn-clean-duplicates">执行合并</button>
+                    </div>
+                    <div class="gov-card danger">
+                        <h3>强力磁道对齐</h3>
+                        <p>彻底清除无实体的影子数据。(Scrub)</p>
+                        <button class="btn btn-danger" id="btn-scrub">强力扫除</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- 全局防丢 Toast 组件 -->
+    <div id="toast" class="toast hidden">操作成功</div>
+
+    <script src="admin.js"></script>
+</body>
+
+</html>

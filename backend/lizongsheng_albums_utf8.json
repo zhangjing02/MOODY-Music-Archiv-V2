@@ -1,0 +1,1507 @@
+﻿{
+    "code":  200,
+    "message":  "success",
+    "data":  [
+                 {
+                     "id":  "db_46",
+                     "name":  "李宗盛",
+                     "group":  "李",
+                     "category":  "民谣",
+                     "avatar":  "/src/assets/images/avatars/default.png",
+                     "localCount":  0,
+                     "albumCount":  0,
+                     "albums":  [
+                                    {
+                                        "title":  "生命中的精灵",
+                                        "year":  "1986",
+                                        "cover":  "/storage/covers/c_739.jpg",
+                                        "songs":  [
+                                                      {
+                                                          "title":  "开场白",
+                                                          "path":  "李宗盛/生命中的精灵/s_26259.mp3",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  1
+                                                      },
+                                                      {
+                                                          "title":  "生命中的精灵",
+                                                          "path":  "李宗盛/生命中的精灵/s_26260.mp3",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  2
+                                                      },
+                                                      {
+                                                          "title":  "没有人知道",
+                                                          "path":  "李宗盛/生命中的精灵/s_26261.mp3",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  3
+                                                      },
+                                                      {
+                                                          "title":  "风柜来的人",
+                                                          "path":  "李宗盛/生命中的精灵/s_26262.mp3",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  4
+                                                      },
+                                                      {
+                                                          "title":  "你像个孩子",
+                                                          "path":  "李宗盛/生命中的精灵/s_26263.mp3",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  5
+                                                      },
+                                                      {
+                                                          "title":  "如果你要离去",
+                                                          "path":  "李宗盛/生命中的精灵/s_26264.mp3",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  6
+                                                      },
+                                                      {
+                                                          "title":  "寂寞难耐",
+                                                          "path":  "李宗盛/生命中的精灵/s_26265.mp3",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  7
+                                                      },
+                                                      {
+                                                          "title":  "一个人",
+                                                          "path":  "李宗盛/生命中的精灵/s_26266.mp3",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  8
+                                                      },
+                                                      {
+                                                          "title":  "17岁女生的温柔",
+                                                          "path":  "李宗盛/生命中的精灵/s_26267.mp3",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  9
+                                                      },
+                                                      {
+                                                          "title":  "我有话要说",
+                                                          "path":  "李宗盛/生命中的精灵/s_26268.mp3",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  10
+                                                      },
+                                                      {
+                                                          "title":  "鲸",
+                                                          "path":  "李宗盛/生命中的精灵/s_26269.mp3",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  11
+                                                      },
+                                                      {
+                                                          "title":  "爱情有什么道理",
+                                                          "path":  "李宗盛/生命中的精灵/s_26270.mp3",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  12
+                                                      },
+                                                      {
+                                                          "title":  "旧爱新欢",
+                                                          "path":  "李宗盛/生命中的精灵/s_26271.m4a",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  13
+                                                      }
+                                                  ]
+                                    },
+                                    {
+                                        "title":  "1984-1989作品集",
+                                        "year":  "1989",
+                                        "cover":  "/storage/covers/c_737.jpg",
+                                        "songs":  [
+                                                      {
+                                                          "title":  "油麻菜籽",
+                                                          "path":  "李宗盛/1984-1989作品集/s_26272.mp3",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  1
+                                                      },
+                                                      {
+                                                          "title":  "爱情少尉",
+                                                          "path":  "李宗盛/1984-1989作品集/s_26273.mp3",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  2
+                                                      },
+                                                      {
+                                                          "title":  "和自己赛跑的人",
+                                                          "path":  "李宗盛/1984-1989作品集/s_26274.mp3",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  3
+                                                      },
+                                                      {
+                                                          "title":  "锁上记忆",
+                                                          "path":  "李宗盛/1984-1989作品集/s_26275.mp3",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  4
+                                                      },
+                                                      {
+                                                          "title":  "给所有单身女子",
+                                                          "path":  "李宗盛/1984-1989作品集/s_26276.mp3",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  5
+                                                      },
+                                                      {
+                                                          "title":  "我的未来，我的家，我的妻",
+                                                          "path":  "李宗盛/1984-1989作品集/s_26277.mp3",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  6
+                                                      },
+                                                      {
+                                                          "title":  "忙与盲",
+                                                          "path":  "李宗盛/1984-1989作品集/s_26278.mp3",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  7
+                                                      },
+                                                      {
+                                                          "title":  "小镇医生的故事",
+                                                          "path":  "李宗盛/1984-1989作品集/s_26279.mp3",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  8
+                                                      },
+                                                      {
+                                                          "title":  "别说可惜",
+                                                          "path":  "李宗盛/1984-1989作品集/s_26280.mp3",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  9
+                                                      },
+                                                      {
+                                                          "title":  "那一夜我喝了酒",
+                                                          "path":  "李宗盛/1984-1989作品集/s_26281.mp3",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  10
+                                                      }
+                                                  ]
+                                    },
+                                    {
+                                        "title":  "我(們)就是這樣",
+                                        "year":  "1993",
+                                        "cover":  "/storage/covers/c_736.jpg",
+                                        "songs":  [
+                                                      {
+                                                          "title":  "Bygones",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  0
+                                                      },
+                                                      {
+                                                          "title":  "Hope",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  1
+                                                      },
+                                                      {
+                                                          "title":  "You Are the Only One I Love",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  2
+                                                      },
+                                                      {
+                                                          "title":  "What Do I Owe to the World",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  3
+                                                      },
+                                                      {
+                                                          "title":  "A Trip to a Distant Place",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  4
+                                                      },
+                                                      {
+                                                          "title":  "Turn Back Again",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  5
+                                                      },
+                                                      {
+                                                          "title":  "Reluctant to Let You Go",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  6
+                                                      },
+                                                      {
+                                                          "title":  "The Original Brand",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  7
+                                                      },
+                                                      {
+                                                          "title":  "Confused Love",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  8
+                                                      },
+                                                      {
+                                                          "title":  "The Space of Life",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  9
+                                                      }
+                                                  ]
+                                    },
+                                    {
+                                        "title":  "不捨",
+                                        "year":  "1994",
+                                        "cover":  "/storage/covers/c_735.jpg",
+                                        "songs":  [
+                                                      {
+                                                          "title":  "I Do Love You",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  0
+                                                      },
+                                                      {
+                                                          "title":  "Reluctant to Let Go",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  1
+                                                      },
+                                                      {
+                                                          "title":  "Because of Loneliness",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  2
+                                                      },
+                                                      {
+                                                          "title":  "The Spirit of Life",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  3
+                                                      },
+                                                      {
+                                                          "title":  "If You Were Gonna Leave",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  4
+                                                      },
+                                                      {
+                                                          "title":  "The Price of Love",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  5
+                                                      },
+                                                      {
+                                                          "title":  "Is It Right to Love You",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  6
+                                                      },
+                                                      {
+                                                          "title":  "You Are Just Like a Child",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  7
+                                                      },
+                                                      {
+                                                          "title":  "I Heard Someone Call You Baby",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  8
+                                                      },
+                                                      {
+                                                          "title":  "Hearty Gratitude",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  9
+                                                      },
+                                                      {
+                                                          "title":  "Fly",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  10
+                                                      }
+                                                  ]
+                                    },
+                                    {
+                                        "title":  "作品精选1",
+                                        "year":  "1994",
+                                        "cover":  "/storage/covers/c_738.jpg",
+                                        "songs":  [
+                                                      {
+                                                          "title":  "山丘",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  1
+                                                      },
+                                                      {
+                                                          "title":  "鬼迷心窍",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  2
+                                                      },
+                                                      {
+                                                          "title":  "凡人歌",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  3
+                                                      },
+                                                      {
+                                                          "title":  "寂寞难耐",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  4
+                                                      },
+                                                      {
+                                                          "title":  "希望",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  5
+                                                      },
+                                                      {
+                                                          "title":  "远行",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  6
+                                                      },
+                                                      {
+                                                          "title":  "我是是真的爱你",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  7
+                                                      },
+                                                      {
+                                                          "title":  "真心英雄",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  8
+                                                      },
+                                                      {
+                                                          "title":  "我的未来我的家我的妻",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  9
+                                                      },
+                                                      {
+                                                          "title":  "给自己的歌",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  10
+                                                      }
+                                                  ]
+                                    },
+                                    {
+                                        "title":  "作品李宗盛",
+                                        "year":  "1999",
+                                        "cover":  "/storage/covers/c_733.jpg",
+                                        "songs":  [
+                                                      {
+                                                          "title":  "開場白",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  0
+                                                      },
+                                                      {
+                                                          "title":  "和自己賽跑的人",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  1
+                                                      },
+                                                      {
+                                                          "title":  "十七歲女生的溫柔",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  2
+                                                      },
+                                                      {
+                                                          "title":  "凡人歌",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  3
+                                                      },
+                                                      {
+                                                          "title":  "鬼迷心竅",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  4
+                                                      },
+                                                      {
+                                                          "title":  "愛情少尉",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  5
+                                                      },
+                                                      {
+                                                          "title":  "我有話要說",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  6
+                                                      },
+                                                      {
+                                                          "title":  "你像個孩子",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  7
+                                                      },
+                                                      {
+                                                          "title":  "風櫃來的人",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  8
+                                                      },
+                                                      {
+                                                          "title":  "我的未來 我的家 我的妻",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  9
+                                                      },
+                                                      {
+                                                          "title":  "希望",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  10
+                                                      },
+                                                      {
+                                                          "title":  "遠行",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  11
+                                                      },
+                                                      {
+                                                          "title":  "始終只愛你",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  12
+                                                      },
+                                                      {
+                                                          "title":  "小鎮醫生的故事",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  13
+                                                      },
+                                                      {
+                                                          "title":  "再回首",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  14
+                                                      },
+                                                      {
+                                                          "title":  "大地之歌",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  15
+                                                      },
+                                                      {
+                                                          "title":  "最近比較煩",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  16
+                                                      },
+                                                      {
+                                                          "title":  "傷心地鐵",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  17
+                                                      },
+                                                      {
+                                                          "title":  "陰天",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  18
+                                                      },
+                                                      {
+                                                          "title":  "為你我受冷風吹",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  19
+                                                      },
+                                                      {
+                                                          "title":  "承認",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  20
+                                                      },
+                                                      {
+                                                          "title":  "不換",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  21
+                                                      },
+                                                      {
+                                                          "title":  "因為寂寞",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  22
+                                                      },
+                                                      {
+                                                          "title":  "壯志在我胸",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  23
+                                                      },
+                                                      {
+                                                          "title":  "想逃",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  24
+                                                      },
+                                                      {
+                                                          "title":  "就要愛了嗎",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  25
+                                                      },
+                                                      {
+                                                          "title":  "這樣愛你對不對",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  26
+                                                      },
+                                                      {
+                                                          "title":  "七點鐘",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  27
+                                                      },
+                                                      {
+                                                          "title":  "飛",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  28
+                                                      }
+                                                  ]
+                                    },
+                                    {
+                                        "title":  "滾石香港黃金十年 - 李宗盛精選",
+                                        "year":  "2003",
+                                        "cover":  "/storage/covers/c_732.jpg",
+                                        "songs":  [
+                                                      {
+                                                          "title":  "凡人歌",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  0
+                                                      },
+                                                      {
+                                                          "title":  "寂寞難耐",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  1
+                                                      },
+                                                      {
+                                                          "title":  "當愛已成往事",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  2
+                                                      },
+                                                      {
+                                                          "title":  "愛的代價",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  3
+                                                      },
+                                                      {
+                                                          "title":  "如風往事",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  4
+                                                      },
+                                                      {
+                                                          "title":  "忙與盲",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  5
+                                                      },
+                                                      {
+                                                          "title":  "因為寂寞",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  6
+                                                      },
+                                                      {
+                                                          "title":  "再回首",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  7
+                                                      },
+                                                      {
+                                                          "title":  "生命中的精靈",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  8
+                                                      },
+                                                      {
+                                                          "title":  "希望",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  9
+                                                      },
+                                                      {
+                                                          "title":  "我的未來 我的家 我的妻",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  10
+                                                      },
+                                                      {
+                                                          "title":  "這樣愛你對不對",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  11
+                                                      },
+                                                      {
+                                                          "title":  "給所有單身女人",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  12
+                                                      },
+                                                      {
+                                                          "title":  "我是真的愛你",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  13
+                                                      },
+                                                      {
+                                                          "title":  "鬼迷心竅",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  14
+                                                      }
+                                                  ]
+                                    },
+                                    {
+                                        "title":  "李宗盛超重量级大全集",
+                                        "year":  "2003",
+                                        "cover":  "/storage/covers/c_734.jpg",
+                                        "songs":  [
+                                                      {
+                                                          "title":  "爱的代价",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  1
+                                                      },
+                                                      {
+                                                          "title":  "我是是真的爱你",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  2
+                                                      },
+                                                      {
+                                                          "title":  "鬼迷心窍",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  3
+                                                      },
+                                                      {
+                                                          "title":  "凡人歌",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  4
+                                                      },
+                                                      {
+                                                          "title":  "寂寞难耐",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  5
+                                                      },
+                                                      {
+                                                          "title":  "真心英雄",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  6
+                                                      },
+                                                      {
+                                                          "title":  "我的未来 my home my wife",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  7
+                                                      },
+                                                      {
+                                                          "title":  "和自己赛跑的人",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  8
+                                                      },
+                                                      {
+                                                          "title":  "再回首",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  9
+                                                      },
+                                                      {
+                                                          "title":  "生命中的精灵",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  10
+                                                      }
+                                                  ]
+                                    },
+                                    {
+                                        "title":  "李宗盛愛情論III: 因為寂寞",
+                                        "year":  "2004",
+                                        "cover":  "/storage/covers/c_729.jpg",
+                                        "songs":  [
+                                                      {
+                                                          "title":  "因為寂寞",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  0
+                                                      },
+                                                      {
+                                                          "title":  "當愛已成往事",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  1
+                                                      },
+                                                      {
+                                                          "title":  "陰天",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  2
+                                                      },
+                                                      {
+                                                          "title":  "最愛",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  3
+                                                      },
+                                                      {
+                                                          "title":  "飄洋過海來看你",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  4
+                                                      },
+                                                      {
+                                                          "title":  "問",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  5
+                                                      },
+                                                      {
+                                                          "title":  "誘惑的街",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  6
+                                                      },
+                                                      {
+                                                          "title":  "一夜長大",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  7
+                                                      },
+                                                      {
+                                                          "title":  "傷心地鐵",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  8
+                                                      },
+                                                      {
+                                                          "title":  "兩個女孩",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  9
+                                                      },
+                                                      {
+                                                          "title":  "當愛在靠近",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  10
+                                                      },
+                                                      {
+                                                          "title":  "我一個人住",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  11
+                                                      },
+                                                      {
+                                                          "title":  "第三者",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  12
+                                                      },
+                                                      {
+                                                          "title":  "寂寞",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  13
+                                                      },
+                                                      {
+                                                          "title":  "領悟",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  14
+                                                      }
+                                                  ]
+                                    },
+                                    {
+                                        "title":  "李宗盛愛情論Ⅱ: 寂寞難耐",
+                                        "year":  "2004",
+                                        "cover":  "/storage/covers/c_730.jpg",
+                                        "songs":  [
+                                                      {
+                                                          "title":  "生命中的精靈",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  0
+                                                      },
+                                                      {
+                                                          "title":  "寂寞難耐",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  1
+                                                      },
+                                                      {
+                                                          "title":  "鬼迷心竅",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  2
+                                                      },
+                                                      {
+                                                          "title":  "凡人歌",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  3
+                                                      },
+                                                      {
+                                                          "title":  "希望",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  4
+                                                      },
+                                                      {
+                                                          "title":  "遠行",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  5
+                                                      },
+                                                      {
+                                                          "title":  "風櫃來的人",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  6
+                                                      },
+                                                      {
+                                                          "title":  "小鎮醫生的故事",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  7
+                                                      },
+                                                      {
+                                                          "title":  "油麻菜籽",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  8
+                                                      },
+                                                      {
+                                                          "title":  "飛",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  9
+                                                      }
+                                                  ]
+                                    },
+                                    {
+                                        "title":  "李宗盛愛情論Ⅰ: 愛的代價",
+                                        "year":  "2004",
+                                        "cover":  "/storage/covers/c_731.jpg",
+                                        "songs":  [
+                                                      {
+                                                          "title":  "愛的代價",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  0
+                                                      },
+                                                      {
+                                                          "title":  "我是真的愛你",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  1
+                                                      },
+                                                      {
+                                                          "title":  "你像個孩子",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  2
+                                                      },
+                                                      {
+                                                          "title":  "愛情少尉",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  3
+                                                      },
+                                                      {
+                                                          "title":  "沒有人知道",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  4
+                                                      },
+                                                      {
+                                                          "title":  "我有話要說",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  5
+                                                      },
+                                                      {
+                                                          "title":  "17歲女生的溫柔",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  6
+                                                      },
+                                                      {
+                                                          "title":  "和自己賽跑的人",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  7
+                                                      },
+                                                      {
+                                                          "title":  "如果你要離去",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  8
+                                                      },
+                                                      {
+                                                          "title":  "聽見有人叫你寶貝",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  9
+                                                      }
+                                                  ]
+                                    },
+                                    {
+                                        "title":  "男人三十",
+                                        "year":  "2005",
+                                        "cover":  "/storage/covers/c_728.jpg",
+                                        "songs":  [
+                                                      {
+                                                          "title":  "最近比較煩",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  0
+                                                      },
+                                                      {
+                                                          "title":  "讓我歡喜讓我憂",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  1
+                                                      },
+                                                      {
+                                                          "title":  "忙與盲",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  2
+                                                      },
+                                                      {
+                                                          "title":  "忘憂草",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  3
+                                                      },
+                                                      {
+                                                          "title":  "生命中的精靈",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  4
+                                                      },
+                                                      {
+                                                          "title":  "朋友",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  5
+                                                      },
+                                                      {
+                                                          "title":  "鬼迷心竅",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  6
+                                                      },
+                                                      {
+                                                          "title":  "花心",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  7
+                                                      },
+                                                      {
+                                                          "title":  "凡人歌",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  8
+                                                      },
+                                                      {
+                                                          "title":  "有沒有一首歌會讓你想起我",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  9
+                                                      },
+                                                      {
+                                                          "title":  "寂寞難耐",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  10
+                                                      },
+                                                      {
+                                                          "title":  "怕黑",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  11
+                                                      },
+                                                      {
+                                                          "title":  "和自己賽跑的人",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  12
+                                                      },
+                                                      {
+                                                          "title":  "親親我的寶貝",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  13
+                                                      },
+                                                      {
+                                                          "title":  "希望",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  14
+                                                      },
+                                                      {
+                                                          "title":  "愛的代價",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  15
+                                                      },
+                                                      {
+                                                          "title":  "風雨無阻",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  16
+                                                      },
+                                                      {
+                                                          "title":  "我是真的愛你",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  17
+                                                      },
+                                                      {
+                                                          "title":  "愛相隨",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  18
+                                                      },
+                                                      {
+                                                          "title":  "這樣愛你對不對",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  19
+                                                      },
+                                                      {
+                                                          "title":  "孤枕難眠",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  20
+                                                      },
+                                                      {
+                                                          "title":  "十七歲女生的溫柔",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  21
+                                                      },
+                                                      {
+                                                          "title":  "我是真的付出我的愛",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  22
+                                                      },
+                                                      {
+                                                          "title":  "別說可惜",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  23
+                                                      },
+                                                      {
+                                                          "title":  "明天我要嫁給你",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  24
+                                                      },
+                                                      {
+                                                          "title":  "愛情少尉",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  25
+                                                      },
+                                                      {
+                                                          "title":  "其實不想走",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  26
+                                                      },
+                                                      {
+                                                          "title":  "聽見有人叫你寶貝",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  27
+                                                      },
+                                                      {
+                                                          "title":  "傷心的歌",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  28
+                                                      },
+                                                      {
+                                                          "title":  "因為寂寞",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  29
+                                                      }
+                                                  ]
+                                    },
+                                    {
+                                        "title":  "理性与感性作品音乐会",
+                                        "year":  "2007",
+                                        "cover":  "/src/assets/images/vinyl_default.png",
+                                        "songs":  [
+                                                      {
+                                                          "title":  "生命中的精灵 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  1
+                                                      },
+                                                      {
+                                                          "title":  "风柜来的人 + 17岁女生的温柔 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  2
+                                                      },
+                                                      {
+                                                          "title":  "没有人知道 + 爱情少尉 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  3
+                                                      },
+                                                      {
+                                                          "title":  "如果你要离去 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  4
+                                                      },
+                                                      {
+                                                          "title":  "寂寞难耐 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  5
+                                                      },
+                                                      {
+                                                          "title":  "鬼迷心窍 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  6
+                                                      },
+                                                      {
+                                                          "title":  "我终于失去了你 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  7
+                                                      },
+                                                      {
+                                                          "title":  "明明白白我的心 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  8
+                                                      },
+                                                      {
+                                                          "title":  "问 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  9
+                                                      },
+                                                      {
+                                                          "title":  "梦醒时分 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  10
+                                                      },
+                                                      {
+                                                          "title":  "领悟 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  11
+                                                      },
+                                                      {
+                                                          "title":  "阴天 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  12
+                                                      },
+                                                      {
+                                                          "title":  "铿锵玫瑰 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  13
+                                                      },
+                                                      {
+                                                          "title":  "希望 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  14
+                                                      },
+                                                      {
+                                                          "title":  "和自己赛跑的人 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  15
+                                                      },
+                                                      {
+                                                          "title":  "凡人歌 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  16
+                                                      },
+                                                      {
+                                                          "title":  "一个人 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  17
+                                                      },
+                                                      {
+                                                          "title":  "爱情有什么道理 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  18
+                                                      },
+                                                      {
+                                                          "title":  "你像个孩子 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  19
+                                                      },
+                                                      {
+                                                          "title":  "飞 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  20
+                                                      },
+                                                      {
+                                                          "title":  "阿宗三件事 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  21
+                                                      },
+                                                      {
+                                                          "title":  "我是一只小小鸟 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  22
+                                                      },
+                                                      {
+                                                          "title":  "我是真的爱你 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  23
+                                                      },
+                                                      {
+                                                          "title":  "当爱已成往事 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  24
+                                                      },
+                                                      {
+                                                          "title":  "为你我受冷风吹 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  25
+                                                      },
+                                                      {
+                                                          "title":  "诱惑的街 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  26
+                                                      },
+                                                      {
+                                                          "title":  "十二楼 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  27
+                                                      },
+                                                      {
+                                                          "title":  "远行 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  28
+                                                      },
+                                                      {
+                                                          "title":  "爱的代价 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  29
+                                                      },
+                                                      {
+                                                          "title":  "真心英雄 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  30
+                                                      }
+                                                  ]
+                                    },
+                                    {
+                                        "title":  "既然青春留不住-还是做个大叔好",
+                                        "year":  "2016",
+                                        "cover":  "/storage/covers/c_726.jpg",
+                                        "songs":  [
+                                                      {
+                                                          "title":  "爱情有什么道理 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  1
+                                                      },
+                                                      {
+                                                          "title":  "生命中的精灵 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  2
+                                                      },
+                                                      {
+                                                          "title":  "飘洋过海来看你 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  3
+                                                      },
+                                                      {
+                                                          "title":  "不必在乎我是谁 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  4
+                                                      },
+                                                      {
+                                                          "title":  "领悟 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  5
+                                                      },
+                                                      {
+                                                          "title":  "十二楼 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  6
+                                                      },
+                                                      {
+                                                          "title":  "晚婚 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  7
+                                                      },
+                                                      {
+                                                          "title":  "因为单身的缘故 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  8
+                                                      },
+                                                      {
+                                                          "title":  "寂寞难耐 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  9
+                                                      },
+                                                      {
+                                                          "title":  "我是真的爱你 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  10
+                                                      },
+                                                      {
+                                                          "title":  "鬼迷心窍 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  11
+                                                      },
+                                                      {
+                                                          "title":  "别怕我伤心/听见有人叫你宝贝/爱情少尉/爱如潮水 (串烧)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  12
+                                                      },
+                                                      {
+                                                          "title":  "让我欢喜让我忧 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  13
+                                                      },
+                                                      {
+                                                          "title":  "飞 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  14
+                                                      },
+                                                      {
+                                                          "title":  "伤心地铁 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  15
+                                                      },
+                                                      {
+                                                          "title":  "忙与盲 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  16
+                                                      },
+                                                      {
+                                                          "title":  "阿宗三件事 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  17
+                                                      },
+                                                      {
+                                                          "title":  "你像个孩子 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  18
+                                                      },
+                                                      {
+                                                          "title":  "因为寂寞 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  19
+                                                      },
+                                                      {
+                                                          "title":  "梦醒时分 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  20
+                                                      },
+                                                      {
+                                                          "title":  "爱的代价 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  21
+                                                      },
+                                                      {
+                                                          "title":  "山丘 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  22
+                                                      },
+                                                      {
+                                                          "title":  "一个人 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  23
+                                                      },
+                                                      {
+                                                          "title":  "问 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  24
+                                                      },
+                                                      {
+                                                          "title":  "寂寞的恋人 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  25
+                                                      },
+                                                      {
+                                                          "title":  "凡人歌 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  26
+                                                      },
+                                                      {
+                                                          "title":  "你们 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  27
+                                                      },
+                                                      {
+                                                          "title":  "我是一只小小鸟 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  28
+                                                      },
+                                                      {
+                                                          "title":  "给自己的歌 (Live)",
+                                                          "path":  "",
+                                                          "lrcPath":  "",
+                                                          "trackIndex":  29
+                                                      }
+                                                  ]
+                                    }
+                                ]
+                 }
+             ]
+}

@@ -1,0 +1,27 @@
+# 忽略 Git 仓库数据
+.git
+.gitignore
+
+# 忽略本地巨大的存储目录 (我们会通过 Zeabur Volume 挂载)
+# 这一步非常关键！否则上传上下文会非常慢，且把几 G 的音乐打包进镜像
+storage/
+uploads/
+
+# 忽略开发工具配置
+.vscode
+.agent
+.idea
+
+# 忽略日志和临时文件
+logs/
+*.log
+tmp/
+*.tmp
+
+# 忽略文档
+docs/
+*.md
+
+# 忽略本地编译出的文件
+backend/main.exe
+backend/main

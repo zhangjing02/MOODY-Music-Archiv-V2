@@ -1,0 +1,1347 @@
+﻿/**
+ * APP LOGIC
+ * è´Ÿè´£å¤„ç†ç‚¹å‡»ã€æ»šåŠ¨ã€æ¸²æŸ“ç­‰é€»è¾‘
+ * æ•°æ®æ¥æº: src/js/data.js
+ */
+
+// ==================== æœ¬åœ°å­˜å‚¨å¸¸é‡ ====================
+const STORAGE_KEY = 'music_archive_local_songs';
+const STORAGE_VERSION_KEY = 'music_archive_version';
+const STORAGE_VERSION = '1.0';
+
+// ==================== IndexedDB æ•°æ®åº“ ====================
+const DB_NAME = 'MusicArchiveDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'audioFiles';
+
+// ==================== API é…ç½® ====================
+const API_CONFIG = {
+    // iTunes API é…ç½®
+    itunes: {
+        // æ£€æµ‹è¿è¡ŒçŽ¯å¢ƒï¼šfile:// åè®®ä¸‹ç¦ç”¨ iTunes API
+        enabled: window.location.protocol !== 'file:',
+        baseUrl: 'https://itunes.apple.com/search',
+        timeout: 3000,
+        retry: 1
+    }
+};
+
+/**
+ * æ‰“å¼€ IndexedDB æ•°æ®åº“
+ */
+function openDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+        request.onerror = () => {
+            console.error('IndexedDB æ‰“å¼€å¤±è´¥:', request.error);
+            reject(request.error);
+        };
+
+        request.onsuccess = () => {
+            console.log('âœ“ IndexedDB å·²æ‰“å¼€');
+            resolve(request.result);
+        };
+
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'songName' });
+                objectStore.createIndex('artistName', 'artistName', { unique: false });
+                console.log('âœ“ IndexedDB å¯¹è±¡å­˜å‚¨å·²åˆ›å»º');
+            }
+        };
+    });
+}
+
+/**
+ * ä¿å­˜éŸ³é¢‘æ–‡ä»¶åˆ° IndexedDB
+ */
+async function saveAudioToIndexedDB(songName, artistName, fileName, audioBlob) {
+    try {
+        const db = await openDB();
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const objectStore = transaction.objectStore(STORE_NAME);
+
+        const record = {
+            songName: songName,
+            artistName: artistName,
+            fileName: fileName,
+            audioBlob: audioBlob,
+            audioUrl: null, // æ‡’åŠ è½½ï¼šåªåœ¨éœ€è¦æ—¶ç”Ÿæˆ DataURL
+            uploadDate: new Date().toISOString()
+        };
+
+        const request = objectStore.put(record);
+
+        return new Promise((resolve, reject) => {
+            request.onsuccess = () => {
+                console.log(`âœ“ å·²ä¿å­˜åˆ° IndexedDB: ${songName}`);
+                resolve(true);
+            };
+            request.onerror = () => {
+                console.error('ä¿å­˜åˆ° IndexedDB å¤±è´¥:', request.error);
+                reject(request.error);
+            };
+        });
+    } catch (error) {
+        console.error('IndexedDB ä¿å­˜å¤±è´¥:', error);
+        throw error;
+    }
+}
+
+/**
+ * ä»Ž IndexedDB åŠ è½½æ‰€æœ‰éŸ³é¢‘æ–‡ä»¶
+ */
+async function loadAllAudioFromIndexedDB() {
+    try {
+        console.log('æ­£åœ¨æ‰“å¼€ IndexedDB...');
+        const db = await openDB();
+        console.log('IndexedDB å·²æ‰“å¼€ï¼Œå¼€å§‹è¯»å–éŸ³é¢‘æ–‡ä»¶...');
+
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const objectStore = transaction.objectStore(STORE_NAME);
+        const request = objectStore.getAll();
+
+        return new Promise((resolve, reject) => {
+            request.onsuccess = async () => {
+                const records = request.result;
+                console.log(`âœ“ ä»Ž IndexedDB è¯»å–åˆ° ${records.length} ä¸ªéŸ³é¢‘æ–‡ä»¶`);
+
+                // å°† Blob è½¬æ¢ä¸º DataURL
+                const results = [];
+                for (const record of records) {
+                    console.log(`æ­£åœ¨è½¬æ¢: ${record.songName} - Blob å¤§å°: ${record.audioBlob.size} bytes`);
+                    const audioUrl = await blobToDataURL(record.audioBlob);
+                    results.push({
+                        songName: record.songName,
+                        artistName: record.artistName,
+                        fileName: record.fileName,
+                        audioUrl: audioUrl,
+                        uploadDate: record.uploadDate
+                    });
+                    console.log(`âœ“ è½¬æ¢å®Œæˆ: ${record.songName}`);
+                }
+                console.log(`âœ“ æ‰€æœ‰éŸ³é¢‘æ–‡ä»¶è½¬æ¢å®Œæˆï¼Œå…± ${results.length} ä¸ª`);
+                resolve(results);
+            };
+            request.onerror = () => {
+                console.error('ä»Ž IndexedDB åŠ è½½å¤±è´¥:', request.error);
+                reject(request.error);
+            };
+        });
+    } catch (error) {
+        console.error('IndexedDB åŠ è½½å¤±è´¥:', error);
+        return [];
+    }
+}
+
+/**
+ * ä»Ž IndexedDB åˆ é™¤éŸ³é¢‘æ–‡ä»¶
+ */
+async function deleteAudioFromIndexedDB(songName) {
+    try {
+        const db = await openDB();
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const objectStore = transaction.objectStore(STORE_NAME);
+        const request = objectStore.delete(songName);
+
+        return new Promise((resolve, reject) => {
+            request.onsuccess = () => {
+                console.log(`âœ“ å·²ä»Ž IndexedDB åˆ é™¤: ${songName}`);
+                resolve(true);
+            };
+            request.onerror = () => {
+                console.error('ä»Ž IndexedDB åˆ é™¤å¤±è´¥:', request.error);
+                reject(request.error);
+            };
+        });
+    } catch (error) {
+        console.error('IndexedDB åˆ é™¤å¤±è´¥:', error);
+        throw error;
+    }
+}
+
+/**
+ * å°† Blob è½¬æ¢ä¸º DataURL
+ */
+function blobToDataURL(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+
+/**
+ * èŽ·å– IndexedDB ä½¿ç”¨æƒ…å†µ
+ */
+async function getIndexedDBUsage() {
+    try {
+        if (navigator.storage && navigator.storage.estimate) {
+            const estimate = await navigator.storage.estimate();
+            const usageMB = (estimate.usage / (1024 * 1024)).toFixed(2);
+            const quotaMB = (estimate.quota / (1024 * 1024)).toFixed(2);
+            return { usage: usageMB, quota: quotaMB };
+        }
+        return null;
+    } catch (error) {
+        console.error('èŽ·å–å­˜å‚¨ä¿¡æ¯å¤±è´¥:', error);
+        return null;
+    }
+}
+
+// --- DOM Elements ---
+const dom = {
+    list: document.getElementById('artistList'), index: document.getElementById('indexBar'),
+    vCover: document.getElementById('vCover'), vTitle: document.getElementById('vTitle'), vMeta: document.getElementById('vMeta'),
+    vTabs: document.getElementById('vTabs'), vSongs: document.getElementById('vSongs'),
+    search: document.getElementById('searchInput'), catList: document.getElementById('categoryList')
+};
+
+// --- State ---
+let viewState = { sIdx: 0, aIdx: 0, category: 'å…¨éƒ¨', search: '', viewMode: 'artist' }; // viewMode: 'artist' | 'local'
+let allArtistsData = [];
+
+// ç¼“å­˜èŽ·å–çš„å›¾ç‰‡URL
+const imageCache = {
+    artists: new Map(),  // artistName -> imageUrl
+    albums: new Map()    // artistName+albumTitle -> imageUrl
+};
+
+// æœ¬åœ°æ­Œæ›²æ˜ å°„ { "æ­Œæ›²å - æ­Œæ‰‹å": { fileName, audioUrl, uploadDate } }
+const localSongsMap = new Map();
+
+// ==================== æœ¬åœ°å­˜å‚¨åŠŸèƒ½ ====================
+/**
+ * ä¿å­˜æœ¬åœ°æ­Œæ›²åˆ° IndexedDBï¼ˆå¼‚æ­¥ï¼‰
+ * æ³¨æ„ï¼šè¿™ä¸ªå‡½æ•°çŽ°åœ¨æ˜¯å¼‚æ­¥çš„ï¼Œéœ€è¦ä½¿ç”¨ await
+ */
+async function saveLocalSongsToStorage() {
+    try {
+        console.log('å¼€å§‹ä¿å­˜åˆ° IndexedDBï¼ŒlocalSongsMap å¤§å°:', localSongsMap.size);
+
+        // localSongsMap ä¸­å­˜å‚¨çš„ audioUrl æ˜¯ DataURL æ ¼å¼
+        // éœ€è¦è½¬æ¢ä¸º Blob ä¿å­˜åˆ° IndexedDB
+        const savePromises = [];
+
+        for (const [key, value] of localSongsMap.entries()) {
+            if (value.audioUrl && !value._savedToIndexedDB) {
+                console.log(`å‡†å¤‡ä¿å­˜: ${value.songName}`);
+
+                const savePromise = (async () => {
+                    try {
+                        // å°† DataURL è½¬æ¢ä¸º Blob
+                        const blob = dataURLToBlob(value.audioUrl);
+                        console.log(`Blob è½¬æ¢å®Œæˆï¼Œå¤§å°: ${blob.size} bytes`);
+
+                        await saveAudioToIndexedDB(
+                            value.songName,
+                            value.artistName,
+                            value.fileName,
+                            blob
+                        );
+                        // æ ‡è®°å·²ä¿å­˜ï¼Œé¿å…é‡å¤ä¿å­˜
+                        value._savedToIndexedDB = true;
+                        console.log(`âœ“ å·²ä¿å­˜åˆ° IndexedDB: ${value.songName}`);
+                    } catch (error) {
+                        console.error(`ä¿å­˜ ${value.songName} å¤±è´¥:`, error);
+                    }
+                })();
+                savePromises.push(savePromise);
+            } else if (value._savedToIndexedDB) {
+                console.log(`è·³è¿‡å·²ä¿å­˜: ${value.songName}`);
+            }
+        }
+
+        await Promise.all(savePromises);
+
+        // èŽ·å–å­˜å‚¨ä½¿ç”¨æƒ…å†µ
+        const usage = await getIndexedDBUsage();
+        if (usage) {
+            console.log(`IndexedDB ä½¿ç”¨: ${usage.usage}MB / ${usage.quota}MB`);
+            if (parseFloat(usage.usage) > parseFloat(usage.quota) * 0.9) {
+                showNotification(`è­¦å‘Šï¼šå­˜å‚¨ç©ºé—´å³å°†ç”¨å°½ (${usage.usage}MB)`);
+            }
+        }
+
+        console.log(`âœ“ å·²ä¿å­˜ ${localSongsMap.size} é¦–æœ¬åœ°æ­Œæ›²åˆ° IndexedDB`);
+    } catch (error) {
+        console.error('ä¿å­˜åˆ° IndexedDB å¤±è´¥:', error);
+        if (error.name === 'QuotaExceededError') {
+            showNotification('å­˜å‚¨ç©ºé—´ä¸è¶³ï¼Œæ— æ³•ä¿å­˜æ­Œæ›²');
+        } else {
+            showNotification('ä¿å­˜å¤±è´¥ï¼Œè¯·é‡è¯•');
+        }
+    }
+}
+
+/**
+ * å°† DataURL è½¬æ¢ä¸º Blob
+ */
+function dataURLToBlob(dataURL) {
+    const parts = dataURL.split(',');
+    const mime = parts[0].match(/:(.*?);/)[1];
+    const bstr = atob(parts[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+}
+
+/**
+ * ä»Ž IndexedDB åŠ è½½æœ¬åœ°æ­Œæ›²ï¼ˆå¼‚æ­¥ï¼‰
+ */
+async function loadLocalSongsFromStorage() {
+    try {
+        const audioFiles = await loadAllAudioFromIndexedDB();
+
+        let loadedCount = 0;
+        audioFiles.forEach((file) => {
+            const key = `${file.songName} - ${file.artistName}`;
+            localSongsMap.set(key, {
+                fileName: file.fileName,
+                audioUrl: file.audioUrl,
+                uploadDate: file.uploadDate,
+                songName: file.songName,
+                artistName: file.artistName,
+                _savedToIndexedDB: true  // æ ‡è®°å·²ä¿å­˜
+            });
+            loadedCount++;
+        });
+
+        // åŒæ­¥åˆ°æ’­æ”¾å™¨
+        if (window.playerState && window.playerState.uploadedFiles) {
+            localSongsMap.forEach((value) => {
+                window.playerState.uploadedFiles.set(value.songName, value.audioUrl);
+            });
+        }
+
+        console.log(`âœ“ å·²åŠ è½½ ${loadedCount} é¦–æœ¬åœ°æ­Œæ›²`);
+        return loadedCount;
+    } catch (error) {
+        console.error('ä»Ž IndexedDB åŠ è½½å¤±è´¥:', error);
+        showNotification('åŠ è½½æœ¬åœ°æ­Œæ›²å¤±è´¥');
+        return 0;
+    }
+}
+
+/**
+ * æ¸…é™¤æ‰€æœ‰æœ¬åœ°å­˜å‚¨çš„æ­Œæ›²ï¼ˆå¼‚æ­¥ï¼‰
+ */
+async function clearLocalSongsStorage() {
+    try {
+        // æ¸…é™¤ IndexedDB
+        const db = await openDB();
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const objectStore = transaction.objectStore(STORE_NAME);
+        await new Promise((resolve, reject) => {
+            const request = objectStore.clear();
+            request.onsuccess = () => {
+                console.log('âœ“ å·²æ¸…é™¤ IndexedDB ä¸­çš„éŸ³é¢‘æ•°æ®');
+                resolve();
+            };
+            request.onerror = () => reject(request.error);
+        });
+
+        // æ¸…é™¤ localSongsMap
+        localSongsMap.clear();
+
+        console.log('âœ“ å·²æ¸…é™¤æ‰€æœ‰æœ¬åœ°å­˜å‚¨çš„æ­Œæ›²æ•°æ®');
+        showNotification('å·²æ¸…é™¤æ‰€æœ‰æœ¬åœ°æ­Œæ›²');
+    } catch (error) {
+        console.error('æ¸…é™¤å­˜å‚¨å¤±è´¥:', error);
+    }
+}
+
+// ==================== å•ä¸ªæ­Œæ›²ä¸Šä¼ åŠŸèƒ½ ====================
+/**
+ * ä¸ºæŒ‡å®šæ­Œæ›²ä¸Šä¼ éŸ³é¢‘æ–‡ä»¶
+ */
+function uploadSongForTrack(e, songName, artistName) {
+    e.stopPropagation();
+    // åˆ›å»ºä¸€ä¸ªéšè—çš„æ–‡ä»¶è¾“å…¥
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'audio/*';
+    input.style.display = 'none';
+
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const audioUrl = event.target.result;
+            const key = `${songName} - ${artistName}`;
+
+            // ä¿å­˜åˆ°æœ¬åœ°æ­Œæ›²æ˜ å°„
+            localSongsMap.set(key, {
+                fileName: file.name,
+                audioUrl: audioUrl,
+                uploadDate: new Date().toISOString(),
+                songName: songName,
+                artistName: artistName
+            });
+
+            // åŒæ­¥åˆ°æ’­æ”¾å™¨çš„ uploadedFiles
+            if (window.playerState && window.playerState.uploadedFiles) {
+                window.playerState.uploadedFiles.set(songName, audioUrl);
+            }
+
+            // æ˜¾ç¤ºé€šçŸ¥
+            showNotification(`å·²ä¸Šä¼ : ${songName}`);
+
+            // ä¿å­˜åˆ° IndexedDBï¼ˆå¼‚æ­¥ï¼‰
+            saveLocalSongsToStorage().catch(error => {
+                console.error('ä¿å­˜åˆ° IndexedDB å¤±è´¥:', error);
+            });
+
+            // æ›´æ–°å½“å‰è§†å›¾
+            if (viewState.viewMode === 'local') {
+                renderLocalMusicView();
+            } else {
+                updateView();
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+
+    document.body.appendChild(input);
+    input.click();
+    document.body.removeChild(input);
+}
+
+/**
+ * æ£€æŸ¥æ­Œæ›²æ˜¯å¦æœ‰æœ¬åœ°æ–‡ä»¶
+ */
+function hasLocalFile(songName, artistName) {
+    const exactKey = `${songName} - ${artistName}`;
+    const bulkKey = `${songName} - æœ¬åœ°éŸ³ä¹`;
+    return localSongsMap.has(exactKey) ||
+        localSongsMap.has(bulkKey) ||
+        (window.playerState && window.playerState.uploadedFiles.has(songName));
+}
+
+/**
+ * èŽ·å–æ­Œæ›²çš„éŸ³é¢‘URL
+ */
+function getSongAudioUrl(songName, artistName) {
+    // ä¼˜å…ˆæ£€æŸ¥æœ¬åœ°æ˜ å°„ - æ”¯æŒå¤šç§ key æ ¼å¼
+    const exactKey = `${songName} - ${artistName}`;
+    const bulkKey = `${songName} - æœ¬åœ°éŸ³ä¹`;
+
+    if (localSongsMap.has(exactKey)) {
+        return localSongsMap.get(exactKey).audioUrl;
+    } else if (localSongsMap.has(bulkKey)) {
+        return localSongsMap.get(bulkKey).audioUrl;
+    }
+
+    // æ£€æŸ¥æ’­æ”¾å™¨çš„ä¸Šä¼ æ–‡ä»¶
+    if (window.playerState && window.playerState.uploadedFiles.has(songName)) {
+        return window.playerState.uploadedFiles.get(songName);
+    }
+
+    return null;
+}
+
+/**
+ * æ˜¾ç¤ºé€šçŸ¥
+ */
+function showNotification(message) {
+    if (window.playerState && typeof showNotification === 'function') {
+        // ä½¿ç”¨ player.js çš„é€šçŸ¥å‡½æ•°
+        window.showNotification(message);
+    } else {
+        // å¤‡ç”¨é€šçŸ¥
+        console.log('é€šçŸ¥:', message);
+    }
+}
+
+// ==================== æœ¬åœ°éŸ³ä¹è§†å›¾ ====================
+/**
+ * æ¸²æŸ“æœ¬åœ°éŸ³ä¹è§†å›¾
+ */
+function renderLocalMusicView() {
+    // éšè—ä¸“è¾‘ç›¸å…³çš„å…ƒç´ 
+    dom.vCover.style.display = 'none';
+
+    // æ˜¾ç¤ºæœ¬åœ°éŸ³ä¹æ ‡é¢˜
+    dom.vTitle.textContent = 'æœ¬åœ°éŸ³ä¹';
+    dom.vMeta.textContent = `${localSongsMap.size} é¦–æ­Œæ›²`;
+
+    // æ¸…ç©ºä¸“è¾‘æ ‡ç­¾
+    dom.vTabs.innerHTML = '';
+
+    // æ¸²æŸ“æœ¬åœ°æ­Œæ›²åˆ—è¡¨
+    dom.vSongs.innerHTML = '';
+
+    if (localSongsMap.size === 0) {
+        dom.vSongs.innerHTML = `
+            <tr>
+                <td colspan="3" style="text-align:center; padding:40px; color:#555;">
+                    <div style="font-size:48px; margin-bottom:10px;">ðŸŽµ</div>
+                    <div>è¿˜æ²¡æœ‰æœ¬åœ°éŸ³ä¹</div>
+                    <div style="font-size:0.85rem; margin-top:10px;">ç‚¹å‡»ä¸‹æ–¹"ä¸Šä¼ æœ¬åœ°éŸ³ä¹"æŒ‰é’®æ·»åŠ æ­Œæ›²</div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    // æŒ‰ä¸Šä¼ æ—¶é—´å€’åºæŽ’åˆ—
+    const songs = Array.from(localSongsMap.values()).sort((a, b) => {
+        return new Date(b.uploadDate) - new Date(a.uploadDate);
+    });
+
+    songs.forEach((song, i) => {
+        const tr = document.createElement('tr');
+        tr.className = 'st-row';
+        tr.innerHTML = `
+            <td class="st-cell st-num">${String(i + 1).padStart(2, '0')}</td>
+            <td class="st-cell st-title">
+                <div class="song-info">
+                    <div class="song-name">${song.songName}</div>
+                    <div class="song-artist">${song.artistName}</div>
+                </div>
+                <span class="song-source local" title="æœ¬åœ°æ–‡ä»¶">æœ¬åœ°</span>
+            </td>
+            <td class="st-cell st-actions">
+                <button class="act-btn delete" onclick="deleteLocalSong(event, '${song.songName}', '${song.artistName}')" title="åˆ é™¤">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        <line x1="10" y1="11" x2="10" y2="17"/>
+                        <line x1="14" y1="11" x2="14" y2="17"/>
+                    </svg>
+                </button>
+            </td>
+        `;
+
+        tr.addEventListener('click', () => {
+            document.querySelectorAll('.st-row').forEach(el => el.classList.remove('active'));
+            tr.classList.add('active');
+
+            // æ’­æ”¾æœ¬åœ°æ­Œæ›²
+            console.log(`å°è¯•æ’­æ”¾æœ¬åœ°æ­Œæ›²: ${song.songName} - ${song.artistName}`);
+            if (window.audioPlayer && window.audioPlayer.play) {
+                // å‚æ•°é¡ºåºï¼šsong, artist, album, audioUrl, lyrics
+                window.audioPlayer.play(song.songName, song.artistName, 'æœ¬åœ°éŸ³ä¹', song.audioUrl, '');
+            } else {
+                console.error('audioPlayer å¯¹è±¡æœªå°±ç»ª');
+                showNotification('æ’­æ”¾å™¨æœªå°±ç»ªï¼Œè¯·ç¨åŽé‡è¯•');
+            }
+        });
+
+        dom.vSongs.appendChild(tr);
+    });
+}
+
+/**
+ * æ’­æ”¾æœ¬åœ°æ­Œæ›²
+ */
+function playLocalSong(e, songName, artistName) {
+    e.stopPropagation();
+    document.querySelectorAll('.st-row').forEach(el => el.classList.remove('active'));
+    const row = e.currentTarget.closest('.st-row');
+    row.classList.add('active');
+
+    const key = `${songName} - ${artistName}`;
+    const song = localSongsMap.get(key);
+    if (!song) return;
+
+    // è°ƒç”¨æ’­æ”¾å™¨
+    if (window.audioPlayer && window.audioPlayer.play) {
+        window.audioPlayer.play(songName, artistName, 'æœ¬åœ°éŸ³ä¹', song.audioUrl);
+    }
+}
+
+/**
+ * åˆ é™¤æœ¬åœ°æ­Œæ›²
+ */
+async function deleteLocalSong(e, songName, artistName) {
+    e.stopPropagation();
+    const key = `${songName} - ${artistName}`;
+
+    if (confirm(`ç¡®å®šè¦åˆ é™¤ "${songName}" å—ï¼Ÿ`)) {
+        // ä»Ž IndexedDB åˆ é™¤
+        try {
+            await deleteAudioFromIndexedDB(songName);
+        } catch (error) {
+            console.error('ä»Ž IndexedDB åˆ é™¤å¤±è´¥:', error);
+        }
+
+        localSongsMap.delete(key);
+
+        // ä¹Ÿä»Žæ’­æ”¾å™¨ä¸­åˆ é™¤
+        if (window.playerState && window.playerState.uploadedFiles) {
+            window.playerState.uploadedFiles.delete(songName);
+        }
+
+        showNotification(`å·²åˆ é™¤: ${songName}`);
+
+        renderLocalMusicView();
+    }
+}
+
+/**
+ * åˆ‡æ¢åˆ°æœ¬åœ°éŸ³ä¹è§†å›¾
+ */
+function showLocalMusicView() {
+    viewState.viewMode = 'local';
+    viewState.sIdx = -1; // å–æ¶ˆè‰ºæœ¯å®¶é€‰æ‹©
+
+    // æ›´æ–°ä¾§è¾¹æ é€‰ä¸­çŠ¶æ€
+    document.querySelectorAll('.artist-item').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.local-music-item').forEach(el => el.classList.add('active'));
+
+    renderLocalMusicView();
+}
+
+/**
+ * åˆ‡æ¢å›žè‰ºæœ¯å®¶è§†å›¾
+ */
+function showArtistView() {
+    viewState.viewMode = 'artist';
+
+    // æ›´æ–°ä¾§è¾¹æ é€‰ä¸­çŠ¶æ€
+    document.querySelectorAll('.local-music-item').forEach(el => el.classList.remove('active'));
+
+    // å¦‚æžœæœ‰é€‰ä¸­çš„è‰ºæœ¯å®¶ï¼Œæ˜¾ç¤ºå…¶å†…å®¹
+    if (viewState.sIdx >= 0 && allArtistsData[viewState.sIdx]) {
+        updateView();
+    }
+}
+
+// ==================== å›¾ç‰‡èŽ·å– API ====================
+/**
+ * ä»Ž iTunes API èŽ·å–è‰ºæœ¯å®¶å›¾ç‰‡
+ */
+async function fetchArtistImage(artistName) {
+    // æ£€æŸ¥ç¼“å­˜
+    if (imageCache.artists.has(artistName)) {
+        return imageCache.artists.get(artistName);
+    }
+
+    // æ£€æŸ¥ API æ˜¯å¦å¯ç”¨ï¼ˆfile:// åè®®ä¸‹ç¦ç”¨ï¼‰
+    if (!API_CONFIG.itunes.enabled) {
+        return null;
+    }
+
+    try {
+        const searchTerm = encodeURIComponent(artistName);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.itunes.timeout);
+
+        const response = await fetch(
+            `${API_CONFIG.itunes.baseUrl}?term=${searchTerm}&media=music&entity=artist&limit=1`,
+            { signal: controller.signal }
+        );
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            return null;
+        }
+
+        const data = await response.json();
+
+        if (data.results && data.results.length > 0) {
+            const artist = data.results[0];
+            // iTunes API å¯èƒ½æä¾› artist çš„å›¾ç‰‡ URL
+            let imageUrl = null;
+
+            // å°è¯•èŽ·å–è‰ºæœ¯å®¶å›¾ç‰‡
+            if (artist.artistLinkUrl) {
+                try {
+                    // ä½¿ç”¨è¯¥è‰ºæœ¯å®¶çš„æŸä¸ªä¸“è¾‘å°é¢ä½œä¸ºè‰ºæœ¯å®¶å¤´åƒ
+                    const controller2 = new AbortController();
+                    const timeoutId2 = setTimeout(() => controller2.abort(), API_CONFIG.itunes.timeout);
+
+                    const albumResponse = await fetch(
+                        `${API_CONFIG.itunes.baseUrl}?term=${searchTerm}&media=music&limit=1`,
+                        { signal: controller2.signal }
+                    );
+
+                    clearTimeout(timeoutId2);
+
+                    const albumData = await albumResponse.json();
+                    if (albumData.results && albumData.results.length > 0) {
+                        imageUrl = albumData.results[0].artworkUrl100?.replace('100x100', '400x400');
+                    }
+                } catch (e) {
+                    // å¿½ç•¥ä¸“è¾‘å›¾ç‰‡èŽ·å–å¤±è´¥
+                }
+            }
+
+            if (imageUrl) {
+                imageCache.artists.set(artistName, imageUrl);
+                return imageUrl;
+            }
+        }
+
+        return null;
+    } catch (error) {
+        // é™é»˜å¤±è´¥ï¼Œä¸è¾“å‡ºé”™è¯¯ï¼ˆfile:// åè®®ä¸‹æ˜¯é¢„æœŸè¡Œä¸ºï¼‰
+        return null;
+    }
+}
+
+/**
+ * ä»Ž iTunes API èŽ·å–ä¸“è¾‘å°é¢
+ */
+async function fetchAlbumCover(artistName, albumTitle) {
+    const cacheKey = `${artistName}|${albumTitle}`;
+
+    // æ£€æŸ¥ç¼“å­˜
+    if (imageCache.albums.has(cacheKey)) {
+        return imageCache.albums.get(cacheKey);
+    }
+
+    // æ£€æŸ¥ API æ˜¯å¦å¯ç”¨ï¼ˆfile:// åè®®ä¸‹ç¦ç”¨ï¼‰
+    if (!API_CONFIG.itunes.enabled) {
+        return null;
+    }
+
+    try {
+        const searchTerm = encodeURIComponent(`${artistName} ${albumTitle}`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.itunes.timeout);
+
+        const response = await fetch(
+            `${API_CONFIG.itunes.baseUrl}?term=${searchTerm}&media=music&entity=album&limit=5`,
+            { signal: controller.signal }
+        );
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            return null;
+        }
+
+        const data = await response.json();
+
+        if (data.results && data.results.length > 0) {
+            let bestMatch = data.results[0];
+
+            // å°è¯•ç²¾ç¡®åŒ¹é…è‰ºæœ¯å®¶å’Œä¸“è¾‘å
+            for (const result of data.results) {
+                if (result.artistName && result.collectionName) {
+                    const artistMatch = result.artistName.toLowerCase() === artistName.toLowerCase();
+                    const albumMatch = result.collectionName.toLowerCase() === albumTitle.toLowerCase();
+                    if (artistMatch && albumMatch) {
+                        bestMatch = result;
+                        break;
+                    }
+                }
+            }
+
+            // èŽ·å–ä¸“è¾‘å°é¢ URLï¼ˆä½¿ç”¨æ›´å¤§çš„å›¾ç‰‡ï¼‰
+            const artworkUrl = bestMatch.artworkUrl100 || null;
+            if (artworkUrl) {
+                // å°† 100x100 çš„å›¾ç‰‡æ›¿æ¢ä¸º 600x600
+                const largeUrl = artworkUrl.replace('100x100', '600x600');
+                imageCache.albums.set(cacheKey, largeUrl);
+                return largeUrl;
+            }
+        }
+
+        return null;
+    } catch (error) {
+        // é™é»˜å¤±è´¥ï¼Œä¸è¾“å‡ºé”™è¯¯ï¼ˆfile:// åè®®ä¸‹æ˜¯é¢„æœŸè¡Œä¸ºï¼‰
+        return null;
+    }
+}
+
+/**
+ * é¢„åŠ è½½æ‰€æœ‰è‰ºæœ¯å®¶çš„å›¾ç‰‡
+ */
+async function preloadArtistImages() {
+    // å¦‚æžœ API ä¸å¯ç”¨ï¼Œè·³è¿‡é¢„åŠ è½½
+    if (!API_CONFIG.itunes.enabled) {
+        return;
+    }
+
+    for (const artist of allArtistsData) {
+        fetchArtistImage(artist.name).then(imageUrl => {
+            if (imageUrl) {
+                // é™é»˜æ›´æ–°ä¾§è¾¹æ ä¸­è¯¥è‰ºæœ¯å®¶çš„å¤´åƒ
+                const artistItems = document.querySelectorAll('.artist-item');
+                artistItems.forEach(item => {
+                    const nameEl = item.querySelector('.a-name');
+                    if (nameEl && nameEl.textContent === artist.name) {
+                        const imgEl = item.querySelector('.a-img');
+                        if (imgEl) imgEl.src = imageUrl;
+                    }
+                });
+            }
+        });
+    }
+}
+
+/**
+ * é¢„åŠ è½½å½“å‰è‰ºæœ¯å®¶çš„æ‰€æœ‰ä¸“è¾‘å°é¢
+ * ç­–ç•¥ï¼š
+ * 1. ç«‹å³åŠ è½½å‰3å¼ ä¸“è¾‘å°é¢ï¼ˆé«˜ä¼˜å…ˆçº§ï¼‰
+ * 2. å…¶ä½™å°é¢ä½¿ç”¨ requestIdleCallback å»¶è¿ŸåŠ è½½ï¼ˆä½Žä¼˜å…ˆçº§ï¼‰
+ */
+async function preloadAlbumCovers(artistName) {
+    const artist = allArtistsData.find(a => a.name === artistName);
+    if (!artist) return;
+
+    // å¦‚æžœ API ä¸å¯ç”¨ï¼Œè·³è¿‡é¢„åŠ è½½
+    if (!API_CONFIG.itunes.enabled) {
+        return;
+    }
+
+    const albums = artist.albums;
+    const priorityAlbums = albums.slice(0, 3); // å‰3å¼ ä¸“è¾‘
+    const lazyAlbums = albums.slice(3); // å…¶ä½™ä¸“è¾‘
+
+    // 1. ç«‹å³åŠ è½½å‰3å¼ ä¸“è¾‘å°é¢
+    for (const album of priorityAlbums) {
+        preloadSingleAlbumCover(artistName, album);
+    }
+
+    // 2. ä½¿ç”¨ requestIdleCallback å»¶è¿ŸåŠ è½½å…¶ä½™å°é¢
+    if (lazyAlbums.length > 0 && 'requestIdleCallback' in window) {
+        requestIdleCallback(() => {
+            lazyAlbums.forEach(album => {
+                preloadSingleAlbumCover(artistName, album);
+            });
+        }, { timeout: 2000 });
+    } else {
+        // æµè§ˆå™¨ä¸æ”¯æŒ requestIdleCallbackï¼Œä½¿ç”¨ setTimeout é™çº§
+        setTimeout(() => {
+            lazyAlbums.forEach(album => {
+                preloadSingleAlbumCover(artistName, album);
+            });
+        }, 1000);
+    }
+}
+
+/**
+ * é¢„åŠ è½½å•å¼ ä¸“è¾‘å°é¢
+ * @param {string} artistName - è‰ºæœ¯å®¶åç§°
+ * @param {Object} album - ä¸“è¾‘å¯¹è±¡
+ */
+function preloadSingleAlbumCover(artistName, album) {
+    const cacheKey = `${artistName}|${album.title}`;
+
+    // æ£€æŸ¥æ˜¯å¦å·²ç¼“å­˜
+    if (imageCache.albums.has(cacheKey)) {
+        return;
+    }
+
+    // åˆ›å»ºæ–°çš„ Image å¯¹è±¡è¿›è¡Œé¢„åŠ è½½ï¼ˆä¸æ˜¾ç¤ºåœ¨é¡µé¢ä¸Šï¼‰
+    const img = new Image();
+
+    img.onload = () => {
+        console.log(`âœ“ ä¸“è¾‘å°é¢é¢„åŠ è½½æˆåŠŸ: ${artistName} - ${album.title}`);
+        // æ›´æ–°æ•°æ®ä¸­çš„ cover å­—æ®µ
+        album.cover = img.src;
+        // ç¼“å­˜å›¾ç‰‡ URL
+        imageCache.albums.set(cacheKey, img.src);
+    };
+
+    img.onerror = () => {
+        console.warn(`âœ— ä¸“è¾‘å°é¢é¢„åŠ è½½å¤±è´¥: ${artistName} - ${album.title}`);
+    };
+
+    // å¼€å§‹åŠ è½½
+    fetchAlbumCover(artistName, album.title).then(imageUrl => {
+        if (imageUrl) {
+            img.src = imageUrl;
+        }
+    });
+}
+
+// --- Initialization ---
+async function initApp() {
+    // 1. å°è¯•ä»ŽåŽç«¯åŠ è½½æ•°æ®
+    try {
+        console.log('æ­£åœ¨ä»ŽåŽç«¯åŠ è½½éŸ³ä¹åº“...');
+        const response = await fetch('/api/songs');
+        if (response.ok) {
+            const backendData = await response.json();
+            if (backendData && backendData.length > 0) {
+                allArtistsData = backendData;
+                console.log(`âœ“ å·²ä»ŽåŽç«¯åŒæ­¥ ${allArtistsData.length} ä½è‰ºæœ¯å®¶`, allArtistsData);
+            } else {
+                console.warn('åŽç«¯éŸ³ä¹åº“ä¸ºç©ºï¼Œä½¿ç”¨æœ¬åœ° Mock æ•°æ®å…œåº•');
+                allArtistsData = typeof MOCK_DB !== 'undefined' ? MOCK_DB : [];
+            }
+        } else {
+            throw new Error(`HTTP é”™è¯¯: ${response.status}`);
+        }
+    } catch (error) {
+        console.warn('æ— æ³•è¿žæŽ¥åŽç«¯ APIï¼Œåˆ‡æ¢è‡³ Mock æ•°æ®æ¨¡å¼:', error);
+        allArtistsData = typeof MOCK_DB !== 'undefined' ? MOCK_DB : [];
+    }
+
+    if (allArtistsData.length === 0) {
+        console.error("è­¦å‘Š: æœªåŠ è½½åˆ°ä»»ä½•éŸ³ä¹æ•°æ®!");
+    }
+
+    // 2. ä»Ž IndexedDB åŠ è½½æœ¬åœ°ä¸Šä¼ çš„æ­Œæ›²ï¼ˆå…¼å®¹æ¨¡å¼ï¼‰
+    try {
+        const loadedCount = await loadLocalSongsFromStorage();
+        if (loadedCount > 0) {
+            console.log(`âœ“ æ¢å¤äº† ${loadedCount} é¦–æœ¬åœ°ä¸Šä¼ æ­Œæ›²`);
+        }
+    } catch (error) {
+        console.error('åŠ è½½æœ¬åœ°æ­Œæ›²å¤±è´¥:', error);
+    }
+
+    // 3. UI åˆå§‹åŒ–
+    document.addEventListener('focus', (e) => {
+        if (e.target.closest('.artist-item, .st-row, .cat-chip, .tab, .act-btn, .idx-char')) {
+            e.target.blur();
+        }
+    }, { capture: true, passive: true });
+
+    renderCategories();
+    filterAndRender();
+    preloadArtistImages();
+
+    dom.search.addEventListener('input', (e) => {
+        viewState.search = e.target.value.toLowerCase();
+        filterAndRender();
+    });
+
+    initDragScroll();
+    initWheelScroll();
+}
+
+// --- æ»šè½®æ¨ªå‘æ»šåŠ¨æ”¯æŒ ---
+function initWheelScroll() {
+    // ä¸ºæ¨ªå‘æ»šåŠ¨åŒºåŸŸæ·»åŠ æ»šè½®äº‹ä»¶è½¬æ¢
+    const horizontalScrollElements = [dom.catList, dom.vTabs];
+
+    horizontalScrollElements.forEach(element => {
+        element.addEventListener('wheel', (e) => {
+            // æ£€æµ‹æ˜¯å¦æ˜¯æ¨ªå‘æ»šåŠ¨ï¼ˆè§¦æ‘¸æ¿/è§¦æŽ§æ¡ï¼‰
+            if (e.deltaY !== 0 && Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
+                // å°†çºµå‘æ»šåŠ¨è½¬æ¢ä¸ºæ¨ªå‘æ»šåŠ¨
+                e.preventDefault();
+                element.scrollLeft += e.deltaY;
+            }
+        }, { passive: false });
+    });
+}
+
+// --- Interactions ---
+function initDragScroll() {
+    const slider = dom.catList;
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+
+    slider.addEventListener('mousedown', (e) => {
+        isDown = true;
+        dom.startClickX = e.clientX;
+        startX = e.pageX - slider.offsetLeft;
+        scrollLeft = slider.scrollLeft;
+    });
+
+    slider.addEventListener('mouseleave', () => { isDown = false; });
+
+    slider.addEventListener('mouseup', () => { isDown = false; });
+
+    slider.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - slider.offsetLeft;
+        const walk = (x - startX) * 1.5;
+        slider.scrollLeft = scrollLeft - walk;
+    });
+}
+
+// Handle Category Click with Auto-Center
+function handleCategoryClick(catName, e) {
+    if (Math.abs(e.clientX - dom.startClickX) > 5) return;
+
+    viewState.category = catName;
+    viewState.search = '';
+    dom.search.value = '';
+
+    filterAndRender();
+    renderCategories();
+
+    requestAnimationFrame(() => {
+        const allChips = dom.catList.querySelectorAll('.cat-chip');
+        let targetChip = null;
+        for (let chip of allChips) {
+            if (chip.textContent === catName) {
+                targetChip = chip;
+                break;
+            }
+        }
+        if (targetChip) {
+            const containerWidth = dom.catList.offsetWidth;
+            const chipLeft = targetChip.offsetLeft;
+            const chipWidth = targetChip.offsetWidth;
+            const scrollLeft = chipLeft - (containerWidth / 2) + (chipWidth / 2);
+            dom.catList.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+        }
+    });
+}
+
+// --- Rendering ---
+
+function renderCategories() {
+    dom.catList.innerHTML = '';
+    CATEGORIES.forEach(cat => {
+        const chip = document.createElement('div');
+        chip.className = `cat-chip ${viewState.category === cat ? 'active' : ''}`;
+        chip.textContent = cat;
+        chip.addEventListener('click', (e) => handleCategoryClick(cat, e));
+        dom.catList.appendChild(chip);
+    });
+}
+
+function filterAndRender() {
+    let result = allArtistsData;
+    if (viewState.category !== 'å…¨éƒ¨') {
+        result = result.filter(s => s.category === viewState.category);
+    }
+    if (viewState.search) {
+        result = result.filter(s => s.name.toLowerCase().includes(viewState.search));
+    }
+
+    renderSidebar(result);
+    if (result.length > 0) {
+        const currentSelected = allArtistsData[viewState.sIdx];
+        const stillExists = currentSelected ? result.find(r => r.id === currentSelected.id) : null;
+        if (!stillExists) {
+            selectArtist(allArtistsData.indexOf(result[0]));
+        }
+    } else {
+        dom.list.innerHTML = '<div style="padding:20px; color:#555; text-align:center">No artists found</div>';
+    }
+    updateActiveLetter();
+}
+
+function updateActiveLetter() {
+    if (viewState.sIdx < 0 || !allArtistsData[viewState.sIdx]) return;
+    const artist = allArtistsData[viewState.sIdx];
+    const targetGroup = artist.group;
+    const charEls = document.querySelectorAll('.idx-char');
+    charEls.forEach(el => {
+        if (el.textContent === targetGroup) el.classList.add('active-target');
+        else el.classList.remove('active-target');
+    });
+}
+
+function renderSidebar(data) {
+    dom.list.innerHTML = '';
+
+    // æ·»åŠ "æœ¬åœ°éŸ³ä¹"å…¥å£åœ¨é¡¶éƒ¨
+    const localMusicItem = document.createElement('div');
+    localMusicItem.className = `artist-item local-music-item ${viewState.viewMode === 'local' ? 'active' : ''}`;
+    localMusicItem.innerHTML = `
+        <div class="a-img local-music-icon">ðŸŽµ</div>
+        <div class="a-info">
+            <div class="a-name">æœ¬åœ°éŸ³ä¹</div>
+            <div class="a-count">${localSongsMap.size} é¦–æ­Œæ›²</div>
+        </div>
+    `;
+    localMusicItem.onclick = () => {
+        showLocalMusicView();
+        localMusicItem.blur();
+        if (document.activeElement) {
+            document.activeElement.blur();
+        }
+    };
+    dom.list.appendChild(localMusicItem);
+
+    // æ·»åŠ åˆ†éš”çº¿
+    const separator = document.createElement('div');
+    separator.className = 'sidebar-separator';
+    dom.list.appendChild(separator);
+
+    // æ·»åŠ è‰ºæœ¯å®¶åˆ—è¡¨
+    let lastGroup = data.length > 0 ? data[0].group : '';
+    data.forEach((s, i) => {
+        if (s.group !== lastGroup) {
+            const title = document.createElement('div');
+            title.className = 'group-title';
+            title.id = `group-${s.group}`;
+            title.textContent = s.group;
+            dom.list.appendChild(title);
+            lastGroup = s.group;
+        }
+        const originalIdx = allArtistsData.indexOf(s);
+        const isActive = (originalIdx === viewState.sIdx && viewState.viewMode === 'artist');
+        const item = document.createElement('div');
+        item.className = `artist-item ${isActive ? 'active' : ''}`;
+        item.onclick = () => {
+            showArtistView();
+            selectArtist(originalIdx);
+            // ç§»é™¤ç„¦ç‚¹ï¼Œé˜²æ­¢å‡ºçŽ°å…‰æ ‡
+            item.blur();
+            if (document.activeElement) {
+                document.activeElement.blur();
+            }
+        };
+        // ä¼˜å…ˆä½¿ç”¨ data.js ä¸­çš„ avatar å­—æ®µï¼Œå¦‚æžœæ²¡æœ‰åˆ™ä½¿ç”¨é»˜è®¤å¤´åƒ
+        // ä½¿ç”¨ data-src å®žçŽ°æ‡’åŠ è½½
+        const avatarUrl = s.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=222&color=fff&size=64`;
+        item.innerHTML = `
+            <img data-src="${avatarUrl}" class="a-img" alt="${s.name}">
+            <div class="a-info"><div class="a-name">${s.name}</div><div class="a-count">${s.albums.length} ä¸“è¾‘ Â· ${s.category}</div></div>`;
+        dom.list.appendChild(item);
+    });
+
+    // å¯åŠ¨æ‡’åŠ è½½è§‚å¯Ÿ
+    if (window.LazyLoader) {
+        const images = dom.list.querySelectorAll('img[data-src]');
+        window.LazyLoader.observeMany(images);
+    }
+}
+
+function renderIndexBar() {
+    dom.index.innerHTML = '';
+    const groups = [...new Set(allArtistsData.map(s => s.group))].sort();
+    groups.forEach(g => {
+        const d = document.createElement('div');
+        d.className = 'idx-char';
+        d.textContent = g;
+        d.onclick = () => {
+            const target = document.getElementById(`group-${g}`);
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            const firstIdx = allArtistsData.findIndex(a => a.group === g);
+            if (firstIdx !== -1) selectArtist(firstIdx);
+        };
+        dom.index.appendChild(d);
+    });
+}
+
+function selectArtist(idx) {
+    viewState.sIdx = idx;
+    viewState.aIdx = 0;
+    filterAndRender();
+    updateView();
+
+    // é¢„åŠ è½½è¯¥è‰ºæœ¯å®¶çš„ä¸“è¾‘å°é¢
+    const artist = allArtistsData[viewState.sIdx];
+    if (artist) {
+        preloadAlbumCovers(artist.name);
+    }
+}
+
+function updateView() {
+    if (viewState.sIdx === -1 || !allArtistsData[viewState.sIdx]) return;
+    const artist = allArtistsData[viewState.sIdx];
+    const album = artist.albums[viewState.aIdx];
+
+    // æ˜¾ç¤ºä¸“è¾‘å°é¢ï¼ˆå¯èƒ½åœ¨æœ¬åœ°éŸ³ä¹è§†å›¾ä¸­è¢«éšè—ï¼‰
+    dom.vCover.style.display = 'block';
+
+    // ç§»é™¤æ—§çš„æ‡’åŠ è½½ç±»
+    dom.vCover.classList.remove('lazy-loading', 'lazy-loaded', 'lazy-error');
+
+    // ä¸“è¾‘å°é¢æ˜¯ä¸»è§†è§‰ï¼Œç«‹å³åŠ è½½ï¼ˆä¸ä½¿ç”¨æ‡’åŠ è½½ï¼‰
+    // æ£€æŸ¥å›¾ç‰‡æ˜¯å¦å·²ç»åŠ è½½è¿‡ï¼ˆé€šè¿‡ src æ£€æŸ¥æˆ– LazyLoader çŠ¶æ€ï¼‰
+    const isCached = album.cover && (imageCache.albums.has(`${artist.name}|${album.title}`) || dom.vCover.src === album.cover);
+
+    if (!isCached) {
+        dom.vCover.classList.add('lazy-loading');
+    } else {
+        // å¦‚æžœå·²ç¼“å­˜ï¼Œç›´æŽ¥æ˜¾ç¤ºï¼Œä¸åŠ  loading ç±»ä»¥é¿å…è§¦å‘ blur åŠ¨ç”»
+        dom.vCover.style.filter = 'none';
+        dom.vCover.style.opacity = '1';
+    }
+
+    dom.vCover.dataset.src = album.cover;
+    dom.vCover.dataset.fallback = 'https://placehold.co/400x400/222/FFF?text=' + encodeURIComponent(album.title);
+
+    // ç«‹å³åŠ è½½å½“å‰ä¸“è¾‘å°é¢
+    if (window.LazyLoader) {
+        // å…ˆæ‰‹åŠ¨è®¾ç½® src ç¡®ä¿ç«‹å³æœ‰ååº”
+        dom.vCover.src = album.cover;
+        // å†è®© LazyLoader åŽ»å¤„ç†åŽç»­é€»è¾‘ï¼ˆå¦‚åŠ è½½æˆåŠŸçš„ç±»åˆ‡æ¢ï¼‰
+        window.LazyLoader.loadImmediately(dom.vCover);
+    } else {
+        dom.vCover.src = album.cover;
+    }
+
+    // å¼ºåˆ¶ç§»é™¤æ¨¡ç³Šç±»ï¼ˆå¦‚æžœå·²ç»åŠ è½½è¿‡ï¼‰
+    if (isCached) {
+        dom.vCover.classList.remove('lazy-loading');
+        dom.vCover.classList.add('lazy-loaded');
+        dom.vCover.style.filter = 'none';
+    }
+
+    // å›¾ç‰‡åŠ è½½é”™è¯¯å¤„ç†
+    dom.vCover.onerror = () => {
+        dom.vCover.classList.remove('lazy-loading');
+        dom.vCover.classList.add('lazy-error');
+        dom.vCover.src = dom.vCover.dataset.fallback || 'https://placehold.co/400x400/222/FFF?text=' + encodeURIComponent(album.title);
+    };
+
+    dom.vTitle.textContent = album.title;
+    dom.vMeta.textContent = `${artist.name} Â· ${album.year} Â· ${album.songs ? album.songs.length : 0} Tracks`;
+
+    dom.vTabs.innerHTML = '';
+    artist.albums.forEach((al, i) => {
+        const btn = document.createElement('div');
+        btn.className = 'tab';
+        btn.textContent = al.title;
+        btn.onclick = () => {
+            viewState.aIdx = i;
+            updateView();
+        };
+        dom.vTabs.appendChild(btn);
+    });
+
+    // å»¶è¿Ÿæ·»åŠ  active ç±»ï¼Œç¡®ä¿åŠ¨ç”»è§¦å‘
+    requestAnimationFrame(() => {
+        const activeBtn = dom.vTabs.children[viewState.aIdx];
+        if (activeBtn) {
+            activeBtn.classList.add('active');
+            // è‡ªåŠ¨æ»šåŠ¨åˆ°é€‰ä¸­çš„ Tab å±…ä¸­æ˜¾ç¤º
+            activeBtn.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest',
+                inline: 'center'
+            });
+        }
+    });
+
+    dom.vSongs.innerHTML = '';
+    album.songs.forEach((songData, i) => {
+        const song = typeof songData === 'string' ? songData : songData.title;
+        // æ£€æŸ¥æ­Œæ›²æ˜¯å¦æœ‰æœ¬åœ°æ–‡ä»¶
+        const isLocal = hasLocalFile(song, artist.name);
+
+        const tr = document.createElement('tr');
+        tr.className = 'st-row';
+        const sourceLabel = isLocal ? 'æœ¬åœ°' : 'æµåª’ä½“';
+        const sourceTitle = isLocal ? 'æœ¬åœ°æ–‡ä»¶' : 'ç½‘ç»œæµåª’ä½“';
+        const sourceClass = isLocal ? 'local' : 'streaming';
+        tr.innerHTML = `
+            <td class="st-cell st-num">${String(i + 1).padStart(2, '0')}</td>
+            <td class="st-cell st-title">
+                <span class="song-name">${song}</span>
+                <span class="song-source ${sourceClass}" title="${sourceTitle}">${sourceLabel}</span>
+            </td>
+            <td class="st-cell st-actions">
+                <button class="act-btn upload" onclick="uploadSongForTrack(event, '${song.replace(/'/g, "\\'")}', '${artist.name.replace(/'/g, "\\'")}')" title="ä¸Šä¼ éŸ³é¢‘æ–‡ä»¶">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                </button>
+            </td>
+        `;
+
+        // æ·»åŠ ç‚¹å‡»è¡Œä¹Ÿæ’­æ”¾æ­Œæ›²
+        tr.addEventListener('click', (e) => {
+            document.querySelectorAll('.st-row').forEach(el => el.classList.remove('active'));
+            tr.classList.add('active');
+
+            // ç§»é™¤ç„¦ç‚¹
+            if (document.activeElement) {
+                document.activeElement.blur();
+            }
+
+            // è°ƒç”¨æ’­æ”¾å‡½æ•°
+            playSong(e, songData, artist.name);
+        });
+        dom.vSongs.appendChild(tr);
+    });
+
+    // æ£€æŸ¥æ˜¯å¦æœ‰æ­Œæ›²æ­£åœ¨æ’­æ”¾ï¼Œå¦‚æžœæ˜¯åˆ™é«˜äº®æ˜¾ç¤º
+    if (typeof playerState !== 'undefined' && playerState.currentSong && playerState.currentArtist) {
+        const rows = dom.vSongs.querySelectorAll('.st-row');
+        rows.forEach((row, index) => {
+            const songData = album.songs[index];
+            const songName = typeof songData === 'string' ? songData : songData.title;
+            if (songName === playerState.currentSong && artist.name === playerState.currentArtist) {
+                row.classList.add('active');
+            }
+        });
+    }
+}
+
+
+async function playSong(e, songData, artist) {
+    const name = typeof songData === 'string' ? songData : songData.title;
+    e.stopPropagation();
+    document.querySelectorAll('.st-row').forEach(el => el.classList.remove('active'));
+    const row = e.currentTarget.closest('.st-row');
+    row.classList.add('active');
+
+    // ç§»é™¤ç„¦ç‚¹ï¼Œé˜²æ­¢å‡ºçŽ°å…‰æ ‡
+    if (document.activeElement) {
+        document.activeElement.blur();
+    }
+
+    console.log(`========== playSong è¢«è°ƒç”¨ ==========`);
+    console.log(`æ­Œæ›²: "${name}", æ­Œæ‰‹: "${artist}"`);
+    console.log(`localSongsMap å¤§å°: ${localSongsMap.size}`);
+    console.log(`localSongsMap ä¸­çš„ keys:`, Array.from(localSongsMap.keys()));
+
+    // èŽ·å–ä¸“è¾‘ä¿¡æ¯
+    const currentArtist = allArtistsData.find(a => a.name === artist);
+    if (!currentArtist) {
+        console.error(`æ‰¾ä¸åˆ°æ­Œæ‰‹: ${artist}`);
+        return;
+    }
+
+    const album = currentArtist.albums[viewState.aIdx];
+
+    // ç›´æŽ¥è°ƒç”¨æ’­æ”¾å™¨ - è®© playAlbum æ¥å¤„ç†éŸ³é¢‘æŸ¥æ‰¾
+    if (window.audioPlayer && window.audioPlayer.playAlbum) {
+        // æ‰¾åˆ°ç‚¹å‡»çš„æ­Œæ›²åœ¨ä¸“è¾‘ä¸­çš„ç´¢å¼• (é¿å…å¯¹è±¡å¼•ç”¨ä¸ä¸€è‡´å¯¼è‡´çš„ -1)
+        const songIndex = album.songs.findIndex(s => {
+            const sTitle = typeof s === 'string' ? s : s.title;
+            return sTitle === name;
+        });
+
+        console.log(`è°ƒç”¨ playAlbum, æ­Œæ›²ç´¢å¼•: ${songIndex}`);
+        if (songIndex !== -1) {
+            await window.audioPlayer.playAlbum(album.songs, artist, album, songIndex);
+        } else {
+            console.warn(`åœ¨ä¸“è¾‘ä¸­æ‰¾ä¸åˆ°æ­Œæ›²: ${name}`);
+            // å…œåº•æ–¹æ¡ˆï¼šå¦‚æžœæ‰¾ä¸åˆ°ç´¢å¼•ï¼Œè‡³å°‘å°è¯•æ’­æ”¾è¿™é¦–å•æ›²
+            const audioUrl = typeof songData === 'string' ? null : songData.path;
+            if (window.audioPlayer.play) {
+                window.audioPlayer.play(name, artist, album.title, audioUrl);
+            }
+        }
+    } else {
+        console.error('window.audioPlayer.playAlbum ä¸å­˜åœ¨!');
+    }
+}
+
+// ==================== å…¨å±€å¯¼å‡º ====================
+// å¯¼å‡ºå‡½æ•°åˆ°å…¨å±€ä½œç”¨åŸŸï¼Œä¾› HTML ä¸­çš„ onclick è°ƒç”¨
+window.uploadSongForTrack = uploadSongForTrack;
+window.playLocalSong = playLocalSong;
+window.deleteLocalSong = deleteLocalSong;
+window.showLocalMusicView = showLocalMusicView;
+window.showArtistView = showArtistView;
+window.initApp = initApp;  // å¯¼å‡ºåˆå§‹åŒ–å‡½æ•°
+
+// å¯¼å‡º IndexedDB ç›¸å…³å‡½æ•°ï¼Œä¾› player.js è°ƒç”¨
+window.saveLocalSongsToStorage = saveLocalSongsToStorage;
+window.loadLocalSongsFromStorage = loadLocalSongsFromStorage;
+window.clearLocalSongsStorage = clearLocalSongsStorage;
+window.openDB = openDB;
+window.saveAudioToIndexedDB = saveAudioToIndexedDB;
+window.loadAllAudioFromIndexedDB = loadAllAudioFromIndexedDB;
+window.deleteAudioFromIndexedDB = deleteAudioFromIndexedDB;
+
+// å°†æœ¬åœ°æ­Œæ›²æ˜ å°„ä¹Ÿå¯¼å‡ºåˆ°å…¨å±€ï¼Œæ–¹ä¾¿å…¶ä»–æ¨¡å—è®¿é—®
+window.localSongsMap = localSongsMap;
+
+// Run Appï¼ˆåˆå§‹åŒ–ç”± HTML ä¸­çš„è„šæœ¬ç»Ÿä¸€ç®¡ç†ï¼‰
+renderIndexBar();
+// initApp() å°†åœ¨ DOMContentLoaded æ—¶è¢«è°ƒç”¨
+
