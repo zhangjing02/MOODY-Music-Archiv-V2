@@ -21,14 +21,14 @@ import (
 type Client struct {
 	s3Client   *s3.Client
 	bucketName string
+	StorageID  string
 }
 
-// Global instance (can also inject, but we start simple for quick refactor)
-var defaultClient *Client
+// Global registry for multiple S3 clients
+var clients = make(map[string]*Client)
 
-// InitS3 initializes the global S3 client using Cloudflare R2 credentials
-// Call this from main.go
-func InitS3(accountId, accessKeyId, secretAccessKey, bucketName string) error {
+// InitS3 initializes an S3 client for a specific storage ID
+func InitS3(storageID, accountId, accessKeyId, secretAccessKey, bucketName string) error {
 	// 优先从环境变量读取自定义 Endpoint (例如 pub-xxx.r2.dev)
 	// 如果没有自定义 Endpoint，则使用默认的 https://<ACCOUNT_ID>.r2.cloudflarestorage.com
 	endpointURL := os.Getenv("R2_CUSTOM_ENDPOINT")
@@ -75,27 +75,37 @@ func InitS3(accountId, accessKeyId, secretAccessKey, bucketName string) error {
 	}
 
 	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
-		// 强制启用 PathStyle (https://endpoint/bucket/key)
-		// 之前测试表明 custom endpoint 不支持 PathStyle，但官方 endpoint 可以
-		// 这可以避免 DNS 解析失败 (no such host)，并配合显示代理使用
 		o.UsePathStyle = true
 	})
 
-	defaultClient = &Client{
+	clients[storageID] = &Client{
 		s3Client:   client,
 		bucketName: bucketName,
+		StorageID:  storageID,
 	}
 
-	log.Printf("Successfully initialized S3 client for bucket: %s", bucketName)
+	log.Printf("Successfully initialized S3 client [%s] for bucket: %s", storageID, bucketName)
 	return nil
 }
 
-// GetClient returns the initialized global client
+// GetClient returns the primary S3 client
 func GetClient() *Client {
-	if defaultClient == nil {
-		log.Fatal("S3 client accessed before initialization!")
+	return GetClientByName("primary")
+}
+
+// GetClientByName returns an S3 client by its registered storage ID
+func GetClientByName(name string) *Client {
+	client, ok := clients[name]
+	if !ok {
+		// Fallback to primary if not found to prevent crashes, but log warning
+		primary, exists := clients["primary"]
+		if exists {
+			log.Printf("⚠️  Storage ID [%s] not found, falling back to primary", name)
+			return primary
+		}
+		log.Fatal("Fatal: No S3 clients (including primary) initialized!")
 	}
-	return defaultClient
+	return client
 }
 
 // UploadFile uploads an io.Reader stream to R2

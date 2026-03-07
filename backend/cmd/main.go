@@ -106,7 +106,7 @@ func main() {
 		log.Println("WARNING: Cloudflare R2 environment variables missing.")
 		log.Println("Ensure R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_BUCKET_NAME are set.")
 	} else {
-		err := s3client.InitS3(r2AccountId, r2AccessKeyId, r2SecretAccessKey, r2BucketName)
+		err := s3client.InitS3("primary", r2AccountId, r2AccessKeyId, r2SecretAccessKey, r2BucketName)
 		if err != nil {
 			log.Fatalf("Failed to initialize S3 client: %v", err)
 		}

@@ -183,13 +183,12 @@ func createTables() {
 	ensureMigrations()
 }
 
-func ensureMigrations() {
-	// 1. 检查 track_index
-	var count int
-	err := DB.QueryRow("SELECT count(*) FROM pragma_table_info('songs') WHERE name='track_index'").Scan(&count)
-	if err == nil && count == 0 {
-		log.Println("⚡ 正在执行数据库迁移: 为 songs 表增加 track_index 列...")
-		_, err := DB.Exec("ALTER TABLE songs ADD COLUMN track_index INTEGER DEFAULT 0")
+	// 2. 检查 storage_id (多仓储预留)
+	var count2 int
+	err = DB.QueryRow("SELECT count(*) FROM pragma_table_info('songs') WHERE name='storage_id'").Scan(&count2)
+	if err == nil && count2 == 0 {
+		log.Println("⚡ 正在执行数据库迁移: 为 songs 表增加 storage_id 列...")
+		_, err := DB.Exec("ALTER TABLE songs ADD COLUMN storage_id TEXT DEFAULT 'primary'")
 		if err != nil {
 			log.Printf("⚠️ 迁移失败: %v", err)
 		}

@@ -11,15 +11,26 @@ import (
 	"moody-backend/pkg/s3client"
 )
 
-// StorageProxyHandler 代理对 /storage/ 的请求，优先从 S3 (R2) 读取，不存在则回退至本地
-func StorageProxyHandler(storageDir string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// 去除路径开头的斜杠
-		objectKey := strings.TrimPrefix(r.URL.Path, "/")
-
-		// 1. 尝试从 S3 获取 (R2)
+		// 1. 动态路由：根据 objectKey 反查数据库，确定该资源所在的桶
 		ctx := r.Context()
-		s3 := s3client.GetClient()
+		storageID := "primary" // 默认主仓库
+
+		// 尝试从数据库获取该路径对应的 storage_id
+		// 注意：objectKey 目前是 "music/歌手/专辑/s_ID.mp3" 或 "lyrics/..."
+		// 数据库中存储的 file_path 是 "歌手/专辑/s_ID.mp3"
+		dbPath := objectKey
+		if strings.HasPrefix(objectKey, "music/") {
+			dbPath = strings.TrimPrefix(objectKey, "music/")
+		}
+
+		var foundID string
+		err := database.DB.QueryRowContext(ctx, "SELECT storage_id FROM songs WHERE file_path = ? OR lrc_path = ?", dbPath, dbPath).Scan(&foundID)
+		if err == nil && foundID != "" {
+			storageID = foundID
+		}
+
+		// 获取对应的 S3 客户端
+		s3 := s3client.GetClientByName(storageID)
 
 		exists, err := s3.Exists(ctx, objectKey)
 		if err == nil && exists {
@@ -35,7 +46,7 @@ func StorageProxyHandler(storageDir string) http.HandlerFunc {
 				_, _ = io.Copy(w, body)
 				return
 			}
-			log.Printf("⚠️ S3 下载对象失败 [%s]: %v", objectKey, err)
+			log.Printf("⚠️ S3 下载对象失败 [%s] (StorageID: %s): %v", objectKey, storageID, err)
 		}
 
 		// 2. 兜底回退：尝试从本地物理存储获取
