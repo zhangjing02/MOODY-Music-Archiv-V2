@@ -1,198 +1,108 @@
-# 🎵 MOODY Music Archive - 运维 API 接口文档
+# 🎵 MOODY Music Archive - 核心 API 接口手册 (V2.0)
+
+本手册定义了 MOODY 系统的所有对外服务（8080）与管理后台（8082）接口。
 
 ---
 
-## 🏗️ 全局前置说明
-
-- **本地开发**: `http://localhost:8080/api`
-- **线上生产 (Zeabur)**: `https://moodymusic.zeabur.app/api`
+## 🏗️ 全局配置
+- **主服务端点**: `http://localhost:8080/api` (播放、搜索、基础查询)
+- **管理服务端点**: `http://localhost:8082/api` (治理、清理、上传、统计)
 
 ---
 
-## 1. 基础查询 (GET)
+## 1. 基础查询 (GET) - 端点: 8080
 
 ### 🟢 系统探活
-
-检查服务是否在线。
-
 - **接口**: `GET /api/status`
-- **返回**:
-```json
-{"code": 200, "message": "Service is running"}
-```
+- **说明**: 检查后端服务是否就绪。
 
-### 🎶 歌曲详情查询
-
-按歌手/专辑查询数据库中的歌曲元数据，常用于排查脏数据。
-
+### 🎶 歌曲全元数据查询
 - **接口**: `GET /api/songs`
 - **参数**:
-  - `artist` (可选): 歌手名模糊匹配，如 `?artist=周杰伦`
-  - `album` (可选): 专辑名模糊匹配，如 `?album=七里香`
-  - `artistId` (可选): 按歌手 ID 精确查询
-- **示例**: `GET /api/songs?artist=周杰伦&album=Jay`
-- **返回**: 歌手 → 专辑 → 歌曲层级结构，包含 `file_path`、`lrc_path` 等字段。
+  - `artist`: 歌手名模糊匹配
+  - `artistId`: 精确匹配 (如 `db_123`)
+  - `album`: 专辑名模糊匹配
+- **用途**: 获取完整的歌手 -> 专辑 -> 歌曲嵌套结构，包含物理路径。
 
-### 📁 骨架树拉取
-
-一次性获取全站歌手/专辑/歌曲的字母分组层级树，用于前端首屏渲染。
-
+### 📁 分组骨架树 (Skeleton)
 - **接口**: `GET /api/skeleton`
-- **返回**: 按首字母分组的歌手 → 专辑 → 歌曲树形结构。
+- **参数**: `group` (可选，如 `A-Z`)
+- **说明**: 用于首屏极速加载，仅包含基础层级。
 
-### 🔍 全局搜索
+### 🔍 全局模糊搜索
+- **接口**: `GET /api/search?q=关键词`
+- **说明**: 跨维度搜索歌手、专辑、歌曲名。
 
-跨歌手、专辑、歌曲的全文搜索。
-
-- **接口**: `GET /api/search`
-- **参数**: `q` (必传): 搜索关键词，如 `?q=晴天`
+### 🖼️ 欢迎页背景名录
+- **接口**: `GET /api/welcome-images`
+- **返回**: `storage/welcome_covers` 下的可供随机显示的图片文件名列表。
 
 ---
 
-## 2. ⭐ 统一运维接口 (Governance)
+## 2. 核心运维接口 (Governance) - 端点: 8082
 
-**这是最核心的管理入口**，通过 `targets` 参数选择要执行的操作，通过 `path` 参数控制作用范围。
+### 🛠️ 统一治理中心 (The Master Connector)
+这是系统最强大的接口，用于处理新歌入库、歌词绑定与数据库清理。
 
 - **接口**: `POST /api/admin/governance`
-- **Content-Type**: `application/json`
-
-### 请求参数
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `path` | string | 否 | 限定操作范围，如 `"周杰伦/Jay"`。为空则全库。 |
-| `targets` | string[] | 否 | 指定要执行的动作列表。为空则默认 `["sync-music", "sync-lyrics"]`。 |
-
-### `targets` 可选值
-
-| 值 | 含义 | 受 `path` 影响 |
-|------|------|------|
-| `sync-music` | 扫描音频文件，与名录匹配后入库并 ID 化 | ✅ |
-| `sync-lyrics` | 扫描歌词文件，自动绑定到对应歌曲 | ✅ |
-| `clean` | **全套大扫除**（等价于下面三项的合集） | 部分 |
-| `clean-lyrics` | 仅清理被 `.mp3` 路径污染的歌词字段 | ✅ |
-| `clean-duplicates` | 仅执行去重合并（同名艺人 + 同名专辑） | ❌ 全局 |
-| `clean-orphans` | 仅清理孤儿实体（无歌曲的专辑、无专辑的歌手） | ❌ 全局 |
-
-> 如果 `targets` 为空或不传，默认行为等同于 `["sync-music", "sync-lyrics"]`（向后兼容旧版调用）。
-
-### 常用场景示例
-
-**场景 1：全套大扫除 + 歌词重绑定**
-```json
-{"targets": ["clean", "sync-lyrics"]}
-```
-
-**场景 2：只同步某个歌手某张专辑的歌词**
-```json
-{"path": "周杰伦/Jay", "targets": ["sync-lyrics"]}
-```
-
-**场景 3：只清理被污染的歌词路径**
-```json
-{"targets": ["clean-lyrics"]}
-```
-
-**场景 4：只做去重合并**
-```json
-{"targets": ["clean-duplicates"]}
-```
-
-**场景 5：默认行为（向后兼容，等同于旧版一键治理）**
-```json
-{}
-```
-
-### 返回示例
-
+- **Payload**:
 ```json
 {
-    "code": 200,
-    "message": "运维指令已执行。大扫除完成: 清理3条污染路径, 合并0艺人/0专辑, 删除0孤儿专辑/0孤儿歌手 | 同步完成: 0首音频, 5首歌词",
-    "data": {
-        "scope": "",
-        "targets": ["clean", "sync-lyrics"],
-        "status": "done",
-        "cleaned_lrc_paths": 3,
-        "merged_artists": 0,
-        "merged_albums": 0,
-        "orphan_albums_deleted": 0,
-        "orphan_artists_deleted": 0,
-        "synced_music": 0,
-        "synced_lyrics": 5
-    }
+  "path": "周杰伦/Jay",   // 可选：限定操作目录
+  "targets": ["sync-music", "sync-lyrics", "clean"] // 操作目标
 }
 ```
+- **Targets 可选值**:
+  - `sync-music`: 扫描并 ID 化音频文件。
+  - `sync-lyrics`: 扫描并绑定歌词。
+  - `clean`: 执行全套大扫除（清理路径污染、合并重复、删孤儿记录）。
 
----
+### 📊 数据大盘概览
+- **接口**: `GET /api/admin/stats`
+- **返回**: 统计库中歌手、专辑、歌曲的总数。
 
-## 3. 其他管理接口 (POST)
+### 🚀 跨资产上传中心
+- **接口**: `POST /api/admin/upload` (Multipart Form)
+- **参数**: 
+  - `files`: 文件对象数组
+  - `artistOverride`: (选填) 强制指定歌手
+  - `albumOverride`: (选填) 强制指定专辑
+- **说明**: 文件落盘后会自动触发定向 Sync，并实时同步至 R2。
 
-### 💊 专辑数据定向覆写
-
-当专辑出现错别字、英文机翻等脏数据时，定向修正标题和曲目。
-
-- **接口**: `POST /api/admin/album/update`
-- **请求 Body**:
-```json
-{
-  "artist_name": "李宗盛",
-  "old_album_title": "我(們)就是這樣",
-  "new_album_title": "我们就是这样",
-  "tracks": {
-    "0": "如风往事",
-    "1": "希望"
-  },
-  "add_missing_tracks": [
-     {"index": 10, "title": "隐藏曲"}
-  ]
-}
-```
-
-### 🔨 强力对齐 (Scrub)
-
-剔除无挂载文件的脏名录 + 物理清扫磁盘上的冗余影子文件。
-
+### 🔨 强力物理对齐 (Scrub)
 - **接口**: `POST /api/admin/scrub`
-- **参数**: 无
+- **说明**: 物理删除磁盘上名为 `s_ID.mp3` 但在数据库中不存在的沉余文件。
 
-### 🔄 全库全量重扫 (Full Sync)
+---
 
-核弹级操作。从头扫描全部文件并强力对齐。
+## 3. 专家级工具 (Expert Tools)
 
-- **接口**: `POST /api/sync/full`
-- **参数**: 无（可选 `?artist_name=周杰伦` 限定单歌手）
+### 💊 专辑数据重塑
+- **接口**: `POST /api/admin/album/update`
+- **用途**: 用于修正机翻专辑名、手动补全缺失曲目。支持 `tracks` map 覆盖标题。
 
-### 🔃 强刷前端缓存树
+### 📡 iTunes 艺术家大满贯录入
+- **接口**: `GET /api/metadata/sync?artist=歌手名`
+- **说明**: 从 iTunes API 抓取该歌手完整名录并固化到本地数据库，形成空位占位符。
 
-当你手动修改了数据库后，用此接口强制刷新前端显示。
-
+### 🔃 骨架缓存强刷
 - **接口**: `POST /api/skeleton/reload`
-- **参数**: 无
+- **说明**: 手动修改数据库后，通知后端重载内存缓存。
 
-### 📡 客户端错误遥测
+---
 
-前端播放器自动上报的音频/歌词加载错误，聚合在 `client_errors` 表中，方便开发者排查。
+## 4. 歌词在线编辑 (Lyrics Engine)
 
+### 📥 获取歌词源码
+- **接口**: `GET /api/lyrics/raw?path=relative/path/to/lrc`
+- **返回**: 纯文本 LRC 内容。
+
+### 📤 保存修改
+- **接口**: `POST /api/lyrics/update`
+- **Payload**: `{"path": "...", "content": "..."}`
+
+---
+
+## 5. 错误监测
 - **接口**: `POST /api/report-error`
-- **请求 Body**:
-```json
-{
-  "type": "audio",
-  "songId": 12345,
-  "message": "404 Not Found"
-}
-```
-- **查看方式**: 直接在 SQLite 中查询 `SELECT * FROM client_errors ORDER BY occurrence_count DESC`。
-
----
-
-## 4. 用户相关 (可选)
-
-### 用户登录
-- **接口**: `POST /api/user/login`
-
-### 用户设置
-- **接口**: `GET/POST /api/user/settings`
-
----
+- **说明**: 收集前端播放器加载失败的元数据。

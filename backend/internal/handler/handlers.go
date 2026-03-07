@@ -690,55 +690,6 @@ func sendError(w http.ResponseWriter, statusCode int, message string) {
 	})
 }
 
-// FixLiZongshengHandler 专用接口：修复李宗盛生命中的精灵双版本问题 (临时防卫)
-func FixLiZongshengHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			sendError(w, http.StatusMethodNotAllowed, "仅支持 POST 请求")
-			return
-		}
-
-		log.Println("🛠️ [Admin] 正在触发《生命中的精灵》专项最后的大一统去重...")
-
-		tx, err := database.DB.Begin()
-		if err != nil {
-			sendError(w, http.StatusInternalServerError, "DB Transaction Error")
-			return
-		}
-		defer tx.Rollback()
-
-		// 1. 获取现在的唯一正经专辑
-		var albumID int64
-		_ = tx.QueryRow("SELECT id FROM albums WHERE title = '生命中的精灵' LIMIT 1").Scan(&albumID)
-
-		if albumID == 0 {
-			json.NewEncoder(w).Encode(model.ApiResponse{Code: 400, Message: "未找到目标专辑"})
-			return
-		}
-
-		// 2. 清理专辑内因简繁体合并导致的重复曲目
-		// 既然老版本繁体名录本来这 8 首歌就没实装文件，
-		// 而且它们的 track_index 全是默认的 0，又和现在的轨道号、繁简体名字对不上。
-		// 我们直接大刀阔斧：干掉这个指定专辑下所有没有实装 file_path 的骨架名录。
-
-		res, err := tx.Exec("DELETE FROM songs WHERE album_id = ? AND (file_path IS NULL OR file_path = '')", albumID)
-		var deletedCount int64
-		if err == nil {
-			deletedCount, _ = res.RowsAffected()
-		}
-
-		tx.Commit()
-
-		// 6. 热重载内存
-		service.LoadSkeleton()
-
-		json.NewEncoder(w).Encode(model.ApiResponse{
-			Code:    200,
-			Message: fmt.Sprintf("李宗盛《生命中的精灵》曲目终极除冗完成！干净利落地删除了 %d 首没带文件的繁体旧空壳。", deletedCount),
-		})
-	}
-}
-
 // UpdateAlbumRequest 定义专辑更新的请求载荷结构
 type UpdateAlbumRequest struct {
 	ArtistName       string            `json:"artist_name"`     // (必填) 歌手名
