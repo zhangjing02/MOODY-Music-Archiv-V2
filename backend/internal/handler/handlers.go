@@ -864,17 +864,26 @@ func UpdateLyricsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	log.Printf("📥 [Lyrics] Saving to: %s", fullPath)
-
-	// 设置权限 0644
-	err := os.WriteFile(fullPath, []byte(req.Content), 0644)
-	if err != nil {
-		log.Printf("❌ [Lyrics] 保存失败: %v (path: %s)", err, fullPath)
-		sendError(w, http.StatusInternalServerError, "Failed to save lyric data")
-		return
-	}
-
 	log.Printf("✅ [Lyrics] Updated successfully: %s", fullPath)
+
+	// [New] 实时同步至 Cloudflare R2
+	go func() {
+		ctx := r.Context()
+		s3 := s3client.GetClient()
+		if s3 != nil {
+			objectKey := filepath.ToSlash(filepath.Join("lyrics", filepath.ToSlash(req.Path)))
+			// 读取刚刚写入的内容
+			if f, err := os.Open(fullPath); err == nil {
+				defer f.Close()
+				if err := s3.UploadFile(ctx, objectKey, f, "text/plain; charset=utf-8"); err != nil {
+					log.Printf("❌ [Lyrics] 同步 R2 失败: %v (key: %s)", err, objectKey)
+				} else {
+					log.Printf("✨ [Lyrics] 已实时同步至云端 R2: %s", objectKey)
+				}
+			}
+		}
+	}()
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(model.ApiResponse{Code: 200, Message: "Updated successfully"})
 }

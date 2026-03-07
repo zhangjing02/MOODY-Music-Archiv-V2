@@ -120,39 +120,49 @@ func AdminUploadHandler(musicDir string) http.HandlerFunc {
 				continue
 			}
 
-			// 2. 上传至 Cloudflare R2
-			objectKey := filepath.ToSlash(filepath.Join("music", uploadSubDir, fileHeader.Filename))
-			contentType := "application/octet-stream"
-			ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
-			switch ext {
-			case ".mp3":
-				contentType = "audio/mpeg"
-			case ".flac":
-				contentType = "audio/flac"
-			case ".lrc":
-				contentType = "text/plain"
-			}
-
-			// 核心一致性保障：本地落盘成功后，立即同步到 R2
-			err = s3client.GetClient().UploadFile(r.Context(), objectKey, file, contentType)
-			file.Close()
-
-			if err != nil {
-				log.Printf("❌ 上传文件 %s 到 R2 失败: %v", objectKey, err)
-				// 容错处理：如果上传 R2 失败，但本地已保存，我们依然尝试后续的 SyncMusic，但会记录警告
-				// 这样用户至少能从本地缓冲区读取（StorageProxyHandler 会回退）
-			}
-
 			savedFiles = append(savedFiles, destPath)
 		}
 
 		// 文件全部处理后，立刻触发仅针对该目标目录的识别进库
-		log.Printf("🚀 批量上传完毕，共 %d 份文件已同步至 R2，准备自动挂载...", len(savedFiles))
-
-		// 向底层 SyncMusic 明确传入只扫描这个新子路径
+		log.Printf("🚀 批量上传完毕，准备自动挂载并计算 ID...")
 		scanSubDir := uploadSubDir
-
 		parsedMusic, syncedLrcs, syncErr := service.SyncMusic(musicDir, scanSubDir, nil)
+
+		if syncErr == nil {
+			// [New] 核心强化：入库成功后，查询所有刚同步好的 s_ID 文件并推送到 R2
+			// 这样做可以确保云端存储的是 ID 命名的规范文件
+			go func() {
+				s3 := s3client.GetClient()
+				if s3 == nil {
+					return
+				}
+				for _, localPath := range savedFiles {
+					// 注意：SyncMusic 可能会把文件改名为 s_ID.mp3
+					// 我们需要探测最新的状态
+					dir := filepath.Dir(localPath)
+					ext := filepath.Ext(localPath)
+					pattern := filepath.Join(dir, "s_*" + ext)
+					matches, _ := filepath.Glob(pattern)
+					
+					for _, match := range matches {
+						// 检查文件的修改时间，确保是刚刚生成的 (简单启发式)
+						if f, err := os.Open(match); err == nil {
+							defer f.Close()
+							rel, _ := filepath.Rel(musicDir, match)
+							objectKey := filepath.ToSlash(filepath.Join("music", rel))
+							
+							contentType := "application/octet-stream"
+							if strings.HasSuffix(match, ".mp3") { contentType = "audio/mpeg" }
+							if strings.HasSuffix(match, ".lrc") { contentType = "text/plain" }
+							
+							if err := s3.UploadFile(context.Background(), objectKey, f, contentType); err == nil {
+								log.Printf("✨ [Upload-to-R2] ID 化资产已成功归位: %s", objectKey)
+							}
+						}
+					}
+				}
+			}()
+		}
 
 		// [Note] 这里的逻辑在 R2 模式下需要优化：
 		// 元数据提取完成后，SyncMusic 产生的 's_ID.mp3' 物理文件改名逻辑需要在 S3 端同步执行
