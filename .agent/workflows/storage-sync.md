@@ -18,9 +18,15 @@ description: 歌曲治理与 R2 同步一键流程
 2. 执行 R2 增量同步
    ```powershell
    cd backend/tools/migrate
-   # 设置临时变量（也可以直接从 .env 读取）
-   # $env:MOODY_STORAGE_PATH="E:\Html-work\storage"
-   node migrate.mjs
+   # 选项 A: 仅同步刚治理好的特定歌手/专辑 (推荐，极速)
+   node migrate.mjs --target music/{歌手名}/{专辑名}
+
+   # 选项 B: 仅同步最近 1 天的新增文件
+   node migrate.mjs --days 1
+
+   # 选项 C: 仅同步数据库和封面
+   node migrate.mjs --target db
+   node migrate.mjs --target covers
    ```
 
 3. 验证结果

@@ -11,16 +11,21 @@ const workerEndpoint = process.env.WORKER_ENDPOINT || "https://api-r2.changgepd.
 const migrateToken = process.env.MIGRATE_TOKEN || "MoodyMigrate2025Secret";
 const MANIFEST_KEY = "manifest.json";
 
-if (!storagePath) {
-    console.error("❌ Missing MOODY_STORAGE_PATH environment variable!");
-    process.exit(1);
-}
+// --- Argument Parsing ---
+const args = process.argv.slice(2);
+const targetArgIndex = args.indexOf("--target");
+const targetFilter = targetArgIndex !== -1 ? args[targetArgIndex + 1] : null;
+
+const daysArgIndex = args.indexOf("--days");
+const daysFilter = daysArgIndex !== -1 ? parseInt(args[daysArgIndex + 1]) : null;
 
 const agent = proxyUrl ? new SocksProxyAgent(proxyUrl) : null;
 let stats = { total: 0, skipped: 0, uploaded: 0, errors: 0 };
 let manifest = { version: 1, lastSynced: "", files: {} };
 
-console.log(`🚀 Starting Universal R2 Storage Sync`);
+console.log(`🚀 Starting Scientific R2 Storage Sync`);
+if (targetFilter) console.log(`🎯 Target Filter: ${targetFilter}`);
+if (daysFilter) console.log(`📅 Days Filter: Last ${daysFilter} days`);
 console.log(`🌐 Worker Endpoint: ${workerEndpoint}`);
 console.log(`📂 Storage Path: ${storagePath}`);
 
@@ -87,7 +92,6 @@ async function remoteFileExists(key) {
 }
 
 async function uploadFile(localPath, key) {
-    const isDirPlaceholder = key.endsWith("/.keep");
     const contentType = localPath ? (mime.lookup(localPath) || "application/octet-stream") : "application/x-directory";
     const body = localPath ? fs.createReadStream(localPath) : "";
     const fileSize = localPath ? fs.statSync(localPath).size : 0;
@@ -133,9 +137,7 @@ async function syncDir(dir, prefix = "") {
             stats.skipped++;
             return;
         }
-        // Fallback: Check R2 if manifest doesn't know about it (for first run)
         if (await remoteFileExists(keepKey)) {
-            console.log(`⏭️ [Recovered] ${keepKey} added to manifest.`);
             manifest.files[keepKey] = { size: 0, timestamp: new Date().toISOString() };
             stats.skipped++;
             return;
@@ -143,6 +145,9 @@ async function syncDir(dir, prefix = "") {
         await uploadFile(null, keepKey);
         return;
     }
+
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
 
     for (const entry of entries) {
         if (entry.name.startsWith(".")) continue;
@@ -153,15 +158,24 @@ async function syncDir(dir, prefix = "") {
             await syncDir(fullPath, key);
         } else if (entry.isFile()) {
             stats.total++;
-            const localSize = fs.statSync(fullPath).size;
+            const stat = fs.statSync(fullPath);
+            const localSize = stat.size;
             
+            // Apply Days Filter if provided
+            if (daysFilter !== null) {
+                const mtime = stat.mtimeMs;
+                if ((now - mtime) > (daysFilter * dayMs)) {
+                    stats.skipped++;
+                    continue;
+                }
+            }
+
             // 1. Check manifest for deduplication
             if (manifest.files[key] && manifest.files[key].size === localSize) {
                 stats.skipped++;
             } else {
-                // 2. Fallback: If not in manifest (e.g. first run), check if really on R2
+                // 2. Fallback: If not in manifest, check if really on R2
                 if (!manifest.files[key] && await remoteFileExists(key)) {
-                    console.log(`⏭️ [Recovered] ${key} already on cloud, updating manifest.`);
                     manifest.files[key] = { size: localSize, timestamp: new Date().toISOString() };
                     stats.skipped++;
                 } else {
@@ -178,19 +192,39 @@ async function main() {
     await getManifest();
 
     console.log(`\n--- Processing Assets ---`);
-    const syncTargets = ["music", "lyrics", "covers"];
-    for (const target of syncTargets) {
-        const targetPath = path.join(storagePath, target);
+    
+    if (targetFilter) {
+        // Targeted sync
+        const targetPath = path.join(storagePath, targetFilter);
         if (fs.existsSync(targetPath)) {
-            console.log(`📂 Scanning ${target}...`);
-            await syncDir(targetPath, target);
+            const isDir = fs.statSync(targetPath).isDirectory();
+            if (isDir) {
+                console.log(`📂 Scanning directory ${targetFilter}...`);
+                await syncDir(targetPath, targetFilter);
+            } else {
+                console.log(`📄 Syncing single file ${targetFilter}...`);
+                await uploadFile(targetPath, targetFilter);
+            }
+        } else {
+            console.error(`❌ Target not found: ${targetPath}`);
+        }
+    } else {
+        // Full sync but scoped to important targets
+        const syncTargets = ["music", "lyrics", "covers", "welcome_covers", "db", "metadata"];
+        for (const target of syncTargets) {
+            const targetPath = path.join(storagePath, target);
+            if (fs.existsSync(targetPath)) {
+                console.log(`📂 Scanning ${target}...`);
+                await syncDir(targetPath, target);
+            }
         }
     }
 
     await saveManifest();
 
     console.log(`\n🏁 Sync Complete!`);
-    console.log(`📦 Total: ${stats.total} | ✅ Uploaded: ${stats.uploaded} | ⏭️ Skipped: ${stats.skipped} | ❌ Errors: ${stats.errors}`);
+    console.log(`📦 Total Processed: ${stats.total} | ✅ Uploaded: ${stats.uploaded} | ⏭️ Skipped: ${stats.skipped} | ❌ Errors: ${stats.errors}`);
 }
 
 main().catch(console.error);
+
