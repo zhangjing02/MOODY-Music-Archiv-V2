@@ -36,20 +36,18 @@
 | `R2_ACCESS_KEY_ID` | R2 API 访问密钥 ID | `(从控制台获取)` |
 | `R2_SECRET_ACCESS_KEY` | R2 API 访问密钥 Secret | `(从控制台获取)` |
 
-### 2.2 服务端部署 (ClawCloud VPS Deployment)
-V2 版本已全面转向针对 **ClawCloud (Linux VPS)** 的标准服务端部署模式：
+### 2.2 云端部署 (ClawCloud Run Deployment)
+V2 版本已针对 **ClawCloud Run** 进行深度适配，支持“GitHub 推送即部署”：
 
-1. **后端 (Go)**：编译 Linux 二进制文件并建议使用 `systemd` 进行持久化运行。
-   - 编译命令：`GOOS=linux GOARCH=amd64 go build -o server cmd/main.go`
-   - 服务管理：创建 `moody.service` 确保服务开机自启与异常重启。
-2. **前端 (Vue3)**：执行 `npm run build` 生成静态文件，通过 **Nginx** 进行转发。
-   - Nginx 配置需包含对 `/api` 和 `/storage` 的反向代理。
-3. **数据管理**：在 ClawCloud 环境下，利用 `migrate.mjs` 实现本地磁盘与多账号 R2 的双向数据对齐。
+1. **关联仓库**：在 [ClawCloud Run](https://claw.cloud) 面板中关联此 GitHub 仓库。
+2. **自动构建**：系统会自动识别根目录下的 `Dockerfile` 并执行多阶段构建。
+3. **环境注入**：在面板中配置前述环境变量（R2 凭证、存储路径等）。
+4. **持久化存储**：建议在 ClawCloud 挂载 **Persistent Storage** 至 `/app/storage`，确保数据库 `.db` 文件不丢失。
 
-### 2.3 R2 透明代理与多仓储 (Multi-Storage Support)
+### 2.3 零感架构 (Invisible R2 Architecture)
 V2 核心升级：
-- **智能调度**：支持通过 `storage_id` 在多个 R2 账户间无缝调度资源，支持 EB 级横向扩容。
-- **透明代理**：通过 `StorageProxyHandler` 实现 S3 优先读取。在 ClawCloud 环境下，即使本地磁盘空间有限，也能通过该代理直接拉取云端 7 万+ 资产。
+- **智能调度**：支持通过 `storage_id` 在多个 R2 账户间无缝调度资源。
+- **透明代理**：通过 `StorageProxyHandler` 实现 S3 优先读取。在 ClawCloud 环境下，即使容器磁盘空间有限，也能通过代理直接拉取云端 7 万+ 资产。
 
 ---
 
