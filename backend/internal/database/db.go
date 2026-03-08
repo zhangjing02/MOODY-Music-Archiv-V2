@@ -183,9 +183,11 @@ func createTables() {
 	ensureMigrations()
 }
 
+// ensureMigrations 处理数据库结构演进
+func ensureMigrations() {
 	// 2. 检查 storage_id (多仓储预留)
 	var count2 int
-	err = DB.QueryRow("SELECT count(*) FROM pragma_table_info('songs') WHERE name='storage_id'").Scan(&count2)
+	err := DB.QueryRow("SELECT count(*) FROM pragma_table_info('songs') WHERE name='storage_id'").Scan(&count2)
 	if err == nil && count2 == 0 {
 		log.Println("⚡ 正在执行数据库迁移: 为 songs 表增加 storage_id 列...")
 		_, err := DB.Exec("ALTER TABLE songs ADD COLUMN storage_id TEXT DEFAULT 'primary'")

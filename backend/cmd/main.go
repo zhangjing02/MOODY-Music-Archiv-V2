@@ -96,20 +96,9 @@ func main() {
 		log.Printf("⚠️ 骨架服务初始化失败: %v", err)
 	}
 
-	// [New] 2.2 Setup Cloudflare R2 / S3 Storage
-	r2AccountId := os.Getenv("R2_ACCOUNT_ID")
-	r2AccessKeyId := os.Getenv("R2_ACCESS_KEY_ID")
-	r2SecretAccessKey := os.Getenv("R2_SECRET_ACCESS_KEY")
-	r2BucketName := os.Getenv("R2_BUCKET_NAME")
-
-	if r2AccountId == "" || r2AccessKeyId == "" || r2SecretAccessKey == "" || r2BucketName == "" {
-		log.Println("WARNING: Cloudflare R2 environment variables missing.")
-		log.Println("Ensure R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_BUCKET_NAME are set.")
-	} else {
-		err := s3client.InitS3("primary", r2AccountId, r2AccessKeyId, r2SecretAccessKey, r2BucketName)
-		if err != nil {
-			log.Fatalf("Failed to initialize S3 client: %v", err)
-		}
+	// [New] 2.2 Setup Cloudflare R2 / S3 Storage (Multi-Storage Support)
+	if err := s3client.InitMultiS3(); err != nil {
+		log.Printf("⚠️  S3 initialization encountered errors: %v", err)
 	}
 
 	// 3. 注册 API 路由
@@ -230,7 +219,7 @@ func main() {
 	go func() {
 		fmt.Printf("🛡️ MOODY 管理后台已平行启动，监听 %s\n", adminPort)
 		if err := http.ListenAndServe(adminPort, adminCorsHandler); err != nil {
-			log.Fatalf("管理端口异常断开: %v", err)
+			log.Printf("⚠️ 管理端口监听受限 (请检查端口配置): %v", err)
 		}
 	}()
 

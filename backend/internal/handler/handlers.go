@@ -13,6 +13,7 @@ import (
 	"moody-backend/internal/database"
 	"moody-backend/internal/model"
 	"moody-backend/internal/service"
+	"moody-backend/pkg/s3client"
 )
 
 // StatusHandler 处理服务健康检查请求

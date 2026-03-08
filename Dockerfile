@@ -8,8 +8,8 @@ COPY backend/go.mod backend/go.sum ./backend/
 WORKDIR /app/backend
 RUN go mod download
 COPY backend/ ./
-# 使用 CGO_ENABLED=0 构建纯 Go 二进制，适配 Alpine 运行环境
-RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/main.go
+# 使用 CGO_ENABLED=0 构建纯 Go 二进制，显式指定 GOARCH=amd64 适配 ClawCloud
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main ./cmd/main.go
 
 # Stage 2: Runtime Environment
 FROM alpine:latest

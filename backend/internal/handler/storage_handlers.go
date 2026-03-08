@@ -8,8 +8,14 @@ import (
 	"path/filepath"
 	"strings"
 
+	"moody-backend/internal/database"
 	"moody-backend/pkg/s3client"
 )
+
+// StorageProxyHandler 实现流媒体资源代理，支持 R2 与本地兜底
+func StorageProxyHandler(storageDir string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		objectKey := r.URL.Path // 此时 objectKey 是 "music/..." 或 "lyrics/..."
 
 		// 1. 动态路由：根据 objectKey 反查数据库，确定该资源所在的桶
 		ctx := r.Context()
@@ -21,6 +27,8 @@ import (
 		dbPath := objectKey
 		if strings.HasPrefix(objectKey, "music/") {
 			dbPath = strings.TrimPrefix(objectKey, "music/")
+		} else if strings.HasPrefix(objectKey, "lyrics/") {
+			dbPath = strings.TrimPrefix(objectKey, "lyrics/")
 		}
 
 		var foundID string
@@ -31,22 +39,23 @@ import (
 
 		// 获取对应的 S3 客户端
 		s3 := s3client.GetClientByName(storageID)
+		if s3 != nil {
+			exists, err := s3.Exists(ctx, objectKey)
+			if err == nil && exists {
+				body, contentType, err := s3.DownloadFile(ctx, objectKey)
+				if err == nil {
+					defer body.Close()
+					w.Header().Set("Content-Type", contentType)
+					// 设置缓存头
+					w.Header().Set("Cache-Control", "public, max-age=31536000")
 
-		exists, err := s3.Exists(ctx, objectKey)
-		if err == nil && exists {
-			body, contentType, err := s3.DownloadFile(ctx, objectKey)
-			if err == nil {
-				defer body.Close()
-				w.Header().Set("Content-Type", contentType)
-				// 设置缓存头
-				w.Header().Set("Cache-Control", "public, max-age=31536000")
-
-				// [Note] 简单代理不支持 Range 请求，音频拖动可能会受限。
-				// 后续可引入更复杂的 Range 代理逻辑
-				_, _ = io.Copy(w, body)
-				return
+					// [Note] 简单代理不支持 Range 请求，音频拖动可能会受限。
+					// 后续可引入更复杂的 Range 代理逻辑
+					_, _ = io.Copy(w, body)
+					return
+				}
+				log.Printf("⚠️ S3 下载对象失败 [%s] (StorageID: %s): %v", objectKey, storageID, err)
 			}
-			log.Printf("⚠️ S3 下载对象失败 [%s] (StorageID: %s): %v", objectKey, storageID, err)
 		}
 
 		// 2. 兜底回退：尝试从本地物理存储获取

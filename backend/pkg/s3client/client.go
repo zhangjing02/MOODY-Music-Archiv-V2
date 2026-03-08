@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -106,6 +107,55 @@ func GetClientByName(name string) *Client {
 		log.Fatal("Fatal: No S3 clients (including primary) initialized!")
 	}
 	return client
+}
+
+// InitMultiS3 自动从环境变量加载多个 S3/R2 实例。
+// 识别规则：
+// 1. 默认实例 (primary): R2_ACCOUNT_ID, R2_ACCESS_KEY_ID...
+// 2. 额外实例 (ID): R2_STORAGE_{ID}_ACCOUNT_ID, R2_STORAGE_{ID}_ACCESS_KEY_ID...
+func InitMultiS3() error {
+	// 1. 初始化默认的 primary 实例
+	pAccount := os.Getenv("R2_ACCOUNT_ID")
+	pKey := os.Getenv("R2_ACCESS_KEY_ID")
+	pSecret := os.Getenv("R2_SECRET_ACCESS_KEY")
+	pBucket := os.Getenv("R2_BUCKET_NAME")
+
+	if pAccount != "" && pKey != "" && pSecret != "" && pBucket != "" {
+		if err := InitS3("primary", pAccount, pKey, pSecret, pBucket); err != nil {
+			return fmt.Errorf("failed to init primary storage: %w", err)
+		}
+	}
+
+	// 2. 扫描环境变量，寻找其他实例 (例如 R2_STORAGE_BACKUP_...)
+	// 我们遍历所有环境变量，匹配 R2_STORAGE_(.*)_ACCOUNT_ID
+	for _, env := range os.Environ() {
+		pair := strings.SplitN(env, "=", 2)
+		key := pair[0]
+		
+		if strings.HasPrefix(key, "R2_STORAGE_") && strings.HasSuffix(key, "_ACCOUNT_ID") {
+			// 提取 ID，例如从 R2_STORAGE_OSS_ACCOUNT_ID 提取 OSS
+			id := strings.TrimPrefix(key, "R2_STORAGE_")
+			id = strings.TrimSuffix(id, "_ACCOUNT_ID")
+			id = strings.ToLower(id) // 统一转小写作为存储标识
+
+			if id == "primary" {
+				continue // 已处理
+			}
+
+			acc := os.Getenv(fmt.Sprintf("R2_STORAGE_%s_ACCOUNT_ID", strings.ToUpper(id)))
+			keyId := os.Getenv(fmt.Sprintf("R2_STORAGE_%s_ACCESS_KEY_ID", strings.ToUpper(id)))
+			sec := os.Getenv(fmt.Sprintf("R2_STORAGE_%s_SECRET_ACCESS_KEY", strings.ToUpper(id)))
+			bucket := os.Getenv(fmt.Sprintf("R2_STORAGE_%s_BUCKET_NAME", strings.ToUpper(id)))
+
+			if acc != "" && keyId != "" && sec != "" && bucket != "" {
+				if err := InitS3(id, acc, keyId, sec, bucket); err != nil {
+					log.Printf("⚠️  Failed to init storage [%s]: %v", id, err)
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 // UploadFile uploads an io.Reader stream to R2
