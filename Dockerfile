@@ -26,12 +26,20 @@ COPY --from=builder /app/backend/main .
 COPY frontend ./frontend
 
 # 构造启动脚本 (支持多进程：后台执行 FileBrowser + 前台执行 MOODY)
-# 切换至免密登录模式 (noauth)，方便用户直接管理资产
+# 支持 FB_NOAUTH 环境变量设置为 TRUE 以开启免密模式
 RUN printf '#!/bin/sh\n\
 mkdir -p /app/storage/db\n\
-echo "🚀 Starting FileBrowser (Asset Manager) in NO-AUTH mode on port 8081..."\n\
 /usr/local/bin/filebrowser config init -d /app/storage/db/filebrowser.db 2>/dev/null || true\n\
-/usr/local/bin/filebrowser config set --auth.method=noauth -d /app/storage/db/filebrowser.db 2>/dev/null || true\n\
+if [ "$FB_NOAUTH" = "TRUE" ]; then\n\
+  echo "🔓 Starting FileBrowser in NO-AUTH mode..."\n\
+  /usr/local/bin/filebrowser config set --auth.method=noauth -d /app/storage/db/filebrowser.db 2>/dev/null || true\n\
+else\n\
+  echo "🔐 Starting FileBrowser in AUTH mode (User: admin)..."\n\
+  FB_PASS="${FB_PASSWORD:-Moody2025!}"\n\
+  /usr/local/bin/filebrowser config set --auth.method=password -d /app/storage/db/filebrowser.db 2>/dev/null || true\n\
+  /usr/local/bin/filebrowser users add admin "$FB_PASS" -d /app/storage/db/filebrowser.db 2>/dev/null || \\\n\
+  /usr/local/bin/filebrowser users update admin --password="$FB_PASS" -d /app/storage/db/filebrowser.db 2>/dev/null || true\n\
+fi\n\
 /usr/local/bin/filebrowser -r /app/storage -d /app/storage/db/filebrowser.db -p 8081 -a 0.0.0.0 &\n\
 sleep 2\n\
 echo "🎵 Starting MOODY Backend (Main Service) on port 8080..."\n\
