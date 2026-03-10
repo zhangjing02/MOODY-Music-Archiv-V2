@@ -26,13 +26,18 @@ COPY --from=builder /app/backend/main .
 COPY frontend ./frontend
 
 # 构造启动脚本 (支持多进程：后台执行 FileBrowser + 前台执行 MOODY)
-RUN printf "#!/bin/sh\n\
-    mkdir -p /app/storage/db\n\
-    echo '🚀 Starting FileBrowser (Asset Manager) on port 8081...'\n\
-    /usr/local/bin/filebrowser -r /app/storage -d /app/storage/db/filebrowser.db -p 8081 -a 0.0.0.0 &\n\
-    sleep 2\n\
-    echo '🎵 Starting MOODY Backend (Main Service) on port 8080...'\n\
-    ./main\n" > start.sh && chmod +x start.sh
+# FB_PASSWORD 环境变量可覆盖默认密码，默认为 Moody2025!
+RUN printf '#!/bin/sh\n\
+mkdir -p /app/storage/db\n\
+echo "🚀 Starting FileBrowser (Asset Manager) on port 8081..."\n\
+FB_PASS="${FB_PASSWORD:-Moody2025!}"\n\
+/usr/local/bin/filebrowser config init -d /app/storage/db/filebrowser.db 2>/dev/null || true\n\
+/usr/local/bin/filebrowser users add admin "$FB_PASS" -d /app/storage/db/filebrowser.db 2>/dev/null || \\\n\
+/usr/local/bin/filebrowser users update admin --password="$FB_PASS" -d /app/storage/db/filebrowser.db 2>/dev/null || true\n\
+/usr/local/bin/filebrowser -r /app/storage -d /app/storage/db/filebrowser.db -p 8081 -a 0.0.0.0 &\n\
+sleep 2\n\
+echo "🎵 Starting MOODY Backend (Main Service) on port 8080..."\n\
+./main\n' > start.sh && chmod +x start.sh
 
 # 预设存储目录 (建议在 ClawCloud 挂载 Persistent Storage 至 /app/storage)
 RUN mkdir -p storage/music storage/covers storage/lyrics storage/db

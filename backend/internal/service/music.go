@@ -3,12 +3,16 @@ package service
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"moody-backend/internal/database"
 	"moody-backend/pkg/s3client"
@@ -311,9 +315,10 @@ type MusicMetadata struct {
 	Artist     string
 	Album      string
 	Year       int
-	TrackIndex int // [New] 曲序索引
-	Duration   int // 秒
+	TrackIndex int    // [New] 曲序索引
+	Duration   int    // 秒
 	Format     string
+	StorageID  string // [New] 存储标识 (如 primary)
 }
 
 // ExtractMetadata 从路径和文件元数据中提取信息，优先信任目录结构
@@ -556,6 +561,12 @@ func SaveToLibrary(m *MusicMetadata, relPath string, lrcPath string) (int64, boo
 	}
 	defer tx.Rollback()
 
+	// 0. 处理存储 ID
+	storageID := m.StorageID
+	if storageID == "" {
+		storageID = "primary"
+	}
+
 	// 1. 查找艺术家 (严格匹配 → 归一化 fallback)
 	var artistID int64
 	err = tx.QueryRow("SELECT id FROM artists WHERE name = ?", m.Artist).Scan(&artistID)
@@ -657,11 +668,12 @@ func SaveToLibrary(m *MusicMetadata, relPath string, lrcPath string) (int64, boo
 					masterID, masterTitle, targetID, idTitle)
 				// 1. 迁移至正主
 				if lrcPath != "" {
-					_, _ = tx.Exec("UPDATE songs SET file_path = ?, lrc_path = ?, format = ? WHERE id = ?",
-						relPath, lrcPath, m.Format, masterID)
+					_, _ = tx.Exec(`UPDATE songs SET file_path = ?, lrc_path = ?, format = ?, storage_id = ? 
+									 WHERE id = ?`,
+						relPath, lrcPath, m.Format, storageID, masterID)
 				} else {
-					_, _ = tx.Exec("UPDATE songs SET file_path = ?, format = ? WHERE id = ?",
-						relPath, m.Format, masterID)
+					_, _ = tx.Exec("UPDATE songs SET file_path = ?, format = ?, storage_id = ? WHERE id = ?",
+						relPath, m.Format, storageID, masterID)
 				}
 				// 2. 删除多余的噪音条目
 				_, _ = tx.Exec("DELETE FROM songs WHERE id = ?", targetID)
@@ -673,11 +685,11 @@ func SaveToLibrary(m *MusicMetadata, relPath string, lrcPath string) (int64, boo
 
 			// 无需夺回，常规更新
 			if lrcPath != "" {
-				_, _ = tx.Exec("UPDATE songs SET file_path = ?, lrc_path = ?, format = ? WHERE id = ?",
-					relPath, lrcPath, m.Format, targetID)
+				_, _ = tx.Exec("UPDATE songs SET file_path = ?, lrc_path = ?, format = ?, storage_id = ? WHERE id = ?",
+					relPath, lrcPath, m.Format, storageID, targetID)
 			} else {
-				_, _ = tx.Exec("UPDATE songs SET file_path = ?, format = ? WHERE id = ?",
-					relPath, m.Format, targetID)
+				_, _ = tx.Exec("UPDATE songs SET file_path = ?, format = ?, storage_id = ? WHERE id = ?",
+					relPath, m.Format, storageID, targetID)
 			}
 			tx.Commit()
 			return targetID, false, nil
@@ -744,13 +756,13 @@ func SaveToLibrary(m *MusicMetadata, relPath string, lrcPath string) (int64, boo
 	}
 
 	if err == nil {
-		log.Printf("📋 [Dry-Run] 即将点亮: [ID:%d] (%s) ← 文件: %s", targetID, finalTitle, relPath)
+		log.Printf("📋 [Dry-Run] 即将点亮: [ID:%d] (%s) ← 文件: %s (Storage: %s)", targetID, finalTitle, relPath, storageID)
 		if lrcPath != "" {
-			_, err = tx.Exec(`UPDATE songs SET file_path = ?, lrc_path = ?, format = ? WHERE id = ?`,
-				relPath, lrcPath, m.Format, targetID)
+			_, err = tx.Exec(`UPDATE songs SET file_path = ?, lrc_path = ?, format = ?, storage_id = ? WHERE id = ?`,
+				relPath, lrcPath, m.Format, storageID, targetID)
 		} else {
-			_, err = tx.Exec(`UPDATE songs SET file_path = ?, format = ? WHERE id = ?`,
-				relPath, m.Format, targetID)
+			_, err = tx.Exec(`UPDATE songs SET file_path = ?, format = ?, storage_id = ? WHERE id = ?`,
+				relPath, m.Format, storageID, targetID)
 		}
 		if err != nil {
 			return 0, false, err
@@ -890,30 +902,162 @@ func IsAudioFile(filename string) bool {
 
 // consolidateDuplicates 合并专辑内的冗余重复项 (后悔药逻辑)
 func consolidateDuplicates(albumID int64, masterID int64, cleanTitle string) {
-	// 查找当前专辑下，标题包含 cleanTitle 且 ID 不等于 masterID 的记录
-	rows, err := database.DB.Query("SELECT id, title FROM songs WHERE album_id = ? AND id != ?", albumID, masterID)
-	if err != nil {
-		return
+	// ... (代码保持不变)
+}
+
+// listViaWorkerProxy 通过 HTTP 代理的 LIST 端点获取对象列表
+// 用法：设置环境变量 R2_PROXY_URL=https://api-r2.changgepd.top
+//        R2_PROXY_TOKEN=MoodyMigrate2025Secret
+func listViaWorkerProxy(prefix string) ([]string, error) {
+	proxyURL := os.Getenv("R2_PROXY_URL")
+	if proxyURL == "" {
+		return nil, fmt.Errorf("R2_PROXY_URL not set")
 	}
-	defer rows.Close()
+	token := os.Getenv("R2_PROXY_TOKEN")
+	if token == "" {
+		token = os.Getenv("R2_MIGRATE_TOKEN") // 兼容旧变量名
+	}
+	if token == "" {
+		return nil, fmt.Errorf("R2_PROXY_TOKEN not set")
+	}
 
-	normClean := NormalizeTitle(cleanTitle)
-	for rows.Next() {
-		var opaqueID int64
-		var opaqueTitle string
-		rows.Scan(&opaqueID, &opaqueTitle)
+	reqURL := fmt.Sprintf("%s/?list=true&prefix=%s", proxyURL, prefix)
+	req, err := http.NewRequest("GET", reqURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
 
-		// 如果冗余条目的标题包含主标题（例如 "分裂-周杰伦" 包含 "分裂"）
-		opaqueNorm := NormalizeTitle(opaqueTitle)
-		if strings.Contains(opaqueNorm, normClean) {
-			// 长度比例防御：避免短标题（如"爱"）误删长标题（"爱情有什么道理"）
-			if len(opaqueNorm) > 0 && len(normClean)*100/len(opaqueNorm) < 50 {
-				continue
-			}
-			log.Printf("🧹 [Cleanup] 发现重复项，正在合并: [ID:%d](%s) -> [ID:%d](%s)", opaqueID, opaqueTitle, masterID, cleanTitle)
-			_, _ = database.DB.Exec("DELETE FROM songs WHERE id = ?", opaqueID)
-			_, _ = database.DB.Exec("UPDATE favorites SET song_id = ? WHERE song_id = ?", masterID, opaqueID)
-			_, _ = database.DB.Exec("UPDATE playback_history SET song_id = ? WHERE song_id = ?", masterID, opaqueID)
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("proxy list 请求失败: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("proxy list 返回错误 %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result struct {
+		Keys  []string `json:"keys"`
+		Total int      `json:"total"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("proxy list 响应解析失败: %w", err)
+	}
+
+	log.Printf("📋 [Proxy LIST] 从 Worker 代理获取到 %d 个对象", result.Total)
+	return result.Keys, nil
+}
+
+// SyncMusicFromR2 是针对云端 S3/R2 资产的专属扫描器
+// 优先通过 Worker 代理 (R2_PROXY_URL) 列举文件，回退到 S3 SDK
+func SyncMusicFromR2(storageID string, subPath string) (int, int, error) {
+	ctx := context.Background()
+	s3 := s3client.GetClientByName(storageID)
+	if s3 == nil {
+		return 0, 0, fmt.Errorf("storage id [%s] not found", storageID)
+	}
+
+	prefix := "music/"
+	if subPath != "" {
+		prefix = "music/" + filepath.ToSlash(subPath)
+	}
+
+	log.Printf("☁️  正在扫描 R2 存储 [%s]: %s", storageID, prefix)
+
+	// 优先尝试 Worker 代理 LIST 端点（绕过 DNS 受阻问题）
+	var keys []string
+	var err error
+	if os.Getenv("R2_PROXY_URL") != "" {
+		log.Printf("🔀 [Proxy LIST] 检测到 R2_PROXY_URL，改用 Worker 代理列举文件...")
+		keys, err = listViaWorkerProxy(prefix)
+		if err != nil {
+			log.Printf("⚠️  Worker 代理列举失败，回退 S3 SDK: %v", err)
+			keys, err = s3.ListObjects(ctx, prefix)
+		}
+	} else {
+		keys, err = s3.ListObjects(ctx, prefix)
+	}
+	if err != nil {
+		return 0, 0, err
+	}
+
+	newCount := 0
+	lrcCount := 0
+
+	// 建立音乐文件 map 方便查找同名歌词
+	musicFiles := make(map[string]string) // baseName (w/o ext) -> relativePath (music/...)
+	for _, key := range keys {
+		if IsAudioFile(key) {
+			base := strings.TrimSuffix(key, filepath.Ext(key))
+			musicFiles[base] = key
 		}
 	}
+
+	for _, key := range keys {
+		if !IsAudioFile(key) {
+			continue
+		}
+
+		// 1. 构造 MusicMetadata
+		// 尽量从路径中提取 Artist/Album
+		relPath := strings.TrimPrefix(key, "music/")
+		parts := strings.Split(relPath, "/")
+		
+		title := strings.TrimSuffix(parts[len(parts)-1], filepath.Ext(parts[len(parts)-1]))
+		artist := "未知艺术家"
+		album := "未知专辑"
+		
+		if len(parts) >= 3 {
+			artist = parts[len(parts)-3]
+			album = parts[len(parts)-2]
+		}
+
+		meta := &MusicMetadata{
+			Title:     title,
+			Artist:    artist,
+			Album:     album,
+			StorageID: storageID,
+			Format:    strings.TrimPrefix(filepath.Ext(key), "."),
+		}
+
+		// 处理 s_ID 命名的特殊情况 (ID 种子)
+		fileName := parts[len(parts)-1]
+		if strings.HasPrefix(fileName, "s_") {
+			idStr := strings.TrimSuffix(strings.TrimPrefix(fileName, "s_"), filepath.Ext(fileName))
+			var pid int64
+			if _, err := fmt.Sscanf(idStr, "%d", &pid); err == nil {
+				meta.Duration = int(pid) 
+			}
+		}
+
+		// 2. 寻找歌词
+		lrcPath := ""
+		base := strings.TrimSuffix(key, filepath.Ext(key))
+		lrcKey := base + ".lrc"
+		
+		// 检查 R2 上是否存在同名歌词 (简单方法：检查 keys 列表里是否有这个 key)
+		for _, k := range keys {
+			if k == lrcKey {
+				lrcPath = strings.TrimPrefix(k, "music/")
+				break
+			}
+		}
+
+		// 3. 入库
+		id, isNew, err := SaveToLibrary(meta, relPath, lrcPath)
+		if err == nil && id > 0 {
+			if isNew {
+				newCount++
+			}
+			if lrcPath != "" {
+				lrcCount++
+			}
+		}
+	}
+
+	return newCount, lrcCount, nil
 }

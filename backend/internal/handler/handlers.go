@@ -75,7 +75,15 @@ func SyncHandler(musicDir string) http.HandlerFunc {
 		_ = json.NewDecoder(r.Body).Decode(&req)
 		subPath := req.Path
 
-		count, lyricsCount, err := service.SyncMusic(musicDir, subPath, req.Targets)
+		var count, lyricsCount int
+		var err error
+
+		if req.Source == "r2" {
+			count, lyricsCount, err = service.SyncMusicFromR2("primary", subPath)
+		} else {
+			count, lyricsCount, err = service.SyncMusic(musicDir, subPath, req.Targets)
+		}
+
 		if err != nil {
 			log.Printf("同步失败: %v", err)
 			sendError(w, http.StatusInternalServerError, fmt.Sprintf("同步失败: %v", err))
@@ -184,7 +192,15 @@ func GovernanceHandler(musicDir string) http.HandlerFunc {
 		}
 
 		if len(syncTargets) > 0 {
-			count, lyricsCount, err := service.SyncMusic(musicDir, req.Path, syncTargets)
+			var count, lyricsCount int
+			var err error
+
+			if req.Source == "r2" {
+				count, lyricsCount, err = service.SyncMusicFromR2("primary", req.Path)
+			} else {
+				count, lyricsCount, err = service.SyncMusic(musicDir, req.Path, syncTargets)
+			}
+
 			if err != nil {
 				log.Printf("同步失败: %v", err)
 				sendError(w, http.StatusInternalServerError, fmt.Sprintf("同步失败: %v", err))
@@ -192,7 +208,7 @@ func GovernanceHandler(musicDir string) http.HandlerFunc {
 			}
 			result["synced_music"] = count
 			result["synced_lyrics"] = lyricsCount
-			messages = append(messages, fmt.Sprintf("同步完成: %d首音频, %d首歌词", count, lyricsCount))
+			messages = append(messages, fmt.Sprintf("同步完成: %d首音频, %d首歌词 (源: %s)", count, lyricsCount, req.Source))
 		}
 
 		// ───── 收尾：重载骨架 ─────

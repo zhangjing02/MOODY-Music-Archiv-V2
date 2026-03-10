@@ -45,6 +45,7 @@ type ApiResponse struct {
 type GovernanceRequest struct {
 	Path    string   `json:"path"`    // 治理路径 (可选, 示例: "周杰伦/八度空间")
 	Targets []string `json:"targets"` // 治理目标 (可选, 可包含 "music", "lyrics")
+	Source  string   `json:"source"`  // 同步源 (可选, "local" 或 "r2")
 }
 
 // ReportErrorRequest 客户端遥测错误上报模型

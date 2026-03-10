@@ -231,6 +231,26 @@ func (c *Client) RenameFile(ctx context.Context, sourceKey, destKey string) erro
 	return nil
 }
 
+// ListObjects lists all objects under a specific prefix
+func (c *Client) ListObjects(ctx context.Context, prefix string) ([]string, error) {
+	var keys []string
+	paginator := s3.NewListObjectsV2Paginator(c.s3Client, &s3.ListObjectsV2Input{
+		Bucket: aws.String(c.bucketName),
+		Prefix: aws.String(prefix),
+	})
+
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list objects with prefix %s: %w", prefix, err)
+		}
+		for _, obj := range page.Contents {
+			keys = append(keys, *obj.Key)
+		}
+	}
+	return keys, nil
+}
+
 // Exists checks if an object exists in the bucket
 func (c *Client) Exists(ctx context.Context, objectKey string) (bool, error) {
 	_, err := c.s3Client.HeadObject(ctx, &s3.HeadObjectInput{

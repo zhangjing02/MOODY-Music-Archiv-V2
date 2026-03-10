@@ -13,9 +13,7 @@ import (
 
 // MigrateDataJS 如果本地骨架不存在或艺人数量为 0，则从 frontend/src/js/data.js 迁移数据
 func MigrateDataJS(dataJSPath string) error {
-	skeletonLock.RLock()
 	// hasData 逻辑已被注释掉，直接开启迁移逻辑
-	skeletonLock.RUnlock()
 
 	/*
 		if hasData {
