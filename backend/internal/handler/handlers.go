@@ -304,6 +304,13 @@ func DBUploadHandler() http.HandlerFunc {
 
 // GetSongsHandler 获取结构化音乐库数据 (支持过滤和分页)
 func GetSongsHandler(w http.ResponseWriter, r *http.Request) {
+	// [V16.9+ 究极修复] 如果数据库刚热换过，主服务可能需要重刷一下缓存
+	// 我们在这里简单判断：如果内存里的艺人数为 0，尝试 LoadSkeleton 一次
+	if service.GetSkeletonBody(true).Artists == nil || len(service.GetSkeletonBody(true).Artists) == 0 {
+		log.Printf("🔄 [GetSongs] 内存名录为空，尝试执行热重载同步...")
+		_ = service.LoadSkeleton()
+	}
+
 	queryArtist := r.URL.Query().Get("artist")
 	queryArtistId := r.URL.Query().Get("artistId")
 	queryAlbum := r.URL.Query().Get("album")
