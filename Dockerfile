@@ -27,33 +27,31 @@ COPY frontend ./frontend
 
 # 构造启动脚本 (支持多进程：后台执行 FileBrowser + 前台执行 MOODY)
 # 支持 FB_NOAUTH 环境变量设置为 TRUE 以开启免密模式
+# 究极修复逻辑：如果开启免密，直接在二进制启动命令中注入 --noauth，这比 config set 更具强制力
 RUN printf '#!/bin/sh\n\
 mkdir -p /app/storage/db\n\
 if [ "$FB_NOAUTH" = "TRUE" ]; then\n\
-  echo "🔓 [MOODY] Detected FB_NOAUTH=TRUE, forcing clean no-auth state..."\n\
-  rm -f /app/storage/db/filebrowser.db\n\
-  /usr/local/bin/filebrowser config init -d /app/storage/db/filebrowser.db\n\
-  /usr/local/bin/filebrowser config set --auth.method=noauth -d /app/storage/db/filebrowser.db\n\
+  echo "🔓 [MOODY] Forced No-Auth Mode Enabled..."\n\
+  # 即使使用命令行 noauth，我们仍初始化一个空的 db 以保存其他设置\n\
+  /usr/local/bin/filebrowser config init -d /app/storage/db/filebrowser.db 2>/dev/null || true\n\
+  /usr/local/bin/filebrowser -r /app/storage -d /app/storage/db/filebrowser.db -p 8081 -a 0.0.0.0 --noauth &\n\
 else\n\
   echo "🔐 [MOODY] Starting in AUTH mode (User: admin)..."\n\
   /usr/local/bin/filebrowser config init -d /app/storage/db/filebrowser.db 2>/dev/null || true\n\
   FB_PASS="${FB_PASSWORD:-Moody2025!}"\n\
-  /usr/local/bin/filebrowser config set --auth.method=password -d /app/storage/db/filebrowser.db\n\
+  /usr/local/bin/filebrowser config set --auth.method=password -d /app/storage/db/filebrowser.db 2>/dev/null || true\n\
   /usr/local/bin/filebrowser users add admin "$FB_PASS" -d /app/storage/db/filebrowser.db 2>/dev/null || \\\n\
   /usr/local/bin/filebrowser users update admin --password="$FB_PASS" -d /app/storage/db/filebrowser.db 2>/dev/null || true\n\
+  /usr/local/bin/filebrowser -r /app/storage -d /app/storage/db/filebrowser.db -p 8081 -a 0.0.0.0 &\n\
 fi\n\
-/usr/local/bin/filebrowser -r /app/storage -d /app/storage/db/filebrowser.db -p 8081 -a 0.0.0.0 &\n\
 sleep 2\n\
 echo "🎵 Starting MOODY Backend (Main Service) on port 8080..."\n\
 ./main\n' > start.sh && chmod +x start.sh
 
-# 预设存储目录 (建议在 ClawCloud 挂载 Persistent Storage 至 /app/storage)
+# 预设存储目录
 RUN mkdir -p storage/music storage/covers storage/lyrics storage/db
 
 # 暴露服务端口
-# 8080: 播放与主 API
-# 8081: 物理文件管理 (FileBrowser)
-# 8082: 后端管理接口 (治理、上传、统计)
 EXPOSE 8080 8081 8082
 
 # 生产环境环境变量
