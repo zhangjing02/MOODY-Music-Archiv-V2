@@ -42,6 +42,14 @@ func StorageProxyHandler(storageDir string) http.HandlerFunc {
 		if s3 != nil {
 			exists, err := s3.Exists(ctx, objectKey)
 			if err == nil && exists {
+				// [Fix] 前端使用 fetch(url, {method: 'HEAD'}) 预检，服务端遇到 HEAD 时仅下发头信息
+				if r.Method == http.MethodHead {
+					w.Header().Set("Cache-Control", "public, max-age=31536000")
+					// 不执行实际读取
+					w.WriteHeader(http.StatusOK)
+					return
+				}
+
 				body, contentType, err := s3.DownloadFile(ctx, objectKey)
 				if err == nil {
 					defer body.Close()

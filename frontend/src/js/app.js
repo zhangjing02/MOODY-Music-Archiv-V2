@@ -1,4 +1,4 @@
-﻿/**
+/**
  * APP LOGIC
  * 负责处理点击、滚动、渲染等逻辑
  * 数据来源: src/js/data.js
@@ -1728,7 +1728,7 @@ async function selectArtist(idx) {
         if (dom.vCover) {
             dom.vCover.style.opacity = '1';
             dom.vCover.classList.remove('lazy-loading');
-            dom.vCover.src = firstAlbum.cover.startsWith('/') ? encodeURI(firstAlbum.cover) : firstAlbum.cover;
+            dom.vCover.src = firstAlbum.cover.startsWith('http') ? firstAlbum.cover : (firstAlbum.cover.startsWith('/') ? encodeURI(firstAlbum.cover) : firstAlbum.cover);
         }
     }
 
@@ -1801,7 +1801,7 @@ async function updateView() {
     const cacheKey = `${artist.name}|${album.title}`;
     const isCached = album.cover && (imageCache.albums.has(cacheKey) || dom.vCover.src.includes(album.cover));
 
-    dom.vCover.dataset.src = album.cover ? (album.cover.startsWith('/') ? encodeURI(album.cover) : album.cover) : '';
+    dom.vCover.dataset.src = album.cover ? (album.cover.startsWith('http') ? album.cover : (album.cover.startsWith('/') ? encodeURI(album.cover) : album.cover)) : '';
     dom.vCover.dataset.fallback = 'https://placehold.co/400x400/222/FFF?text=' + encodeURIComponent(album.title);
 
     const onCoverLoaded = () => {
@@ -1823,7 +1823,7 @@ async function updateView() {
 
     if (isCached) {
         const finalCover = imageCache.albums.get(cacheKey) || album.cover;
-        dom.vCover.src = finalCover.startsWith('/') ? encodeURI(finalCover) : finalCover;
+        dom.vCover.src = finalCover.startsWith('http') ? finalCover : (finalCover.startsWith('/') ? encodeURI(finalCover) : finalCover);
         dom.vCover.style.transition = 'none';
         dom.vCover.style.opacity = '1';
         requestAnimationFrame(() => {
@@ -1832,7 +1832,7 @@ async function updateView() {
     } else if (album.cover) {
         dom.vCover.style.opacity = '0';
         dom.vCover.classList.add('lazy-loading');
-        dom.vCover.src = album.cover.startsWith('/') ? encodeURI(album.cover) : album.cover;
+        dom.vCover.src = album.cover.startsWith('http') ? album.cover : (album.cover.startsWith('/') ? encodeURI(album.cover) : album.cover);
         if (window.LazyLoader) {
             dom.vCover.classList.remove('lazy-loading');
             dom.vCover.style.opacity = '1';
