@@ -10,18 +10,34 @@ import (
 // DB 是全局数据库连接句柄，供其他包调用
 var DB *sql.DB
 
+// DBPath 记录当前正在使用的数据库路径，以便热重连
+var DBPath string
+
 // InitDB 初始化数据库连接并顺序执行所有建表 Migration
-// dbPath: 数据库文件 (.db) 的物理存储路径
 func InitDB(dbPath string) {
+	DBPath = dbPath
 	var err error
-	// 使用 modernc.org/sqlite 驱动打开连接
 	DB, err = sql.Open("sqlite", dbPath)
 	if err != nil {
 		log.Fatalf("无法连接数据库: %v", err)
 	}
 
-	// 执行所有建表语句
 	createTables()
+}
+
+// ReinitDB 允许在运行时关闭当前连接并重新加载数据库文件
+func ReinitDB() error {
+	if DB != nil {
+		DB.Close()
+	}
+	var err error
+	DB, err = sql.Open("sqlite", DBPath)
+	if err != nil {
+		return err
+	}
+	// 验证新数据库结构
+	createTables()
+	return nil
 }
 
 // createTables 包含所有专业版所需的表结构定义

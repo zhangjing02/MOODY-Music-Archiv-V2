@@ -200,6 +200,7 @@ func main() {
 	adminMux.HandleFunc("/api/admin/governance", handler.GovernanceHandler(musicDir))
 	adminMux.HandleFunc("/api/admin/album/update", handler.UpdateAlbumListHandler())
 	adminMux.HandleFunc("/api/sync/full", handler.FullSyncHandler(musicDir))
+	adminMux.HandleFunc("/api/admin/db/upload", handler.DBUploadHandler())
 
 	// CMS 独占高级功能 API
 	adminMux.HandleFunc("/api/admin/stats", handler.AdminStatsHandler)

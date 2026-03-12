@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -228,19 +229,77 @@ func GovernanceHandler(musicDir string) http.HandlerFunc {
 	}
 }
 
-// joinMessages 拼接消息列表
-func joinMessages(msgs []string) string {
-	if len(msgs) == 0 {
-		return ""
-	}
-	result := ""
-	for i, m := range msgs {
-		if i > 0 {
-			result += " | "
+// DBUploadHandler 处理数据库文件的上传与热重载 (强制安全校验)
+func DBUploadHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			sendError(w, http.StatusMethodNotAllowed, "仅支持 POST 请求")
+			return
 		}
-		result += m
+
+		// 1. 安全校验 (简单 Secret 模式)
+		secret := r.Header.Get("X-Admin-Secret")
+		envSecret := os.Getenv("ADMIN_SECRET")
+		if envSecret != "" && secret != envSecret {
+			log.Printf("⚠️  非法的 DB 上传请求: IP=%s", r.RemoteAddr)
+			sendError(w, http.StatusForbidden, "鉴权失败")
+			return
+		}
+
+		// 2. 解析文件
+		file, _, err := r.FormFile("database")
+		if err != nil {
+			sendError(w, http.StatusBadRequest, "无效的文件字段 'database'")
+			return
+		}
+		defer file.Close()
+
+		// 3. 暂存
+		tmpPath := database.DBPath + ".tmp"
+		out, err := os.Create(tmpPath)
+		if err != nil {
+			sendError(w, http.StatusInternalServerError, "创建暂存文件失败")
+			return
+		}
+		defer out.Close()
+		defer os.Remove(tmpPath) // 无论结果如何，清理 tmp
+
+		_, err = io.Copy(out, file)
+		if err != nil {
+			sendError(w, http.StatusInternalServerError, "写入文件失败")
+			return
+		}
+		out.Close() // 显式关闭以准备重命名
+
+		// 4. 原子级热替换
+		log.Printf("🔄 [Database] 接收到新的数据库文件，正在执行原子替换...")
+		// 注意：在 Windows/Docker 环境下需先显式关闭旧连接，否则无法覆盖文件
+		if err := database.ReinitDB(); err != nil {
+			log.Printf("❌ [Database] 预关闭失败: %v", err)
+		}
+
+		// 执行覆盖
+		if err := os.Rename(tmpPath, database.DBPath); err != nil {
+			log.Printf("❌ [Database] 文件覆盖失败: %v", err)
+			sendError(w, http.StatusInternalServerError, "文件系统操作失败")
+			return
+		}
+
+		// 5. 重新拉起连接与名录
+		if err := database.ReinitDB(); err != nil {
+			log.Printf("❌ [Database] 重连失败: %v", err)
+			sendError(w, http.StatusInternalServerError, "数据库重连失败")
+			return
+		}
+		_ = service.LoadSkeleton()
+
+		log.Printf("✅ [Database] 数据库已成功热同步并刷新骨架缓存！")
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(model.ApiResponse{
+			Code:    200,
+			Message: "数据库已成功热同步并刷新缓存",
+		})
 	}
-	return result
 }
 
 // GetSongsHandler 获取结构化音乐库数据 (支持过滤和分页)
