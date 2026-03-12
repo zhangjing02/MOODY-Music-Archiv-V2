@@ -8,7 +8,7 @@ COPY backend/go.mod backend/go.sum ./backend/
 WORKDIR /app/backend
 RUN go mod download
 COPY backend/ ./
-# 使用 CGO_ENABLED=0 构建纯 Go 二进制，显式指定 GOARCH=amd64 适配 ClawCloud
+# 使用 CGO_ENABLED=0 构建 pure Go 二进制，显式指定 GOARCH=amd64 适配 ClawCloud
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main ./cmd/main.go
 
 # Stage 2: Runtime Environment
@@ -29,14 +29,16 @@ COPY frontend ./frontend
 # 支持 FB_NOAUTH 环境变量设置为 TRUE 以开启免密模式
 RUN printf '#!/bin/sh\n\
 mkdir -p /app/storage/db\n\
-/usr/local/bin/filebrowser config init -d /app/storage/db/filebrowser.db 2>/dev/null || true\n\
 if [ "$FB_NOAUTH" = "TRUE" ]; then\n\
-  echo "🔓 Starting FileBrowser in NO-AUTH mode..."\n\
-  /usr/local/bin/filebrowser config set --auth.method=noauth -d /app/storage/db/filebrowser.db 2>/dev/null || true\n\
+  echo "🔓 [MOODY] Detected FB_NOAUTH=TRUE, forcing clean no-auth state..."\n\
+  rm -f /app/storage/db/filebrowser.db\n\
+  /usr/local/bin/filebrowser config init -d /app/storage/db/filebrowser.db\n\
+  /usr/local/bin/filebrowser config set --auth.method=noauth -d /app/storage/db/filebrowser.db\n\
 else\n\
-  echo "🔐 Starting FileBrowser in AUTH mode (User: admin)..."\n\
+  echo "🔐 [MOODY] Starting in AUTH mode (User: admin)..."\n\
+  /usr/local/bin/filebrowser config init -d /app/storage/db/filebrowser.db 2>/dev/null || true\n\
   FB_PASS="${FB_PASSWORD:-Moody2025!}"\n\
-  /usr/local/bin/filebrowser config set --auth.method=password -d /app/storage/db/filebrowser.db 2>/dev/null || true\n\
+  /usr/local/bin/filebrowser config set --auth.method=password -d /app/storage/db/filebrowser.db\n\
   /usr/local/bin/filebrowser users add admin "$FB_PASS" -d /app/storage/db/filebrowser.db 2>/dev/null || \\\n\
   /usr/local/bin/filebrowser users update admin --password="$FB_PASS" -d /app/storage/db/filebrowser.db 2>/dev/null || true\n\
 fi\n\
