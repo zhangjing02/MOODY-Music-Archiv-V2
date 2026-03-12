@@ -970,3 +970,18 @@ func UpdateLyricsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(model.ApiResponse{Code: 200, Message: "Updated successfully"})
 }
+
+// joinMessages 拼接消息列表
+func joinMessages(msgs []string) string {
+	if len(msgs) == 0 {
+		return ""
+	}
+	result := ""
+	for i, m := range msgs {
+		if i > 0 {
+			result += " | "
+		}
+		result += m
+	}
+	return result
+}
