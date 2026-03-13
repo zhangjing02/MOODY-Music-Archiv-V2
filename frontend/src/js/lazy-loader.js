@@ -73,12 +73,19 @@ function loadImage(img) {
     img.dataset.loading = 'true';
 
     // 获取真实的图片 URL
-    const src = img.dataset.src;
+    let src = img.dataset.src;
     if (!src) {
         console.warn('图片没有 data-src 属性', img);
         img.dataset.loading = 'false';
         return;
     }
+
+    // [New] 增加对 API_BASE 的支持 (适配 MOODY V2 远程/离线模式)
+    if (!src.startsWith('http') && !src.startsWith('data:') && !src.startsWith('blob:') && typeof API_BASE !== 'undefined') {
+        src = src.startsWith('/') ? API_BASE + src : API_BASE + '/' + src;
+    }
+
+    if (!src) {
 
     // 添加加载中的样式
     img.classList.add('lazy-loading');

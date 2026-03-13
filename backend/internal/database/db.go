@@ -211,4 +211,15 @@ func ensureMigrations() {
 			log.Printf("⚠️ 迁移失败: %v", err)
 		}
 	}
+
+	// 3. 检查 albums.storage_id
+	var count3 int
+	err = DB.QueryRow("SELECT count(*) FROM pragma_table_info('albums') WHERE name='storage_id'").Scan(&count3)
+	if err == nil && count3 == 0 {
+		log.Println("⚡ 正在执行数据库迁移: 为 albums 表增加 storage_id 列...")
+		_, err := DB.Exec("ALTER TABLE albums ADD COLUMN storage_id TEXT DEFAULT 'primary'")
+		if err != nil {
+			log.Printf("⚠️ 迁移失败: %v", err)
+		}
+	}
 }

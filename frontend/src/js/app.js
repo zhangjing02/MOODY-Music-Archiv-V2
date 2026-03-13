@@ -1468,15 +1468,17 @@ function renderSidebar(data) {
             const vColor = varietyColors[s.name] || '#444';
 
             if (vLogo) {
+                const finalLogo = vLogo.startsWith('http') ? vLogo : (vLogo.startsWith('/') ? API_BASE + vLogo : API_BASE + '/' + vLogo);
                 avatarHtml = `<div class="a-img" style="background: ${vColor}; overflow: hidden; border: 2px solid rgba(255,255,255,0.15); box-shadow: 0 4px 12px rgba(0,0,0,0.4)">
-                    <img src="${vLogo}" style="width:100%; height:100%; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5))">
+                    <img src="${finalLogo}" style="width:100%; height:100%; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5))">
                 </div>`;
             } else {
                 avatarHtml = `<div class="a-img a-letter-avatar" style="background: ${vColor}">${getInitials(s.name)}</div>`;
             }
         }
         else if (hasVerifiedAvatar && s.avatar) {
-            avatarHtml = `<img data-src="${s.avatar}" class="a-img" alt="${s.name}">`;
+            const avatarUrl = s.avatar.startsWith('http') ? s.avatar : (s.avatar.startsWith('/') ? API_BASE + s.avatar : API_BASE + '/' + s.avatar);
+            avatarHtml = `<img data-src="${avatarUrl}" class="a-img" alt="${s.name}">`;
         } else {
             avatarHtml = `<div class="a-img a-letter-avatar" style="background: ${getAvatarColor(s.name)}">${getInitials(s.name)}</div>`;
         }
@@ -1799,9 +1801,10 @@ async function updateView() {
     }
 
     const cacheKey = `${artist.name}|${album.title}`;
+    const coverPath = album.cover ? (album.cover.startsWith('http') ? album.cover : (album.cover.startsWith('/') ? API_BASE + encodeURI(album.cover) : API_BASE + '/' + encodeURI(album.cover))) : '';
     const isCached = album.cover && (imageCache.albums.has(cacheKey) || dom.vCover.src.includes(album.cover));
 
-    dom.vCover.dataset.src = album.cover ? (album.cover.startsWith('http') ? album.cover : (album.cover.startsWith('/') ? encodeURI(album.cover) : album.cover)) : '';
+    dom.vCover.dataset.src = coverPath;
     dom.vCover.dataset.fallback = 'https://placehold.co/400x400/222/FFF?text=' + encodeURIComponent(album.title);
 
     const onCoverLoaded = () => {
@@ -1822,8 +1825,8 @@ async function updateView() {
     dom.vCover.onerror = onCoverError;
 
     if (isCached) {
-        const finalCover = imageCache.albums.get(cacheKey) || album.cover;
-        dom.vCover.src = finalCover.startsWith('http') ? finalCover : (finalCover.startsWith('/') ? encodeURI(finalCover) : finalCover);
+        const cachedUrl = imageCache.albums.get(cacheKey) || coverPath;
+        dom.vCover.src = cachedUrl;
         dom.vCover.style.transition = 'none';
         dom.vCover.style.opacity = '1';
         requestAnimationFrame(() => {
@@ -1832,7 +1835,7 @@ async function updateView() {
     } else if (album.cover) {
         dom.vCover.style.opacity = '0';
         dom.vCover.classList.add('lazy-loading');
-        dom.vCover.src = album.cover.startsWith('http') ? album.cover : (album.cover.startsWith('/') ? encodeURI(album.cover) : album.cover);
+        dom.vCover.src = coverPath;
         if (window.LazyLoader) {
             dom.vCover.classList.remove('lazy-loading');
             dom.vCover.style.opacity = '1';

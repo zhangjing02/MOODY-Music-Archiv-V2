@@ -22,19 +22,31 @@ func StorageProxyHandler(storageDir string) http.HandlerFunc {
 		storageID := "primary" // 默认主仓库
 
 		// 尝试从数据库获取该路径对应的 storage_id
-		// 注意：objectKey 目前是 "music/歌手/专辑/s_ID.mp3" 或 "lyrics/..."
-		// 数据库中存储的 file_path 是 "歌手/专辑/s_ID.mp3"
 		dbPath := objectKey
 		if strings.HasPrefix(objectKey, "music/") {
 			dbPath = strings.TrimPrefix(objectKey, "music/")
+			var foundID string
+			err := database.DB.QueryRowContext(ctx, "SELECT storage_id FROM songs WHERE file_path = ?", dbPath).Scan(&foundID)
+			if err == nil && foundID != "" {
+				storageID = foundID
+			}
 		} else if strings.HasPrefix(objectKey, "lyrics/") {
 			dbPath = strings.TrimPrefix(objectKey, "lyrics/")
-		}
-
-		var foundID string
-		err := database.DB.QueryRowContext(ctx, "SELECT storage_id FROM songs WHERE file_path = ? OR lrc_path = ?", dbPath, dbPath).Scan(&foundID)
-		if err == nil && foundID != "" {
-			storageID = foundID
+			var foundID string
+			err := database.DB.QueryRowContext(ctx, "SELECT storage_id FROM songs WHERE lrc_path = ?", dbPath).Scan(&foundID)
+			if err == nil && foundID != "" {
+				storageID = foundID
+			}
+		} else if strings.HasPrefix(objectKey, "covers/") {
+			dbPath = strings.TrimPrefix(objectKey, "covers/")
+			// 封面路径在数据库中存储为 /storage/covers/xxx.jpg
+			fullDbPath := "/storage/covers/" + dbPath
+			var foundID string
+			// 假设为 albums 也预留了 storage_id (如果库里没有，会 fallback 到 primary)
+			err := database.DB.QueryRowContext(ctx, "SELECT storage_id FROM albums WHERE cover_url = ?", fullDbPath).Scan(&foundID)
+			if err == nil && foundID != "" {
+				storageID = foundID
+			}
 		}
 
 		// 获取对应的 S3 客户端
