@@ -18,8 +18,8 @@ const STORE_NAME = 'audioFiles';
 const API_CONFIG = {
     // 调试模式下指向远程服务器，生产环境为空字符串使用相对路径
     apiBase: (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-        ? 'https://moodymusic.zeabur.app'
-        : '',
+        ? 'http://localhost:8080'
+        : window.location.origin,
     itunes: { enabled: false }
 };
 
