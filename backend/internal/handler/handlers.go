@@ -191,13 +191,20 @@ func GovernanceHandler(musicDir string) http.HandlerFunc {
 		if targetSet["sync-lyrics"] || targetSet["lyrics"] {
 			syncTargets = append(syncTargets, "lyrics")
 		}
+		if targetSet["sync-db"] || targetSet["db"] {
+			syncTargets = append(syncTargets, "db")
+		}
 
 		if len(syncTargets) > 0 {
 			var count, lyricsCount int
 			var err error
 
 			if req.Source == "r2" {
-				count, lyricsCount, err = service.SyncMusicFromR2("primary", req.Path)
+				if (targetSet["sync-db"] || targetSet["db"]) {
+					err = service.DownloadDBFromR2("primary")
+				} else {
+					count, lyricsCount, err = service.SyncMusicFromR2("primary", req.Path)
+				}
 			} else {
 				count, lyricsCount, err = service.SyncMusic(musicDir, req.Path, syncTargets)
 			}

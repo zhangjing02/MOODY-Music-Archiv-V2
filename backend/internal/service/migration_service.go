@@ -1,15 +1,69 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"moody-backend/internal/database"
 	"moody-backend/internal/model"
+	"moody-backend/pkg/s3client"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 )
+
+// DownloadDBFromR2 从指定 S3/R2 存储下载最新的 moody.db 文件并应用热重载
+func DownloadDBFromR2(storageID string) error {
+	ctx := context.Background()
+	s3 := s3client.GetClientByName(storageID)
+	if s3 == nil {
+		return fmt.Errorf("storage id [%s] not found", storageID)
+	}
+
+	objectKey := "db/moody.db"
+	log.Printf("📥 正在从 R2 [%s] 下载数据库文件: %s", storageID, objectKey)
+
+	body, _, err := s3.DownloadFile(ctx, objectKey)
+	if err != nil {
+		return fmt.Errorf("下载失败: %w", err)
+	}
+	defer body.Close()
+
+	// 1. 先写入临时文件
+	tmpPath := database.DBPath + ".tmp"
+	out, err := os.Create(tmpPath)
+	if err != nil {
+		return fmt.Errorf("创建临时文件失败: %w", err)
+	}
+	defer out.Close()
+
+	if _, err := io.Copy(out, body); err != nil {
+		return fmt.Errorf("写入临时文件失败: %w", err)
+	}
+	out.Close() // 提前关闭以释放句柄
+
+	// 2. 原子替换
+	log.Printf("🔄 正在执行数据库原子替换: %s", database.DBPath)
+	if err := os.Rename(tmpPath, database.DBPath); err != nil {
+		return fmt.Errorf("原子替换失败: %w", err)
+	}
+
+	// 3. 热重载数据库连接
+	if err := database.ReinitDB(); err != nil {
+		return fmt.Errorf("数据库重连失败: %w", err)
+	}
+
+	// 4. 重载骨架缓存
+	if err := LoadSkeleton(); err != nil {
+		log.Printf("⚠️  DB 同步后重载骨架失败: %v", err)
+	}
+
+	log.Printf("✅ 数据库已从 R2 成功同步并热重载！")
+	return nil
+}
 
 // MigrateDataJS 如果本地骨架不存在或艺人数量为 0，则从 frontend/src/js/data.js 迁移数据
 func MigrateDataJS(dataJSPath string) error {
