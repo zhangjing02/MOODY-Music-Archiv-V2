@@ -35,8 +35,18 @@ func InitS3(storageID, accountId, accessKeyId, secretAccessKey, bucketName strin
 	endpointURL := os.Getenv("R2_CUSTOM_ENDPOINT")
 	if endpointURL == "" {
 		endpointURL = fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountId)
-	} else {
-		log.Printf("Using custom R2 endpoint: %s", endpointURL)
+	}
+
+	// 自愈逻辑：如果 Account ID 长度超过 32 位且 Secret Key 长度正好是 32 位，则认为在云端控制台填反了
+	// 这可以绕过无法修正云端环境变量的僵局 (ClawCloud UI 限制)
+	if len(accountId) > 32 && len(secretAccessKey) == 32 {
+		log.Printf("⚠️  [Self-Healing] Detected swapped R2 credentials (ID: %d chars, Secret: %d chars). Auto-correcting...", len(accountId), len(secretAccessKey))
+		accountId, secretAccessKey = secretAccessKey, accountId
+		endpointURL = fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountId)
+	}
+
+	if os.Getenv("R2_CUSTOM_ENDPOINT") != "" {
+		log.Printf("Using R2 endpoint: %s", endpointURL)
 	}
 
 	// Custom resolver to point AWS SDK to Cloudflare R2
