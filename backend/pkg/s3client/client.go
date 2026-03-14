@@ -30,24 +30,30 @@ var clients = make(map[string]*Client)
 
 // InitS3 initializes an S3 client for a specific storage ID
 func InitS3(storageID, accountId, accessKeyId, secretAccessKey, bucketName string) error {
+	// 深度清洗环境变量，防止云端控制台截断或注入非法字符
+	accountId = strings.TrimSpace(accountId)
+	secretAccessKey = strings.TrimSpace(secretAccessKey)
+	accessKeyId = strings.TrimSpace(accessKeyId)
+
 	// 优先从环境变量读取自定义 Endpoint
 	endpointURL := os.Getenv("R2_CUSTOM_ENDPOINT")
 
-	// 自愈逻辑：如果 Account ID 长度超过 32 位且 Secret Key 长度正好是 32 位，则认为填反了
-	// 修正：也要处理 Endpoint 可能已经包含错误 ID 的情况
-	if len(accountId) > 32 && len(secretAccessKey) == 32 {
-		log.Printf("⚠️  [Self-Healing] Detected Swapped R2 credentials. Swapping ID(%d) <-> Secret(%d)...", len(accountId), len(secretAccessKey))
+	// 自愈逻辑：处理云端凭证填反的顽疾
+	if len(accountId) > 32 || (len(secretAccessKey) == 32 && len(accountId) > 40) {
+		log.Printf("⚠️  [Self-Healing] Detected Swapped/Messy R2 credentials. Swapping ID(%d) <-> Secret(%d)...", len(accountId), len(secretAccessKey))
 		accountId, secretAccessKey = secretAccessKey, accountId
-		// 强制基于对调后的正确 ID 重建端点
-		endpointURL = fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountId)
 	}
 
-	// 补位逻辑：如果仍然没有有效端点，按标准格式填充
-	if endpointURL == "" || !strings.Contains(endpointURL, "r2.cloudflarestorage.com") {
-		endpointURL = fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountId)
+	// 终极对位：Account ID 必须是 32 位 hex，Secret 必须是 64 位 hex
+	// 如果由于某种原因 ID 还是太长，截取其核心部分或强制基于 secret 纠偏
+	if len(accountId) > 32 {
+		accountId = accountId[0:32]
 	}
 
-	log.Printf("Final R2 Endpoint Activation: %s", endpointURL)
+	// 强制物理对齐端点
+	endpointURL = fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountId)
+
+	log.Printf("Final R2 Endpoint (Normalization): %s", endpointURL)
 
 	// Custom resolver to point AWS SDK to Cloudflare R2
 	r2Resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
