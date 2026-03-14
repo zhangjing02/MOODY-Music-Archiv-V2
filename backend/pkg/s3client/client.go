@@ -54,10 +54,14 @@ func InitS3(storageID, accountId, accessKeyId, secretAccessKey, bucketName strin
 		log.Printf("⚠️ [Credential Swap Detected] Fixing ID/Secret positioning...")
 		accountId, secretAccessKey = secretAccessKey, accountId
 	}
+	
+	// 极致一致性保护：确保 storageID（bucket前缀/ID）也对齐回清洗后的 accountId
+	// 防止 SDK 在签名头中使用旧 ID 导致 TLS/认证拒绝
+	storageID = accountId
 
 	// 3. 强制 Endpoint 重建
 	endpointURL = fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountId)
-	log.Printf("🚀 [FORCE READY] Endpoint: %s (ID: %s...)", endpointURL, accountId[:8])
+	log.Printf("🚀 [FORCE READY] Endpoint: %s (Bucket: %s)", endpointURL, bucketName)
 
 	// Custom resolver to point AWS SDK to Cloudflare R2
 	r2Resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
