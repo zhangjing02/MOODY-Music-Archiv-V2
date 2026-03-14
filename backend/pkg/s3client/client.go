@@ -32,23 +32,32 @@ var clients = make(map[string]*Client)
 func InitS3(storageID, accountId, accessKeyId, secretAccessKey, bucketName string) error {
 	// 深度清洗环境变量，防止云端控制台截断或注入非法字符
 	accountId = strings.TrimSpace(accountId)
-	secretAccessKey = strings.TrimSpace(secretAccessKey)
-	accessKeyId = strings.TrimSpace(accessKeyId)
-
 	// 优先从环境变量读取自定义 Endpoint
-	endpointURL := os.Getenv("R2_CUSTOM_ENDPOINT")
+	// 注意：此变量在后续会被强制覆盖，仅作为参考或调试用
+	var endpointURL string = os.Getenv("R2_CUSTOM_ENDPOINT")
 
-	// 自愈逻辑：处理云端凭证填反的顽疾
-	if len(accountId) > 32 || (len(secretAccessKey) == 32 && len(accountId) > 40) {
-		log.Printf("⚠️  [Self-Healing] Detected Swapped/Messy R2 credentials. Swapping ID(%d) <-> Secret(%d)...", len(accountId), len(secretAccessKey))
+	// 【终极物理补丁】彻底绕过环境变量的混乱
+	// 1. 深度清洗：剔除引号和不可见字符
+	clean := func(s string) string {
+		s = strings.TrimSpace(s)
+		s = strings.Trim(s, "\"")
+		s = strings.Trim(s, "'")
+		return strings.TrimSpace(s)
+	}
+	accountId = clean(accountId)
+	accessKeyId = clean(accessKeyId)
+	secretAccessKey = clean(secretAccessKey)
+
+	// 2. 物理对位：基于长度特征强制归位 (R2 Account ID 是 32位 hex)
+	// 如果控制台填反了，在这里强制换回来
+	if len(secretAccessKey) == 32 && len(accountId) > 32 {
+		log.Printf("⚠️ [Credential Swap Detected] Fixing ID/Secret positioning...")
 		accountId, secretAccessKey = secretAccessKey, accountId
 	}
 
-	// 【终极绝杀补丁】物理绕过任何环境变量对 Endpoint 的定义
-	// 无论云端控制台填了什么，只要我们自愈后的 accountId 是对的，就强制生成标准 Endpoint
-	endpointURL := fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountId)
-	
-	log.Printf("🔥 [ABSOLUTE FORCE] R2 Endpoint: %s", endpointURL)
+	// 3. 强制 Endpoint 重建
+	endpointURL = fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountId)
+	log.Printf("🚀 [FORCE READY] Endpoint: %s (ID: %s...)", endpointURL, accountId[:8])
 
 	// Custom resolver to point AWS SDK to Cloudflare R2
 	r2Resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
