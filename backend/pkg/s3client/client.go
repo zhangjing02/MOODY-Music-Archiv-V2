@@ -44,12 +44,11 @@ func InitS3(storageID, accountId, accessKeyId, secretAccessKey, bucketName strin
 		accountId, secretAccessKey = secretAccessKey, accountId
 	}
 
-	// 终极对位补丁：物理强制重建端点
-	// 无视任何环境变量定义的 R2_CUSTOM_ENDPOINT，因为它可能包含截断或错误的 ID
-	// 基于我们自愈对位后的 accountId 重新生成物理地址
-	endpointURL = fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountId)
-
-	log.Printf("🔥 [Ultimate Force] Hardening R2 Endpoint: %s", endpointURL)
+	// 【终极绝杀补丁】物理绕过任何环境变量对 Endpoint 的定义
+	// 无论云端控制台填了什么，只要我们自愈后的 accountId 是对的，就强制生成标准 Endpoint
+	endpointURL := fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountId)
+	
+	log.Printf("🔥 [ABSOLUTE FORCE] R2 Endpoint: %s", endpointURL)
 
 	// Custom resolver to point AWS SDK to Cloudflare R2
 	r2Resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
