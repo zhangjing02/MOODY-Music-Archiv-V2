@@ -9,10 +9,12 @@ import (
 	"moody-backend/internal/database"
 	"moody-backend/internal/model"
 	"moody-backend/pkg/s3client"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 )
 
 // DownloadDBFromR2 从指定 S3/R2 存储下载最新的 moody.db 文件并应用热重载
@@ -26,8 +28,32 @@ func DownloadDBFromR2(storageID string) error {
 	objectKey := "db/moody.db"
 	log.Printf("📥 正在从 R2 [%s] 下载数据库文件: %s", storageID, objectKey)
 
-	body, _, err := s3.DownloadFile(ctx, objectKey)
-	if err != nil {
+	var body io.ReadCloser
+	var err error
+
+	// 优先使用 S3 SDK (Action #25)
+	body, _, err = s3.DownloadFile(ctx, objectKey)
+
+	// 如果 SDK 握手失败 (Action #26: 协议降级自愈)
+	if err != nil && (strings.Contains(err.Error(), "handshake failure") || strings.Contains(err.Error(), "tls") || strings.Contains(err.Error(), "remote error")) {
+		log.Printf("⚠️  SDK TLS 握手失败，启用 HTTP 隧道降级自愈 (Action #26)...")
+		
+		// 构建公开读取 URL (基于补丁配置的 endpoint)
+		publicURL := fmt.Sprintf("https://%s.r2.cloudflarestorage.com/%s", s3.GetAccountID(), objectKey)
+		
+		client := &http.Client{Timeout: 30 * time.Second}
+		resp, httpErr := client.Get(publicURL)
+		if httpErr != nil {
+			return fmt.Errorf("SDK 失败后 HTTP 降级亦失败: %v (SDK 原错: %w)", httpErr, err)
+		}
+		
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			return fmt.Errorf("HTTP 隧道返回异常状态 %d (SDK 原错: %w)", resp.StatusCode, err)
+		}
+		body = resp.Body
+		log.Printf("🚀 HTTP 隧道连通成功，开始流式同步...")
+	} else if err != nil {
 		return fmt.Errorf("下载失败: %w", err)
 	}
 	defer body.Close()
