@@ -34,20 +34,20 @@ func InitS3(storageID, accountId, accessKeyId, secretAccessKey, bucketName strin
 	endpointURL := os.Getenv("R2_CUSTOM_ENDPOINT")
 
 	// 自愈逻辑：如果 Account ID 长度超过 32 位且 Secret Key 长度正好是 32 位，则认为填反了
+	// 修正：也要处理 Endpoint 可能已经包含错误 ID 的情况
 	if len(accountId) > 32 && len(secretAccessKey) == 32 {
-		log.Printf("⚠️  [Self-Healing] Swapped R2 credentials detected. ID: %d, Secret: %d. Swapping...", len(accountId), len(secretAccessKey))
-		// 物理对调进入内存
+		log.Printf("⚠️  [Self-Healing] Detected Swapped R2 credentials. Swapping ID(%d) <-> Secret(%d)...", len(accountId), len(secretAccessKey))
 		accountId, secretAccessKey = secretAccessKey, accountId
-		// 强制基于对调后的正确 ID 重新生成端点，忽略有误的环境变量
+		// 强制基于对调后的正确 ID 重建端点
 		endpointURL = fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountId)
 	}
 
-	// 如果没有有效的端点，确保生成标准 R2 端点
-	if endpointURL == "" {
+	// 补位逻辑：如果仍然没有有效端点，按标准格式填充
+	if endpointURL == "" || !strings.Contains(endpointURL, "r2.cloudflarestorage.com") {
 		endpointURL = fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountId)
 	}
 
-	log.Printf("Final R2 Endpoint: %s", endpointURL)
+	log.Printf("Final R2 Endpoint Activation: %s", endpointURL)
 
 	// Custom resolver to point AWS SDK to Cloudflare R2
 	r2Resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
