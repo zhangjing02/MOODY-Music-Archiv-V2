@@ -45,15 +45,11 @@ func InitS3(storageID, accountId, accessKeyId, secretAccessKey, bucketName strin
 	}
 
 	// 终极对位：Account ID 必须是 32 位 hex，Secret 必须是 64 位 hex
-	// 如果由于某种原因 ID 还是太长，截取其核心部分或强制基于 secret 纠偏
-	if len(accountId) > 32 {
-		accountId = accountId[0:32]
-	}
-
-	// 强制物理对齐端点
+	// 强制物理对齐端点：无视任何预设环境变量，基于自愈后的 accountId 重新构建
+	// 这样可以确保即使用户在控制台填错或变量截断，我们生成的 URL 在 TLS 握手层都是物理正确的
 	endpointURL = fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountId)
 
-	log.Printf("Final R2 Endpoint (Normalization): %s", endpointURL)
+	log.Printf("⚠️ [Physical Force] Overriding R2 Endpoint: %s", endpointURL)
 
 	// Custom resolver to point AWS SDK to Cloudflare R2
 	r2Resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
