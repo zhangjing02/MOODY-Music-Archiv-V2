@@ -36,12 +36,13 @@ func InitS3(storageID, accountId, accessKeyId, secretAccessKey, bucketName strin
 	// 自愈逻辑：如果 Account ID 长度超过 32 位且 Secret Key 长度正好是 32 位，则认为填反了
 	if len(accountId) > 32 && len(secretAccessKey) == 32 {
 		log.Printf("⚠️  [Self-Healing] Swapped R2 credentials detected. ID: %d, Secret: %d. Swapping...", len(accountId), len(secretAccessKey))
+		// 物理对调进入内存
 		accountId, secretAccessKey = secretAccessKey, accountId
-		// 强制使用标准 R2 格式生成端点，忽略有误的环境变量
+		// 强制基于对调后的正确 ID 重新生成端点，忽略有误的环境变量
 		endpointURL = fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountId)
 	}
 
-	// 如果没有有效的端点或自愈逻辑已介入，确保端点格式正确
+	// 如果没有有效的端点，确保生成标准 R2 端点
 	if endpointURL == "" {
 		endpointURL = fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountId)
 	}
