@@ -45,3 +45,29 @@
 ## 3. 下一代架构优化建议
 - **Metadata First**: R2 上传后，由后端/Worker 统一计算 MD5 或 UUID 作为 `file_path` 的核心，彻底摆脱中文字符串路径依赖。
 - **Hash 定位**: 后续应将 R2 资产文件名逐步迁移为 D1 表中的 `id` 关联（如 `s_1024.mp3`），极大降低审计成本。
+
+---
+
+## 4. GitHub Actions 自动化部署 (CI/CD)
+
+为了实现代码推送后自动更新 Claw Cloud 实例，您需要在 GitHub 仓库中配置以下 Secrets。
+
+### 4.1 必需的 GitHub Secrets
+请前往 GitHub 仓库的 `Settings` -> `Secrets and variables` -> `Actions` 下添加：
+
+| Secret 名称 | 描述 | 获取方式 |
+| :--- | :--- | :--- |
+| `DOCKER_USERNAME` | Docker Hub 用户名 | 您的 Docker Hub 账户名 |
+| `DOCKER_PASSWORD` | Docker Hub 访问令牌 (Token) | Docker Hub -> Settings -> Personal Access Tokens |
+| `KUBECONFIG` | Claw Cloud 的 Kubeconfig 内容 | **见下文 4.2** |
+
+### 4.2 如何获取 KUBECONFIG
+1. 登录 Claw Cloud 控制台。
+2. 点击右上角 **个人头像 (Profile)**。
+3. 进入 **Connection Settings**。
+4. 找到 **Kubeconfig Download** 并下载或复制其全部内容。
+5. 将该内容直接粘贴到 GitHub Secret `KUBECONFIG` 中。
+
+### 4.3 注意事项
+- 部署脚本默认的应用名称为 `moody`。如果您在 App Launchpad 中使用了不同的名字，请修改 `.github/workflows/deploy.yml` 中的 `kubectl rollout restart deployment/moody` 这一行。
+- 更新触发后，Claw Cloud 通常在 30s-60s 内完成滚动更新。
