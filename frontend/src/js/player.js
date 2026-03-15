@@ -2635,7 +2635,7 @@ window.audioPlayer = {
                 if (songPath.startsWith('http')) {
                     targetAudioUrl = songPath;
                 } else {
-                    targetAudioUrl = `${window.API_BASE || API_BASE}/storage/${songPath.split(/[\\/]/).map(segment => encodeURIComponent(segment)).join('/')}`;
+                    targetAudioUrl = `${window.API_BASE || ''}/storage/${songPath.split(/[\\/]/).map(segment => encodeURIComponent(segment)).join('/')}`;
                 }
             }
 
@@ -2686,7 +2686,7 @@ window.audioPlayer = {
                     audioUrl = songPath;
                 } else {
                     const encodedPath = songPath.split(/[\\/]/).map(segment => encodeURIComponent(segment)).join('/');
-                    audioUrl = `${window.API_BASE || API_BASE}/storage/${encodedPath}`;
+                    audioUrl = `${window.API_BASE || ''}/storage/${encodedPath}`;
                 }
             }
 
