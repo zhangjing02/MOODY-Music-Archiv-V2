@@ -32,15 +32,20 @@ jobs:
           platforms: linux/amd64
 
       - name: Trigger Update on ClawCloud via Kubeconfig
-        if: "${{ secrets.KUBECONFIG != '' || secrets.KUBE_CONFIG != '' }}"
+        env:
+          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG || secrets.KUBE_CONFIG }}
+        if: ${{ env.KUBECONFIG_DATA != '' }}
         uses: azure/k8s-set-context@v3
         with:
           method: kubeconfig
           kubeconfig: ${{ secrets.KUBECONFIG || secrets.KUBE_CONFIG }}
 
       - name: Rollout Restart Deployment
-        if: "${{ secrets.KUBECONFIG != '' || secrets.KUBE_CONFIG != '' }}"
+        env:
+          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG || secrets.KUBE_CONFIG }}
+        if: ${{ env.KUBECONFIG_DATA != '' }}
         run: |
+
 
           # 这里的 'moody' 对应您在 App Launchpad 中的应用名
           kubectl rollout restart deployment/moody
