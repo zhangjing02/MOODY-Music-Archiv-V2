@@ -59,14 +59,13 @@
 | :--- | :--- | :--- |
 | `DOCKER_USERNAME` | Docker Hub 用户名 | 您的 Docker Hub 账户名 |
 | `DOCKER_PASSWORD` | Docker Hub 访问令牌 (Token) | Docker Hub -> Settings -> Personal Access Tokens |
-| `KUBECONFIG` | Claw Cloud 的 Kubeconfig 内容 | **见下文 4.2** |
 
-### 4.2 如何获取 KUBECONFIG
+### 4.2 手动拉取更新
+当您推送代码后，GitHub Actions 会自动构建新的镜像并推送到 Docker Hub。
+要让服务器生效，您只需：
 1. 登录 Claw Cloud 控制台。
-2. 点击右上角 **个人头像 (Profile)**。
-3. 进入 **Connection Settings**。
-4. 找到 **Kubeconfig Download** 并下载或复制其全部内容。
-5. 将该内容直接粘贴到 GitHub Secret `KUBECONFIG` 中。
+2. 找到您的应用，执行 **Restart** (重启) 或 **Update** (更新)。
+3. 服务器会拉取最新的 `:latest` 镜像并完成热更新。
 
 ### 4.3 注意事项
 - 部署脚本默认的应用名称为 `moody`。如果您在 App Launchpad 中使用了不同的名字，请修改 `.github/workflows/deploy.yml` 中的 `kubectl rollout restart deployment/moody` 这一行。

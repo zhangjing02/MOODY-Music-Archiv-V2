@@ -85,8 +85,6 @@ function loadImage(img) {
         src = src.startsWith('/') ? API_BASE + src : API_BASE + '/' + src;
     }
 
-    if (!src) {
-
     // 添加加载中的样式
     img.classList.add('lazy-loading');
 

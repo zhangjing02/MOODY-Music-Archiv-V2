@@ -30,24 +30,3 @@ jobs:
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/moody:latest
           # 显式指定 amd64 架构以适配 ClawCloud
           platforms: linux/amd64
-
-      - name: Trigger Update on ClawCloud via Kubeconfig
-        env:
-          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG || secrets.KUBE_CONFIG }}
-        if: ${{ env.KUBECONFIG_DATA != '' }}
-        uses: azure/k8s-set-context@v3
-        with:
-          method: kubeconfig
-          kubeconfig: ${{ secrets.KUBECONFIG || secrets.KUBE_CONFIG }}
-
-      - name: Rollout Restart Deployment
-        env:
-          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG || secrets.KUBE_CONFIG }}
-        if: ${{ env.KUBECONFIG_DATA != '' }}
-        run: |
-
-
-          # 这里的 'moody' 对应您在 App Launchpad 中的应用名
-          kubectl rollout restart deployment/moody
-          # 等待状态确认 (可选)
-          kubectl rollout status deployment/moody --timeout=60s
