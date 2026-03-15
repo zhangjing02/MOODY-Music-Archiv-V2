@@ -10,12 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"crypto/tls"
-	"net"
-	"net/http"
 	"os"
 	"strings"
-	"time"
 )
 
 // Client wraps the S3 client to provide our custom methods
@@ -23,6 +19,7 @@ type Client struct {
 	s3Client   *s3.Client
 	bucketName string
 	StorageID  string
+	AccountID  string
 }
 
 // Global registry for multiple S3 clients
@@ -30,38 +27,13 @@ var clients = make(map[string]*Client)
 
 // InitS3 initializes an S3 client for a specific storage ID
 func InitS3(storageID, accountId, accessKeyId, secretAccessKey, bucketName string) error {
-	// 深度清洗环境变量，防止云端控制台截断或注入非法字符
 	accountId = strings.TrimSpace(accountId)
-	// 优先从环境变量读取自定义 Endpoint
-	// 注意：此变量在后续会被强制覆盖，仅作为参考或调试用
-	var endpointURL string = os.Getenv("R2_CUSTOM_ENDPOINT")
+	accessKeyId = strings.TrimSpace(accessKeyId)
+	secretAccessKey = strings.TrimSpace(secretAccessKey)
+	bucketName = strings.TrimSpace(bucketName)
 
-	// 【终极物理补丁】彻底绕过环境变量的混乱
-	// 1. 深度清洗：剔除引号和不可见字符
-	clean := func(s string) string {
-		s = strings.TrimSpace(s)
-		s = strings.Trim(s, "\"")
-		s = strings.Trim(s, "'")
-		return strings.TrimSpace(s)
-	}
-	accountId = clean(accountId)
-	accessKeyId = clean(accessKeyId)
-	secretAccessKey = clean(secretAccessKey)
-
-	// 2. 物理对位：基于长度特征强制归位 (R2 Account ID 是 32位 hex)
-	// 如果控制台填反了，在这里强制换回来
-	if len(secretAccessKey) == 32 && len(accountId) > 32 {
-		log.Printf("⚠️ [Credential Swap Detected] Fixing ID/Secret positioning...")
-		accountId, secretAccessKey = secretAccessKey, accountId
-	}
-	
-	// 极致一致性保护：确保 storageID（bucket前缀/ID）也对齐回清洗后的 accountId
-	// 防止 SDK 在签名头中使用旧 ID 导致 TLS/认证拒绝
-	storageID = accountId
-
-	// 3. 强制 Endpoint 重建
-	endpointURL = fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountId)
-	log.Printf("🚀 [FORCE READY] Endpoint: %s (Bucket: %s)", endpointURL, bucketName)
+	endpointURL := fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountId)
+	log.Printf("🚀 Initializing S3 Client [%s] (Bucket: %s)", storageID, bucketName)
 
 	// Custom resolver to point AWS SDK to Cloudflare R2
 	r2Resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
@@ -70,30 +42,11 @@ func InitS3(storageID, accountId, accessKeyId, secretAccessKey, bucketName strin
 		}, nil
 	})
 
-	// Create custom HTTP client to handle potential TLS issues
-	customTransport := http.DefaultTransport.(*http.Transport).Clone()
-	customTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	
-	// 自动从环境变量读取代理 (HTTPS_PROXY)
-	customTransport.Proxy = http.ProxyFromEnvironment
-	
-	// Force IPv4 if needed (common in some proxy environments)
-	dialer := &net.Dialer{
-		Timeout:   30 * time.Second,
-		KeepAlive: 30 * time.Second,
-	}
-	customTransport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-		return dialer.DialContext(ctx, "tcp4", addr)
-	}
-	
-	httpClient := &http.Client{Transport: customTransport}
-
 	// Load default config
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithEndpointResolverWithOptions(r2Resolver),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKeyId, secretAccessKey, "")),
 		config.WithRegion("auto"), // R2 uses 'auto' region
-		config.WithHTTPClient(httpClient),
 	)
 	if err != nil {
 		return fmt.Errorf("unable to load SDK config: %w", err)
@@ -107,11 +60,13 @@ func InitS3(storageID, accountId, accessKeyId, secretAccessKey, bucketName strin
 		s3Client:   client,
 		bucketName: bucketName,
 		StorageID:  storageID,
+		AccountID:  accountId,
 	}
 
-	log.Printf("Successfully initialized S3 client [%s] for bucket: %s", storageID, bucketName)
+	log.Printf("✅ Successfully initialized S3 client [%s] for bucket: %s", storageID, bucketName)
 	return nil
 }
+
 
 // GetClient returns the primary S3 client
 func GetClient() *Client {

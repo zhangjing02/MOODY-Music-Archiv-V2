@@ -1,0 +1,12 @@
+name = "moody-worker"
+main = "src/index.ts"
+compatibility_date = "2024-03-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "moody-d1-test"
+database_id = "a9591a5a-1c83-4c27-ad19-70a3aa4f11fc"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "moody-music-asset"

@@ -14,12 +14,9 @@ const DB_NAME = 'MusicArchiveDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'audioFiles';
 
-// ==================== API 配置 (已移除 iTunes) ====================
 const API_CONFIG = {
-    // 调试模式下指向远程服务器，生产环境为空字符串使用相对路径
-    apiBase: (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-        ? 'http://localhost:8080'
-        : window.location.origin,
+    // 指向 Cloudflare Workers 边缘节点集群
+    apiBase: 'https://moody-worker.changgepd.workers.dev',
     itunes: { enabled: false }
 };
 
