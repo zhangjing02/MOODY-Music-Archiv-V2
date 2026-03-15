@@ -1802,7 +1802,7 @@ async function updateView() {
     const isCached = album.cover && (imageCache.albums.has(cacheKey) || dom.vCover.src.includes(album.cover));
 
     dom.vCover.dataset.src = coverPath;
-    dom.vCover.dataset.fallback = 'https://placehold.co/400x400/222/FFF?text=' + encodeURIComponent(album.title);
+    dom.vCover.dataset.fallback = 'src/assets/images/vinyl_default.png';
 
     const onCoverLoaded = () => {
         dom.vCover.style.opacity = '1';
@@ -1839,6 +1839,7 @@ async function updateView() {
             window.LazyLoader.loadImmediately(dom.vCover);
         }
     } else {
+        // [Optimization] 如果没有封面信息，直接使用 fallback
         onCoverError();
     }
 

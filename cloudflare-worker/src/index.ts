@@ -8,6 +8,29 @@ type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>()
 
+/**
+ * Normalizes resource URLs to be absolute and correctly prefixed
+ */
+function normalizeResourceUrl(path: string | null | undefined, baseUrl: string, type: 'avatar' | 'cover' | 'mp3' | 'lrc'): string {
+  if (!path) {
+    if (type === 'avatar') return '/src/assets/images/avatars/default.png';
+    if (type === 'cover') return '/src/assets/images/vinyl_default.png';
+    return '';
+  }
+
+  if (path.startsWith('http')) return path;
+  if (path.startsWith('/src/')) return path;
+
+  // Ensure absolute path from Worker origin
+  let finalPath = path;
+  if (!path.startsWith('/storage/')) {
+    // If it's a raw R2 key, prefix with /storage/
+    finalPath = `/storage/${path.startsWith('/') ? path.slice(1) : path}`;
+  }
+  
+  return baseUrl + finalPath;
+}
+
 // Global CORS for all routes (API and Storage)
 app.use('/*', cors())
 
@@ -63,26 +86,34 @@ app.get('/storage/*', async (c) => {
 app.get('/api/welcome-images', async (c) => {
   try {
     const list = await c.env.BUCKET.list({
-      prefix: 'settings/welcome-images/'
+      prefix: 'welcome_covers/'
     })
 
     const images = list.objects
       .filter((obj) => obj.key.match(/\.(jpg|jpeg|png|webp|gif)$/i))
-      .map((obj) => `/storage/${obj.key}`)
+      .map((obj) => {
+        // Return only the filename as expected by app.js getWelcomeBackground
+        return obj.key.split('/').pop() || ''
+      })
+      .filter(name => name !== '')
 
     // Shuffle and pick up to 10 images smoothly
     const shuffled = images.sort(() => 0.5 - Math.random())
     const selected = shuffled.slice(0, 10)
 
     if (selected.length === 0) {
-      // Fallback if no images found
-      selected.push('/assets/images/placeholder.jpg')
+      // Internal fallback
+      selected.push('landing_cover.png')
     }
 
-    return c.json(selected)
+    return c.json({
+      code: 200,
+      message: 'success',
+      data: selected
+    })
   } catch (error: any) {
     console.error('Welcome images error:', error)
-    return c.json({ error: 'Failed to fetch welcome images' }, 500)
+    return c.json({ code: 500, message: error.message }, 500)
   }
 })
 
@@ -93,21 +124,30 @@ app.get('/api/welcome-images', async (c) => {
 app.get('/api/skeleton', async (c) => {
   try {
     const groupFilter = c.req.query('group')
-    let query = 'SELECT id, name, region, photo_url FROM artists ORDER BY name ASC'
-
+    // V3.0: Join with albums to get counts
+    const query = `
+      SELECT 
+        a.id, a.name, a.region, a.photo_url,
+        (SELECT COUNT(*) FROM albums WHERE artist_id = a.id) as album_count
+      FROM artists a
+      ORDER BY a.name ASC
+    `
     const { results } = await c.env.DB.prepare(query).all()
+    const baseUrl = new URL(c.req.url).origin
 
     let artists = results.map((row: any) => {
       let groupChar = '#'
       if (row.name && row.name.length > 0) {
         groupChar = row.name.charAt(0).toUpperCase()
       }
+      
       return {
         id: `db_${row.id}`,
         name: row.name,
         group: groupChar,
         category: row.region || '华语',
-        avatar: row.photo_url || '/src/assets/images/avatars/default.png'
+        avatar: normalizeResourceUrl(row.photo_url, baseUrl, 'avatar'),
+        albumCount: row.album_count || 0
       }
     })
 
@@ -167,6 +207,7 @@ app.get('/api/songs', async (c) => {
 
     // Process flat rows into hierarchical structure
     const artistMap = new Map<number, any>()
+    const baseUrl = new URL(c.req.url).origin
 
     for (const row of results as any[]) {
       if (!row.artist_id) continue
@@ -176,7 +217,7 @@ app.get('/api/songs', async (c) => {
           id: `db_${row.artist_id}`,
           name: row.artist_name,
           category: row.region || '华语',
-          avatar: row.photo_url || '/src/assets/images/avatars/default.png',
+          avatar: normalizeResourceUrl(row.photo_url, baseUrl, 'avatar'),
           group: row.artist_name ? row.artist_name.charAt(0).toUpperCase() : '#',
           albums: new Map<number, any>()
         })
@@ -189,7 +230,7 @@ app.get('/api/songs', async (c) => {
           artist.albums.set(row.album_id, {
             title: row.album_title,
             year: row.release_date || '未知',
-            cover: row.cover_url || '/src/assets/images/vinyl_default.png',
+            cover: normalizeResourceUrl(row.cover_url, baseUrl, 'cover'),
             songs: []
           })
         }
@@ -234,16 +275,30 @@ app.get('/api/search', async (c) => {
     }
     const likeQuery = `%${q}%`
 
-    const stmtArtists = c.env.DB.prepare('SELECT id, name, region FROM artists WHERE name LIKE ?').bind(likeQuery)
+    const stmtArtists = c.env.DB.prepare(`
+      SELECT 
+        id, name, region, photo_url,
+        (SELECT COUNT(*) FROM albums WHERE artist_id = artists.id) as album_count
+      FROM artists 
+      WHERE name LIKE ?
+    `).bind(likeQuery)
     const stmtAlbums = c.env.DB.prepare('SELECT id, title, artist_id as ArtistID, cover_url as CoverURL FROM albums WHERE title LIKE ?').bind(likeQuery)
     const stmtSongs = c.env.DB.prepare('SELECT id, title, artist_id as ArtistID, album_id as Album_ID, file_path as FilePath FROM songs WHERE title LIKE ?').bind(likeQuery)
 
     // Run searches concurrently in D1
     const [resArtists, resAlbums, resSongs] = await c.env.DB.batch([stmtArtists, stmtAlbums, stmtSongs])
 
+    const baseUrl = new URL(c.req.url).origin
     const results = {
-      artists: resArtists.results || [],
-      albums: resAlbums.results || [],
+      artists: (resArtists.results || []).map((a: any) => ({
+        ...a,
+        photo_url: normalizeResourceUrl(a.photo_url, baseUrl, 'avatar'),
+        albumCount: a.album_count || 0
+      })),
+      albums: (resAlbums.results || []).map((al: any) => ({
+        ...al,
+        CoverURL: normalizeResourceUrl(al.CoverURL, baseUrl, 'cover')
+      })),
       songs: resSongs.results || []
     }
 
