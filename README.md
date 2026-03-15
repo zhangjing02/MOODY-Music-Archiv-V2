@@ -14,6 +14,21 @@
 
 ## 🛠️ 管理与自愈能力
 
+### 1.4 样式与封面回退 (Style & Cover Fallback)
+- **现象**: 专辑封面缺失时显示系统默认的 `??????` 或第三方不可控的占位图。
+- **最佳实践**: 
+    - 统一使用本地静态资源 `src/assets/images/vinyl_default.png`。
+    - 在前端 `updateView` 逻辑中，不论是加载失败 (`onError`) 还是数据缺失，均强制指向该本地路径。
+
+## 2. 运维与部署标准流程 (SOP)
+
+### 2.1 镜像更新 (Claw Cloud)
+> [!WARNING]
+> 在 GitHub 进行代码推送 (Push) 后，Claw Cloud 容器并不会自动热重载。
+> - **必须点击 `Update`**: 只有点击控制台的 `Update` 按钮，Dockerrun 才会检查 Docker Hub 的版本更新。
+> - **Restart 无效**: `Restart` 仅重启当前本地容器，无法加载新代码。
+
+### 2.2 数据点亮检查 (Audit)
 系统内置了一系列运维 API，可通过管理后台一键执行：
 
 1. **路径自愈 (`/api/admin/fix-paths`)**: 自动扫描 D1 记录，补全存储所需的 `music/` 前缀。
@@ -22,21 +37,17 @@
 
 ---
 
-## 💻 部署与开发
+### 容器部署 (Claw Cloud Run)
 
-### Worker 部署
-```bash
-cd cloudflare-worker
-npm install
-# 部署至 Cloudflare
-npx wrangler deploy
-```
+前端代码通过 GitHub Actions 自动构建并推送到 Docker Hub。
+> [!IMPORTANT]
+> **代码推送后如何生效？**
+> 由于 VPS 环境不会自动监听 Docker 仓库，您需要在 **Claw Cloud 控制台** 手动操作：
+> 1. 登录 Claw Cloud 管理后台。
+> 2. 找到 `moodymusic` 实例。
+> 3. 点击 **`Update`** 按钮（注意：不是 `Restart`），平台才会拉取最新的镜像代码。
 
-### 数据库维护
-若需手动更新数据库：
-```bash
-npx wrangler d1 execute DB --remote --command "SELECT * FROM songs LIMIT 10;"
-```
+---
 
 ---
 
