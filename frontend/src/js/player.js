@@ -2029,7 +2029,7 @@ async function loadLyrics(item) {
         // 兼容云端路径：确保所有相对路径都被正确路由到 /storage/lyrics/
         if (!fetchUrl.startsWith('http') && !fetchUrl.startsWith('/storage/')) {
             // 后端存的可能是相对路径，也可能是带 lyrics 前缀的，统一拼接
-            fetchUrl = `${window.API_BASE || ''}/storage/lyrics/${fetchUrl}`.replace(/\/+/g, '/');
+            fetchUrl = `${window.API_BASE || ''}/storage/${fetchUrl}`;
         } else if (fetchUrl.startsWith('/storage/')) {
             fetchUrl = `${window.API_BASE || ''}${fetchUrl}`;
         }
@@ -2635,7 +2635,7 @@ window.audioPlayer = {
                 if (songPath.startsWith('http')) {
                     targetAudioUrl = songPath;
                 } else {
-                    targetAudioUrl = `${window.API_BASE || ''}/storage/music/${songPath.split(/[\\/]/).map(segment => encodeURIComponent(segment)).join('/')}`;
+                    targetAudioUrl = `${window.API_BASE || API_BASE}/storage/${songPath.split(/[\\/]/).map(segment => encodeURIComponent(segment)).join('/')}`;
                 }
             }
 
@@ -2686,7 +2686,7 @@ window.audioPlayer = {
                     audioUrl = songPath;
                 } else {
                     const encodedPath = songPath.split(/[\\/]/).map(segment => encodeURIComponent(segment)).join('/');
-                    audioUrl = `${window.API_BASE || ''}/storage/music/${encodedPath}`;
+                    audioUrl = `${window.API_BASE || API_BASE}/storage/${encodedPath}`;
                 }
             }
 
