@@ -42,9 +42,11 @@ async function loadStats() {
         const res = await fetch('/api/admin/stats');
         if (res.ok) {
             const data = await res.json();
-            document.getElementById('stat-artists').textContent = data.data.artists || 0;
-            document.getElementById('stat-albums').textContent = data.data.albums || 0;
-            document.getElementById('stat-tracks').textContent = data.data.tracks || 0;
+            // Handle both legacy (data.data) and new Worker format (data.data)
+            const stats = data.data || data;
+            document.getElementById('stat-artists').textContent = stats.artists || 0;
+            document.getElementById('stat-albums').textContent = stats.albums || 0;
+            document.getElementById('stat-tracks').textContent = stats.tracks || 0;
         }
     } catch (err) {
         console.error("加载大盘失败", err);
@@ -199,19 +201,37 @@ function initGovernance() {
     };
 
     document.getElementById('btn-clean-orphans').addEventListener('click', () => postGov(['clean-orphans']));
-    document.getElementById('btn-clean-duplicates').addEventListener('click', () => postGov(['clean-duplicates']));
-
-    document.getElementById('btn-scrub').addEventListener('click', async () => {
-        if (!confirm('警告：此操作将强力对齐物理文件和数据库，可能耗时极长且具破坏性！确认继续？')) return;
+    document.getElementById('btn-clean-duplicates').addEventListener('click', async () => {
+        if (!confirm('确认清理冗余专辑？此操作将保留包含歌曲最多的版本并删除重复占位符。')) return;
         try {
-            showToast('强力扫除中，请勿关闭页面...');
-            const res = await fetch('/api/admin/scrub', { method: 'POST' });
+            showToast('正在清理中...');
+            const res = await fetch('/api/admin/cleanup-duplicates', { method: 'POST' });
+            const data = await res.json();
             if (res.ok) {
-                showToast('数据库对齐完成！');
+                showToast(data.message || '清理完成');
                 loadStats();
+            } else {
+                showToast('清理失败', 'error');
             }
         } catch (e) {
-            showToast('连接中断或错误', 'error');
+            showToast('网络异常', 'error');
+        }
+    });
+
+    document.getElementById('btn-scrub').addEventListener('click', async () => {
+        if (!confirm('确认执行路径自修复？此操作将自动补全所有缺失的 music/ 前缀。')) return;
+        try {
+            showToast('正在对齐路径，请稍候...');
+            const res = await fetch('/api/admin/fix-paths', { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) {
+                showToast(data.message || '修复完成！');
+                loadStats();
+            } else {
+                showToast('修复失败', 'error');
+            }
+        } catch (e) {
+            showToast('网络异常', 'error');
         }
     });
 }

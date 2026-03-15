@@ -1,0 +1,94 @@
+{
+  "total_db_songs_with_path": 139,
+  "total_r2_mp3s": 137,
+  "matched": 137,
+  "missing_in_r2": 2,
+  "sample_matched": [
+    {
+      "id": 845,
+      "title": "µêæµÿ»µåñµÇÆ",
+      "db_path": "Beyond/Σ╣ÉΣ╕ÄµÇÆ/s_845.mp3",
+      "expected_r2_key": "music/Beyond/Σ╣ÉΣ╕ÄµÇÆ/s_845.mp3",
+      "found_in_r2": true
+    },
+    {
+      "id": 846,
+      "title": "τê╕τê╕σ¬╜σ¬╜",
+      "db_path": "Beyond/Σ╣ÉΣ╕ÄµÇÆ/s_846.mp3",
+      "expected_r2_key": "music/Beyond/Σ╣ÉΣ╕ÄµÇÆ/s_846.mp3",
+      "found_in_r2": true
+    },
+    {
+      "id": 847,
+      "title": "σÆîσ╣│Φêçµä¢",
+      "db_path": "Beyond/Σ╣ÉΣ╕ÄµÇÆ/s_847.mp3",
+      "expected_r2_key": "music/Beyond/Σ╣ÉΣ╕ÄµÇÆ/s_847.mp3",
+      "found_in_r2": true
+    },
+    {
+      "id": 848,
+      "title": "σæ╜Θüïµÿ»Σ╜áσ«╢",
+      "db_path": "Beyond/Σ╣ÉΣ╕ÄµÇÆ/s_848.mp3",
+      "expected_r2_key": "music/Beyond/Σ╣ÉΣ╕ÄµÇÆ/s_848.mp3",
+      "found_in_r2": true
+    },
+    {
+      "id": 849,
+      "title": "σà¿µÿ»µä¢",
+      "db_path": "Beyond/Σ╣ÉΣ╕ÄµÇÆ/s_849.mp3",
+      "expected_r2_key": "music/Beyond/Σ╣ÉΣ╕ÄµÇÆ/s_849.mp3",
+      "found_in_r2": true
+    },
+    {
+      "id": 850,
+      "title": "µ╡╖Θùèσñ⌐τ⌐║",
+      "db_path": "Beyond/Σ╣ÉΣ╕ÄµÇÆ/s_850.mp3",
+      "expected_r2_key": "music/Beyond/Σ╣ÉΣ╕ÄµÇÆ/s_850.mp3",
+      "found_in_r2": true
+    },
+    {
+      "id": 851,
+      "title": "τïéΣ║║σ▒▒ΦÄè",
+      "db_path": "Beyond/Σ╣ÉΣ╕ÄµÇÆ/s_851.mp3",
+      "expected_r2_key": "music/Beyond/Σ╣ÉΣ╕ÄµÇÆ/s_851.mp3",
+      "found_in_r2": true
+    },
+    {
+      "id": 852,
+      "title": "σªäµâ│",
+      "db_path": "Beyond/Σ╣ÉΣ╕ÄµÇÆ/s_852.mp3",
+      "expected_r2_key": "music/Beyond/Σ╣ÉΣ╕ÄµÇÆ/s_852.mp3",
+      "found_in_r2": true
+    },
+    {
+      "id": 853,
+      "title": "σ«îσà¿σ£░µä¢σÉº",
+      "db_path": "Beyond/Σ╣ÉΣ╕ÄµÇÆ/s_853.mp3",
+      "expected_r2_key": "music/Beyond/Σ╣ÉΣ╕ÄµÇÆ/s_853.mp3",
+      "found_in_r2": true
+    },
+    {
+      "id": 854,
+      "title": "µâàΣ║║",
+      "db_path": "Beyond/Σ╣ÉΣ╕ÄµÇÆ/s_854.mp3",
+      "expected_r2_key": "music/Beyond/Σ╣ÉΣ╕ÄµÇÆ/s_854.mp3",
+      "found_in_r2": true
+    }
+  ],
+  "sample_missing": [
+    {
+      "id": 26271,
+      "title": "µùºτê▒µû░µ¼ó",
+      "db_path": "µ¥Äσ«ùτ¢¢/τöƒσæ╜Σ╕¡τÜäτ▓╛τü╡/s_26271.m4a",
+      "expected_r2_key": "music/µ¥Äσ«ùτ¢¢/τöƒσæ╜Σ╕¡τÜäτ▓╛τü╡/s_26271.m4a",
+      "found_in_r2": false
+    },
+    {
+      "id": 27655,
+      "title": "µêæΣ╕ìΦ»ÑΦ║▓",
+      "db_path": "Θÿ┐µ¥£/µêæΣ╕ìΦ»ÑΦ║▓/s_27655.mp3",
+      "expected_r2_key": "music/Θÿ┐µ¥£/µêæΣ╕ìΦ»ÑΦ║▓/s_27655.mp3",
+      "found_in_r2": false
+    }
+  ]
+}

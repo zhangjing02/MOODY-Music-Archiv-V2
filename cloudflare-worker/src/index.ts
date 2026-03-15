@@ -258,14 +258,213 @@ app.get('/api/search', async (c) => {
 })
 
 // ==========================================
-// Legacy / Test API checks
+// 6. Debug: List R2 Objects
 // ==========================================
-app.get('/api/test/db', async (c) => {
+app.get('/api/debug/r2', async (c) => {
   try {
-    const { results } = await c.env.DB.prepare('SELECT COUNT(*) as count FROM artists').all()
-    return c.json({ success: true, count: results[0].count })
-  } catch (e: any) {
-    return c.json({ success: false, error: e.message }, 500)
+    let allMp3s: string[] = []
+    let truncated = true
+    let cursor: string | undefined = undefined
+    let totalObjects = 0
+
+    // Scan up to 5000 objects to get a better picture
+    for (let i = 0; i < 5 && truncated; i++) {
+        const list = await c.env.BUCKET.list({ limit: 1000, cursor })
+        totalObjects += list.objects.length
+        
+        const mp3s = list.objects
+          .filter(obj => obj.key.toLowerCase().endsWith('.mp3'))
+          .map(obj => obj.key)
+        
+        allMp3s = allMp3s.concat(mp3s)
+        truncated = list.truncated
+        cursor = list.truncated ? list.cursor : undefined
+    }
+
+    // Get prefix statistics
+    const prefixes = new Map<string, number>()
+    allMp3s.forEach(key => {
+        const parts = key.split('/')
+        if (parts.length > 1) {
+            const prefix = parts[0]
+            prefixes.set(prefix, (prefixes.get(prefix) || 0) + 1)
+        } else {
+            prefixes.set('(root)', (prefixes.get('(root)') || 0) + 1)
+        }
+    })
+
+    return c.json({
+      scanned_objects: totalObjects,
+      total_mp3_found: allMp3s.length,
+      is_truncated: truncated,
+      prefixes: Object.fromEntries(prefixes),
+      keys: allMp3s
+    })
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500)
+  }
+})
+
+// ==========================================
+// 7. Debug: List D1 Paths
+// ==========================================
+// ==========================================
+// 8. Debug: Full Audit (D1 vs R2)
+// ==========================================
+app.get('/api/debug/audit', async (c) => {
+  try {
+    // 1. Get all MP3 keys from R2
+    let allR2Keys = new Set<string>()
+    let truncated = true
+    let cursor: string | undefined = undefined
+    
+    for (let i = 0; i < 10 && truncated; i++) {
+        const list = await c.env.BUCKET.list({ limit: 1000, cursor })
+        list.objects.forEach(obj => {
+          if (obj.key.toLowerCase().endsWith('.mp3')) {
+            allR2Keys.add(obj.key)
+          }
+        })
+        truncated = list.truncated
+        cursor = list.truncated ? list.cursor : undefined
+    }
+
+    // 2. Get all file_paths from D1
+    const { results: songs } = await c.env.DB.prepare('SELECT id, title, file_path FROM songs WHERE file_path IS NOT NULL AND file_path != ""').all()
+    
+    // 3. Compare
+    const audit = (songs as any[]).map(song => {
+      const path = song.file_path
+      // We know R2 has "music/" prefix
+      const expectedKey = path.startsWith('music/') ? path : `music/${path}`
+      const exists = allR2Keys.has(expectedKey)
+      
+      return {
+        id: song.id,
+        title: song.title,
+        db_path: path,
+        expected_r2_key: expectedKey,
+        found_in_r2: exists
+      }
+    })
+
+    const summary = {
+      total_db_songs_with_path: songs.length,
+      total_r2_mp3s: allR2Keys.size,
+      matched: audit.filter(a => a.found_in_r2).length,
+      missing_in_r2: audit.filter(a => !a.found_in_r2).length,
+      sample_matched: audit.filter(a => a.found_in_r2).slice(0, 10),
+      sample_missing: audit.filter(a => !a.found_in_r2).slice(0, 20)
+    }
+
+    return c.json(summary)
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500)
+  }
+})
+
+// ==========================================
+// 9. Admin: Stats
+// ==========================================
+app.get('/api/admin/stats', async (c) => {
+  try {
+    const stmtArtists = c.env.DB.prepare('SELECT COUNT(*) as count FROM artists')
+    const stmtAlbums = c.env.DB.prepare('SELECT COUNT(*) as count FROM albums')
+    const stmtSongs = c.env.DB.prepare('SELECT COUNT(*) as count FROM songs')
+    
+    const [resArtists, resAlbums, resSongs] = await c.env.DB.batch([stmtArtists, stmtAlbums, stmtSongs])
+    
+    return c.json({
+      code: 200,
+      message: 'success',
+      data: {
+        artists: (resArtists.results?.[0] as any)?.count || 0,
+        albums: (resAlbums.results?.[0] as any)?.count || 0,
+        tracks: (resSongs.results?.[0] as any)?.count || 0
+      }
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message }, 500)
+  }
+})
+
+// ==========================================
+// 10. Admin: Self-healing Fix Paths
+// ==========================================
+app.post('/api/admin/fix-paths', async (c) => {
+  try {
+    const result = await c.env.DB.prepare(`
+      UPDATE songs 
+      SET file_path = 'music/' || file_path 
+      WHERE file_path NOT LIKE 'music/%' 
+      AND file_path IS NOT NULL 
+      AND file_path != ''
+    `).run()
+    
+    return c.json({
+      code: 200,
+      message: `成功对齐 ${result.meta.changes} 条音频路径前缀`,
+      meta: result.meta
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message }, 500)
+  }
+})
+
+// ==========================================
+// 11. Admin: Cleanup Duplicates
+// ==========================================
+app.post('/api/admin/cleanup-duplicates', async (c) => {
+  try {
+    // Identify duplicate albums (same artist_id and title)
+    // We want to keep the one that has more songs with paths
+    const query = `
+      SELECT a.id, a.artist_id, a.title, COUNT(s.id) as song_count
+      FROM albums a
+      LEFT JOIN songs s ON a.id = s.album_id AND s.file_path IS NOT NULL AND s.file_path != ''
+      GROUP BY a.id, a.artist_id, a.title
+    `
+    const { results } = await c.env.DB.prepare(query).all()
+    
+    const albumGroups = new Map<string, any[]>()
+    for (const row of results as any[]) {
+      const key = `${row.artist_id}|${row.title}`
+      if (!albumGroups.has(key)) albumGroups.set(key, [])
+      albumGroups.get(key)!.push(row)
+    }
+    
+    let deletedAlbums = 0
+    let deletedSongs = 0
+    const stmts: D1PreparedStatement[] = []
+    
+    for (const [key, group] of albumGroups.entries()) {
+      if (group.length > 1) {
+        // Sort by song_count descending
+        group.sort((a, b) => b.song_count - a.song_count)
+        
+        // Keep the first one (most lit-up), delete others
+        const toKeep = group[0].id
+        const toDeleteIds = group.slice(1).map(a => a.id)
+        
+        for (const id of toDeleteIds) {
+          stmts.push(c.env.DB.prepare('DELETE FROM songs WHERE album_id = ?').bind(id))
+          stmts.push(c.env.DB.prepare('DELETE FROM albums WHERE id = ?').bind(id))
+          deletedAlbums++
+        }
+      }
+    }
+    
+    if (stmts.length > 0) {
+      await c.env.DB.batch(stmts)
+    }
+    
+    return c.json({
+      code: 200,
+      message: `清理完成：回收了 ${deletedAlbums} 个冗余专辑占位符`,
+      data: { deletedAlbums }
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message }, 500)
   }
 })
 
