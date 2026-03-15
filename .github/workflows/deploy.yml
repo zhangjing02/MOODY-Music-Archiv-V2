@@ -27,6 +27,8 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/moody:latest
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/moody:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/moody:v12.57
           # 显式指定 amd64 架构以适配 ClawCloud
           platforms: linux/amd64

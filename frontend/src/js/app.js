@@ -57,7 +57,7 @@ function getWelcomeBackground() {
 
 const CATEGORIES = ['华语', '欧美', '港台', '摇滚', '民谣', 'R&B', '音乐综艺'];
 
-console.log("%c [MOODY] 系统就绪 (v12.56)", "font-size: 14px; color: #d4af37; font-weight: bold; background: #1a1a1a; padding: 4px 8px; border-radius: 4px;");
+console.log("%c [MOODY] 系统就绪 (v12.57 - 强刷驱动版)", "font-size: 14px; color: #d4af37; font-weight: bold; background: #1a1a1a; padding: 4px 8px; border-radius: 4px;");
 
 // [V12.40] 终极核心名识别逻辑 (深度治理版：涵盖更多简繁、组合别名、后缀剔除)
 const getCoreName = (name) => {

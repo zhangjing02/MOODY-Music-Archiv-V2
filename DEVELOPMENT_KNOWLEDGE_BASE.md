@@ -99,3 +99,31 @@
 1.  **验证先行**：修改乱码后，第一步**看浏览器**，第二步**看控制台**（是否有语法错误），第三步**检查功能**（点击是否有反应）。
 2.  **原子化提交**：修复编码问题时，不要混合功能修改。编码修复往往涉及大量文件变动，混合提交会加大回滚难度。
 3.  **终极手段**：如果文件乱码无法挽回，与其花费 1 小时尝试转码修复，不如花费 10 分钟重写（或从 Git 历史恢复）受影响的代码块。
+## 5. GitHub Actions & CI/CD 陷阱 (CI/CD Pitfalls)
+
+在配置 GitHub Actions 自动化部署到私有云（Claw Cloud/Docker）时，存在以下两个关键陷阱：
+
+### 5.1 Secrets 作用域与命名
+**现象**：Action 报错 `Input required and not supplied: kubeconfig`，即使你觉得自己已经在 GitHub 里配过了。
+**原因**：
+*   **Secrets vs Variables**：GitHub 区分 Secrets（加密，通过 `${{ secrets.X }}` 访问）和 Variables（明文，通过 `${{ vars.X }}` 访问）。如果配错了地方，代码将拿不到值。
+*   **独立性**：Repository Secrets 的增删不会自动通知本地代码检查，导致 CI 配置与仓库状态脱节。
+
+### 5.2 YAML 条件判断中的上下文限制
+**现象**：在 `if` 语句中直接使用 `${{ secrets.KUBECONFIG }}` 导致 `Invalid workflow file`。
+**错误示例**：
+```yaml
+if: "${{ secrets.KUBECONFIG != '' }}"  # 错误！secrets 上下文在 if 表达式中受限
+```
+**解决方案（Best Practice）**：
+先将 Secret 映射到任务/步骤的 `env`，然后在 `if` 中检查环境变量。
+```yaml
+- name: Deploy
+  env:
+    KUBECONFIG_DATA: ${{ secrets.KUBECONFIG }}
+  if: ${{ env.KUBECONFIG_DATA != '' }}
+  run: ...
+```
+
+### 5.3 生产环境安全检查原则
+**黄金定律**：CI/CD 脚本必须具有“弹性（Resilience）”。如果环境配置或 Secret 缺失，脚本应**选择跳过**相关步骤并输出警告，而不是直接导致整个流程硬崩溃。
