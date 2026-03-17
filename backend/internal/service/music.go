@@ -809,58 +809,91 @@ func autoIDify(id int64, relPath string) {
 	ctx := context.Background()
 	s3 := s3client.GetClient()
 
-	// 1. 音频物理重命名 (S3 Rename: Copy + Delete)
+	// 1. 音频物理重命名 (优先 S3 Rename，也可进行本地物理文件处理)
 	ext := filepath.Ext(relPath)
 	newName := fmt.Sprintf("s_%d%s", id, ext)
 	if filepath.Base(relPath) != newName {
 		sourceKey := filepath.ToSlash(filepath.Join("music", relPath))
 		destKey := filepath.ToSlash(filepath.Join("music", filepath.Dir(relPath), newName))
 
-		// 检查 S3 上是否存在文件 (可选)
-		exists, _ := s3.Exists(ctx, sourceKey)
+		renamed := false
+
+		// [Fix V15.6] 优先处理 S3 环境
+		if s3 != nil {
+			exists, _ := s3.Exists(ctx, sourceKey)
+			if exists {
+				if err := s3.RenameFile(ctx, sourceKey, destKey); err == nil {
+					renamed = true
+				}
+			}
+		}
+
+		// [Fix V15.6] 如果本地也存在（或 S3 没开启），必须重命名本地，以便触发 R2 上传拦截协程
+		localSource := filepath.Join(MusicBaseDirGlobal, relPath)
+		localDest := filepath.Join(MusicBaseDirGlobal, filepath.Dir(relPath), newName)
+		if _, err := os.Stat(localSource); err == nil {
+			if os.Rename(localSource, localDest) == nil {
+				renamed = true
+			}
+		}
+
+		if renamed {
+			// 更新数据库索引
+			newRelPath := filepath.ToSlash(filepath.Join(filepath.Dir(relPath), newName))
+			database.DB.Exec("UPDATE songs SET file_path = ? WHERE id = ?", newRelPath, id)
+			log.Printf("✨ [Auto-ID] 曲目已成功进化: %s -> %s", filepath.Base(relPath), newName)
+			relPath = newRelPath // 更新供歌词处理使用
+		}
+	}
+
+	// 2. 歌词物理搬迁与 ID 化 (优先 S3 Rename，也可处理本地文件)
+	audioBase := strings.TrimSuffix(relPath, filepath.Ext(relPath))
+	lrcOldKey := "music/" + audioBase + ".lrc"
+	
+	lrcRenamed := false
+	relDir := filepath.Dir(relPath)
+	lrcNewName := fmt.Sprintf("l_%d.lrc", id)
+	lrcNewKey := filepath.ToSlash(filepath.Join("lyrics", relDir, lrcNewName))
+
+	// [Fix V15.6] S3 优先
+	if s3 != nil {
+		exists, _ := s3.Exists(ctx, lrcOldKey)
 		if exists {
-			if err := s3.RenameFile(ctx, sourceKey, destKey); err == nil {
-				// 更新数据库索引
-				newRelPath := filepath.ToSlash(filepath.Join(filepath.Dir(relPath), newName))
-				database.DB.Exec("UPDATE songs SET file_path = ? WHERE id = ?", newRelPath, id)
-				log.Printf("✨ [S3 Auto-ID] 曲目已成功进化: %s -> %s", filepath.Base(relPath), newName)
-				relPath = newRelPath // 更新供歌词处理使用
+			if err := s3.RenameFile(ctx, lrcOldKey, lrcNewKey); err == nil {
+				lrcRenamed = true
 			}
 		}
 	}
 
-	// 2. 歌词物理搬迁与 ID 化 (S3 逻辑)
-	// 策略：检查是否有同名的 .lrc 存在于音频同级目录 (在 S3 上)
-	audioBase := strings.TrimSuffix(relPath, filepath.Ext(relPath))
-	lrcOldKey := "music/" + audioBase + ".lrc"
+	// [Fix V15.6] 本地 fallback
+	localLrcSource := filepath.Join(MusicBaseDirGlobal, audioBase+".lrc")
+	localLrcDest := filepath.Join(LyricsBaseDirGlobal, relDir, lrcNewName)
+	if _, err := os.Stat(localLrcSource); err == nil {
+		os.MkdirAll(filepath.Dir(localLrcDest), 0755)
+		if os.Rename(localLrcSource, localLrcDest) == nil {
+			lrcRenamed = true
+		}
+	}
 
-	exists, _ := s3.Exists(ctx, lrcOldKey)
-	if exists {
-		// 构造结构化目标路径 (Key): lyrics/歌手/专辑/l_ID.lrc
-		relDir := filepath.Dir(relPath)
-		lrcNewName := fmt.Sprintf("l_%d.lrc", id)
-		lrcNewKey := filepath.ToSlash(filepath.Join("lyrics", relDir, lrcNewName))
+	if lrcRenamed {
+		// 更新数据库歌词路径
+		lrcRelPath := filepath.ToSlash(filepath.Join(relDir, lrcNewName))
+		database.DB.Exec("UPDATE songs SET lrc_path = ? WHERE id = ?", lrcRelPath, id)
+		log.Printf("📝 [Auto-ID] 歌词已同步进化: %s -> %s", filepath.Base(lrcOldKey), lrcRelPath)
 
-		if err := s3.RenameFile(ctx, lrcOldKey, lrcNewKey); err == nil {
-			// 更新数据库歌词路径
-			lrcRelPath := filepath.ToSlash(filepath.Join(relDir, lrcNewName))
-			database.DB.Exec("UPDATE songs SET lrc_path = ? WHERE id = ?", lrcRelPath, id)
-			log.Printf("📝 [S3 Auto-ID] 歌词已同步进化: %s -> %s", filepath.Base(lrcOldKey), lrcRelPath)
-
-			// [Optional] 注入标题元数据并更新 (S3 需要 Download -> Edit -> Upload)
-			var title string
-			_ = database.DB.QueryRow("SELECT title FROM songs WHERE id = ?", id).Scan(&title)
-			if title != "" {
-				body, _, err := s3.DownloadFile(ctx, lrcNewKey)
-				if err == nil {
-					lrcContent, _ := ioutil.ReadAll(body)
-					body.Close()
-					lrcStr := string(lrcContent)
-					if !strings.Contains(lrcStr, "[ti:") {
-						tiTag := fmt.Sprintf("[ti:%s]\n", title)
-						newContent := tiTag + lrcStr
-						_ = s3.UploadFile(ctx, lrcNewKey, strings.NewReader(newContent), "text/plain")
-					}
+		// [Optional] 注入标题元数据并更新 (S3 或本地)
+		var title string
+		_ = database.DB.QueryRow("SELECT title FROM songs WHERE id = ?", id).Scan(&title)
+		if title != "" && s3 != nil {
+			body, _, err := s3.DownloadFile(ctx, lrcNewKey)
+			if err == nil {
+				lrcContent, _ := ioutil.ReadAll(body)
+				body.Close()
+				lrcStr := string(lrcContent)
+				if !strings.Contains(lrcStr, "[ti:") {
+					tiTag := fmt.Sprintf("[ti:%s]\n", title)
+					newContent := tiTag + lrcStr
+					_ = s3.UploadFile(ctx, lrcNewKey, strings.NewReader(newContent), "text/plain")
 				}
 			}
 		}
