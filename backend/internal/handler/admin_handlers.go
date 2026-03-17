@@ -60,6 +60,7 @@ func AdminStatsHandler(w http.ResponseWriter, r *http.Request) {
 
 // AdminUploadHandler 负责处理超级上传中心的表单及文件落盘
 func AdminUploadHandler(musicDir string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		reqID := fmt.Sprintf("UP_%d", time.Now().UnixNano()%10000)
 		log.Printf("📥 [%s] 开始处理上传请求: RemoteAddr=%s, ContentLength=%d", reqID, r.RemoteAddr, r.ContentLength)
 
