@@ -149,6 +149,11 @@ func AdminUploadHandler(musicDir string) http.HandlerFunc {
 			savedFiles = append(savedFiles, destPath)
 		}
 
+		if len(savedFiles) == 0 {
+			respondJSON(w, http.StatusInternalServerError, "文件落盘全部失败，请检查后端磁盘空间或目录权限", nil)
+			return
+		}
+
 		// 文件全部处理后，立刻触发仅针对该目标目录的识别进库
 		log.Printf("🚀 批量上传完毕，准备自动挂载并计算 ID...")
 		scanSubDir := uploadSubDir
