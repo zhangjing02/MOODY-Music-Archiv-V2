@@ -28,7 +28,7 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/moodymusic:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/moodymusic:v12.58
+            changgepd/moodymusic:latest
+            changgepd/moodymusic:v12.59
           # 显式指定 amd64 架构以适配 ClawCloud
           platforms: linux/amd64

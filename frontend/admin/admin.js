@@ -108,9 +108,14 @@ function initUploader() {
         const album = document.getElementById('up-album').value.trim();
 
         const formData = new FormData();
-        pendingFiles.forEach(f => formData.append('files', f));
+        pendingFiles.forEach(f => {
+            formData.append('files', f);
+            console.log(`[Upload] Added file: ${f.name} (${f.size} bytes)`);
+        });
         if (artist) formData.append('artistOverride', artist);
         if (album) formData.append('albumOverride', album);
+
+        console.log(`[Upload] Starting fetch to /api/admin/upload. Total files: ${pendingFiles.length}`);
 
         btnUpload.disabled = true;
         progContainer.classList.remove('hidden');

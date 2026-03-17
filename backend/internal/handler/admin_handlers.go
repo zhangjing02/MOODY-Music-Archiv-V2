@@ -59,10 +59,12 @@ func AdminStatsHandler(w http.ResponseWriter, r *http.Request) {
 
 // AdminUploadHandler 负责处理超级上传中心的表单及文件落盘
 func AdminUploadHandler(musicDir string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+		reqID := fmt.Sprintf("UP_%d", time.Now().UnixNano()%10000)
+		log.Printf("📥 [%s] 开始处理上传请求: RemoteAddr=%s, ContentLength=%d", reqID, r.RemoteAddr, r.ContentLength)
+
 		defer func() {
 			if rec := recover(); rec != nil {
-				log.Printf("🔥 [Panic] AdminUploadHandler: %v", rec)
+				log.Printf("🔥 [%s] [Panic] AdminUploadHandler: %v", reqID, rec)
 				respondJSON(w, http.StatusInternalServerError, "文件处理过程中发生严重错误 (Panic)", nil)
 			}
 		}()
@@ -72,11 +74,15 @@ func AdminUploadHandler(musicDir string) http.HandlerFunc {
 			return
 		}
 
-		err := r.ParseMultipartForm(500 << 20) // 设置内存缓冲区，约500MB
+		log.Printf("⏳ [%s] 正在解析 MultipartForm (Limit: 500MB)...", reqID)
+		startTime := time.Now()
+		err := r.ParseMultipartForm(500 << 20) 
 		if err != nil {
+			log.Printf("❌ [%s] 解析表单失败 (耗时 %v): %v", reqID, time.Since(startTime), err)
 			respondJSON(w, http.StatusBadRequest, "无法解析表单数据: "+err.Error(), nil)
 			return
 		}
+		log.Printf("✅ [%s] 表单解析成功 (耗时 %v)", reqID, time.Since(startTime))
 
 		// 解析强制定向路径参数
 		artistOverride := strings.TrimSpace(r.FormValue("artistOverride"))
@@ -112,32 +118,32 @@ func AdminUploadHandler(musicDir string) http.HandlerFunc {
 
 		var savedFiles []string
 
-		// 将所有文件落盘并上传至 S3 (Cloudflare R2)
-		for _, fileHeader := range files {
+		log.Printf("💾 [%s] 准备落盘 %d 个文件...", reqID, len(files))
+		for i, fileHeader := range files {
+			fStart := time.Now()
 			file, err := fileHeader.Open()
 			if err != nil {
-				log.Printf("读取上传文件 %s 失败: %v", fileHeader.Filename, err)
+				log.Printf("❌ [%s] [%d] 读取上传文件 %s 失败: %v", reqID, i, fileHeader.Filename, err)
 				continue
 			}
 
-			// 1. 临时本地落盘 (用于后续 SyncMusic 解析元数据)
 			destPath := filepath.Join(targetBaseDir, fileHeader.Filename)
 			dest, err := os.Create(destPath)
 			if err != nil {
 				file.Close()
-				log.Printf("创建临时物理文件 %s 失败: %v", destPath, err)
+				log.Printf("❌ [%s] [%d] 创建物理文件失败: %s, err: %v", reqID, i, destPath, err)
 				continue
 			}
-			_, copyErr := io.Copy(dest, file)
+			n, copyErr := io.Copy(dest, file)
 			dest.Close()
-			file.Seek(0, io.SeekStart) // 重置 offset 以便后续读取
+			file.Seek(0, io.SeekStart) 
 
 			if copyErr != nil {
 				file.Close()
-				log.Printf("保存临时文件 %s 时写入失败: %v", destPath, copyErr)
+				log.Printf("❌ [%s] [%d] 写入物理文件失败: %s, err: %v", reqID, i, destPath, copyErr)
 				continue
 			}
-
+			log.Printf("📄 [%s] [%d] 落盘成功: %s (%d bytes, 耗时 %v)", reqID, i, fileHeader.Filename, n, time.Since(fStart))
 			savedFiles = append(savedFiles, destPath)
 		}
 
