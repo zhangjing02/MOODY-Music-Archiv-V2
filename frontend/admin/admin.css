@@ -288,12 +288,33 @@ input[type="text"]:focus {
 .file-item {
     display: flex;
     justify-content: space-between;
-    padding: 8px 12px;
+    align-items: center;
+    padding: 10px 12px;
     background: #181818;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
     border-radius: 4px;
     font-size: 12px;
 }
+
+.file-item .file-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+.file-item .status-label {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.status-waiting { color: var(--text-muted); border: 1px solid #444; }
+.status-uploading { background: var(--accent); color: #000; }
+.status-success { background: #2ecc71; color: #fff; }
+.status-error { background: var(--danger); color: #fff; }
 
 .progress-bar-container {
     height: 6px;

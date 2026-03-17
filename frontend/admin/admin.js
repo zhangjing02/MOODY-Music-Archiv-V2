@@ -78,82 +78,124 @@ function initUploader() {
     });
     fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
 
+    function renderFileList() {
+        fileListEl.innerHTML = '';
+        pendingFiles.forEach((fObj, index) => {
+            const el = document.createElement('div');
+            el.className = 'file-item';
+            
+            // 状态映射
+            let statusHtml = '';
+            if (fObj.status === 'waiting') statusHtml = '<span class="status-label status-waiting">等待中</span>';
+            else if (fObj.status === 'uploading') statusHtml = `<span class="status-label status-uploading">上传中 ${fObj.progress || 0}%</span>`;
+            else if (fObj.status === 'success') statusHtml = '<span class="status-label status-success">成功</span>';
+            else if (fObj.status === 'error') statusHtml = `<span class="status-label status-error">失败: ${fObj.error || ''}</span>`;
+
+            el.innerHTML = `
+                <div class="file-info">
+                    <span>${fObj.file.name}</span>
+                    ${statusHtml}
+                </div>
+                ${fObj.status === 'waiting' ? `<span style="cursor:pointer;color:var(--danger)" onclick="window.removeFile(${index})">❌</span>` : ''}
+            `;
+            fileListEl.appendChild(el);
+        });
+        btnUpload.disabled = pendingFiles.length === 0 || pendingFiles.some(f => f.status === 'uploading');
+    }
+
     function handleFiles(files) {
         for (let f of files) {
-            pendingFiles.push(f);
+            pendingFiles.push({
+                file: f,
+                status: 'waiting',
+                progress: 0,
+                error: null
+            });
         }
         renderFileList();
     }
 
-    function renderFileList() {
-        fileListEl.innerHTML = '';
-        pendingFiles.forEach((file, index) => {
-            const el = document.createElement('div');
-            el.className = 'file-item';
-            el.innerHTML = `<span>${file.name}</span> <span style="cursor:pointer;color:var(--danger)" onclick="window.removeFile(${index})">❌</span>`;
-            fileListEl.appendChild(el);
-        });
-        btnUpload.disabled = pendingFiles.length === 0;
-    }
-
     window.removeFile = (index) => {
+        if (pendingFiles[index].status === 'uploading') return;
         pendingFiles.splice(index, 1);
         renderFileList();
     };
 
+    // 单文件发送逻辑 (使用 XHR 以便获取进度)
+    function uploadSingleFile(fObj, artist, album) {
+        return new Promise((resolve) => {
+            const formData = new FormData();
+            formData.append('files', fObj.file);
+            if (artist) formData.append('artistOverride', artist);
+            if (album) formData.append('albumOverride', album);
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/api/admin/upload', true);
+
+            xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                    fObj.progress = Math.round((e.loaded / e.total) * 100);
+                    renderFileList();
+                }
+            };
+
+            xhr.onload = () => {
+                let data = {};
+                try { data = JSON.parse(xhr.responseText); } catch(e) { data = { message: "非 JSON 响应" }; }
+                
+                if (xhr.status >= 200 && xhr.status < 300 && data.code === 200) {
+                    fObj.status = 'success';
+                } else {
+                    fObj.status = 'error';
+                    fObj.error = data.message || `HTTP ${xhr.status}`;
+                }
+                renderFileList();
+                resolve();
+            };
+
+            xhr.onerror = () => {
+                fObj.status = 'error';
+                fObj.error = "网络连接故障";
+                renderFileList();
+                resolve();
+            };
+
+            fObj.status = 'uploading';
+            renderFileList();
+            xhr.send(formData);
+        });
+    }
+
     btnUpload.addEventListener('click', async () => {
-        if (pendingFiles.length === 0) return;
+        const toUpload = pendingFiles.filter(f => f.status === 'waiting' || f.status === 'error');
+        if (toUpload.length === 0) return;
 
         const artist = document.getElementById('up-artist').value.trim();
         const album = document.getElementById('up-album').value.trim();
 
-        const formData = new FormData();
-        pendingFiles.forEach(f => {
-            formData.append('files', f);
-            console.log(`[Upload] Added file: ${f.name} (${f.size} bytes)`);
-        });
-        if (artist) formData.append('artistOverride', artist);
-        if (album) formData.append('albumOverride', album);
-
-        console.log(`[Upload] Starting fetch to /api/admin/upload. Total files: ${pendingFiles.length}`);
-
         btnUpload.disabled = true;
         progContainer.classList.remove('hidden');
-        progBar.style.width = '30%';
 
-        try {
-            const res = await fetch('/api/admin/upload', {
-                method: 'POST',
-                body: formData 
-            });
-            
-            let data = {};
-            try {
-                data = await res.json();
-            } catch (jsonErr) {
-                data = { message: `HTTP ${res.status}: 服务器返回了非 JSON 错误` };
-            }
-
-            progBar.style.width = '100%';
-
-            if (res.ok && data.code === 200) {
-                showToast('上传与入库成功！');
-                pendingFiles = [];
-                renderFileList();
-                loadStats(); 
-            } else {
-                showToast(`上传失败: ${data.message || '未知错误'}`, 'error');
-                console.error("Upload Error Details:", data);
-            }
-        } catch (err) {
-            showToast(`网络错误: ${err.message}`, 'error');
-        } finally {
-            setTimeout(() => {
-                btnUpload.disabled = pendingFiles.length === 0;
-                progContainer.classList.add('hidden');
-                progBar.style.width = '0%';
-            }, 1000);
+        let completed = 0;
+        for (const fObj of toUpload) {
+            await uploadSingleFile(fObj, artist, album);
+            completed++;
+            progBar.style.width = `${Math.round((completed / toUpload.length) * 100)}%`;
         }
+
+        const allSuccess = toUpload.every(f => f.status === 'success');
+        if (allSuccess) {
+            showToast(`全部 ${toUpload.length} 首歌曲处理完毕！`);
+            loadStats();
+        } else {
+            showToast('部分文件上传失败，请检查列表状态', 'error');
+        }
+
+        setTimeout(() => {
+            btnUpload.disabled = false;
+            // 不自动隐藏 progContainer 以便查看结果？
+            // 还是决定由用户收到通知后决定
+        }, 1000);
     });
 }
 
