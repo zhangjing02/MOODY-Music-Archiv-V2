@@ -324,7 +324,9 @@ type MusicMetadata struct {
 // ExtractMetadata 从路径和文件元数据中提取信息，优先信任目录结构
 func ExtractMetadata(path string, musicBaseDir string) (*MusicMetadata, error) {
 	relPath, _ := filepath.Rel(musicBaseDir, path)
-	parts := strings.Split(relPath, string(os.PathSeparator))
+	// 核心修复：强制转换为正斜杠，统一跨平台路径解析逻辑
+	relPathUnix := filepath.ToSlash(relPath)
+	parts := strings.Split(relPathUnix, "/")
 	fileName := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
 
 	// 1. 尝试从文件内部提取标签 (作为补充)
@@ -604,21 +606,27 @@ func SaveToLibrary(m *MusicMetadata, relPath string, lrcPath string) (int64, boo
 		targetNorm := NormalizeTitle(m.Album)
 		albRows, _ := tx.Query("SELECT id, title FROM albums WHERE artist_id = ?", artistID)
 		if albRows != nil {
+			defer albRows.Close()
 			for albRows.Next() {
 				var abid int64
 				var abTitle string
 				albRows.Scan(&abid, &abTitle)
-				if NormalizeTitle(abTitle) == targetNorm {
+				albTitleNorm := NormalizeTitle(abTitle)
+				// 名录主权对齐核心逻辑：
+				// 如果文件路径（m.Album = dirAlbum）与名录标题存在包含关系
+				// 例如：名录是 "范特西"，目录是 "范特西 (Jay)"
+				if albTitleNorm == targetNorm || 
+				   (len(albTitleNorm) > 4 && strings.Contains(targetNorm, albTitleNorm)) ||
+				   (len(targetNorm) > 4 && strings.Contains(albTitleNorm, targetNorm)) {
 					albumID = abid
 					err = nil
 					break
 				}
 			}
-			albRows.Close()
 		}
 		if albumID == 0 {
 			// 铁律：名录中不存在此专辑，跳过
-			log.Printf("⚠️ [Skip] 歌手 [%s] 名录中不存在专辑 [%s]，跳过入库", m.Artist, m.Album)
+			log.Printf("⚠️ [Skip] 歌手ID[%d] 名录中不存在专辑 [%s]，跳过入库", artistID, m.Album)
 			return 0, false, nil
 		}
 	} else if err != nil {
@@ -755,6 +763,12 @@ func SaveToLibrary(m *MusicMetadata, relPath string, lrcPath string) (int64, boo
 		}
 	}
 
+	if err == sql.ErrNoRows {
+		// 铁律：名录中未命中任何歌曲，仅记录日志，绝不插入新记录
+		log.Printf("⚠️ [Skip] 未命中任何名录: [%s] (歌手: %s, 专辑: %s)，跳过入库", m.Title, m.Artist, m.Album)
+		return 0, false, nil
+	}
+
 	if err == nil {
 		log.Printf("📋 [Dry-Run] 即将点亮: [ID:%d] (%s) ← 文件: %s (Storage: %s)", targetID, finalTitle, relPath, storageID)
 		if lrcPath != "" {
@@ -775,8 +789,7 @@ func SaveToLibrary(m *MusicMetadata, relPath string, lrcPath string) (int64, boo
 		return targetID, false, nil
 	}
 
-	// 铁律：名录中未命中任何歌曲，仅记录日志，绝不插入新记录
-	log.Printf("⚠️ [Skip] 未命中任何名录: [%s] (歌手: %s, 专辑: %s)，跳过入库", m.Title, m.Artist, m.Album)
+	// 容错处理
 	return 0, false, nil
 }
 

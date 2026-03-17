@@ -54,3 +54,18 @@ type ReportErrorRequest struct {
 	SongID  int    `json:"songId"`  // 发生错误的歌曲 ID 或标识
 	Message string `json:"message"` // 错误详细信息
 }
+// UpdateAlbumRequest 定义专辑更新的请求载荷结构 (用于管理后台纠偏)
+type UpdateAlbumRequest struct {
+	ArtistName       string            `json:"artist_name"`     // (必填) 歌手名
+	OldAlbumTitle    string            `json:"old_album_title"` // (必填) 原专辑名
+	NewAlbumTitle    string            `json:"new_album_title"` // (选填) 新专辑名
+	Tracks           map[string]string `json:"tracks"`          // (选填) "track_index": "new_title"
+	SpecificTracks   []struct {
+		ID    int    `json:"id"`
+		Title string `json:"title"`
+	} `json:"specific_tracks"` // (选填) 直接基于 ID 的轨道修正
+	AddMissingTracks []struct {
+		Index int    `json:"index"`
+		Title string `json:"title"`
+	} `json:"add_missing_tracks"` // (选填) 追加的缺失曲目
+}

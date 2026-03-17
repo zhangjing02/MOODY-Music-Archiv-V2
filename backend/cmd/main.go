@@ -119,6 +119,12 @@ func main() {
 	http.HandleFunc("/api/lyrics/raw", handler.GetRawLyricsHandler)
 	http.HandleFunc("/api/lyrics/update", handler.UpdateLyricsHandler)
 	http.HandleFunc("/api/welcome-images", handler.GetWelcomeImagesHandler(storageDir))
+	// [V2.3 Fix] 将所有 admin 路由也注册到 8080 主端口，解决 Claw Cloud 线上环境下只开放 8080 导致管理后台 API 全部 404 的问题
+	http.HandleFunc("/api/admin/stats", handler.AdminStatsHandler)
+	http.HandleFunc("/api/admin/upload", handler.AdminUploadHandler(musicDir))
+	http.HandleFunc("/api/admin/cleanup-duplicates", handler.AdminCleanupDuplicatesHandler())
+	http.HandleFunc("/api/admin/db/upload", handler.DBUploadHandler())
+	http.HandleFunc("/api/admin/update-album", handler.AdminUpdateAlbumHandler())
 
 	// 4. 静态资源服务与编码修正
 	fileServer := http.FileServer(http.Dir(frontendDir))
@@ -198,7 +204,8 @@ func main() {
 	adminMux.HandleFunc("/api/status", handler.StatusHandler) // 用于探活
 	adminMux.HandleFunc("/api/admin/scrub", handler.AdminScrubHandler())
 	adminMux.HandleFunc("/api/admin/governance", handler.GovernanceHandler(musicDir))
-	adminMux.HandleFunc("/api/admin/album/update", handler.UpdateAlbumListHandler())
+	adminMux.HandleFunc("/api/admin/album/update", handler.AdminUpdateAlbumHandler())
+	adminMux.HandleFunc("/api/admin/cleanup-duplicates", handler.AdminCleanupDuplicatesHandler())
 	adminMux.HandleFunc("/api/sync/full", handler.FullSyncHandler(musicDir))
 	adminMux.HandleFunc("/api/admin/db/upload", handler.DBUploadHandler())
 

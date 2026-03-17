@@ -197,8 +197,11 @@ app.get('/api/songs', async (c) => {
     }
 
     if (queryAlbum) {
-      sql += ` AND al.title LIKE ?`
+      // Normalize query: remove spaces and common brackets for better matching
+      const normalizedAlbum = queryAlbum.replace(/[()（）\s]/g, '');
+      sql += ` AND (al.title LIKE ? OR REPLACE(REPLACE(REPLACE(REPLACE(al.title, '(', ''), ')', ''), '（', ''), '）', '') LIKE ?)`
       params.push(`%${queryAlbum}%`)
+      params.push(`%${normalizedAlbum}%`)
     }
 
     sql += ` ORDER BY a.name ASC, al.release_date ASC, s.track_index ASC`
@@ -275,15 +278,24 @@ app.get('/api/search', async (c) => {
     }
     const likeQuery = `%${q}%`
 
+    const normalizedQ = q.replace(/[()（）\s]/g, '');
     const stmtArtists = c.env.DB.prepare(`
       SELECT 
         id, name, region, photo_url,
         (SELECT COUNT(*) FROM albums WHERE artist_id = artists.id) as album_count
       FROM artists 
-      WHERE name LIKE ?
-    `).bind(likeQuery)
-    const stmtAlbums = c.env.DB.prepare('SELECT id, title, artist_id as ArtistID, cover_url as CoverURL FROM albums WHERE title LIKE ?').bind(likeQuery)
-    const stmtSongs = c.env.DB.prepare('SELECT id, title, artist_id as ArtistID, album_id as Album_ID, file_path as FilePath FROM songs WHERE title LIKE ?').bind(likeQuery)
+      WHERE name LIKE ? OR REPLACE(REPLACE(REPLACE(REPLACE(name, '(', ''), ')', ''), '（', ''), '）', '') LIKE ?
+    `).bind(likeQuery, `%${normalizedQ}%`)
+    const stmtAlbums = c.env.DB.prepare(`
+      SELECT id, title, artist_id as ArtistID, cover_url as CoverURL 
+      FROM albums 
+      WHERE title LIKE ? OR REPLACE(REPLACE(REPLACE(REPLACE(title, '(', ''), ')', ''), '（', ''), '）', '') LIKE ?
+    `).bind(likeQuery, `%${normalizedQ}%`)
+    const stmtSongs = c.env.DB.prepare(`
+      SELECT id, title, artist_id as ArtistID, album_id as Album_ID, file_path as FilePath 
+      FROM songs 
+      WHERE title LIKE ? OR REPLACE(REPLACE(REPLACE(REPLACE(title, '(', ''), ')', ''), '（', ''), '）', '') LIKE ?
+    `).bind(likeQuery, `%${normalizedQ}%`)
 
     // Run searches concurrently in D1
     const [resArtists, resAlbums, resSongs] = await c.env.DB.batch([stmtArtists, stmtAlbums, stmtSongs])
@@ -517,6 +529,165 @@ app.post('/api/admin/cleanup-duplicates', async (c) => {
       code: 200,
       message: `清理完成：回收了 ${deletedAlbums} 个冗余专辑占位符`,
       data: { deletedAlbums }
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message }, 500)
+  }
+})
+
+// ==========================================
+// 12. Admin: Move Songs to Album
+// ==========================================
+app.post('/api/admin/songs/move', async (c) => {
+  try {
+    const { targetAlbumId, songIds, songIdRange } = await c.req.json() as {
+      targetAlbumId: number,
+      songIds?: number[],
+      songIdRange?: [number, number]
+    }
+
+    if (!targetAlbumId) {
+      return c.json({ code: 400, message: 'Missing targetAlbumId' }, 400)
+    }
+
+    let query = 'UPDATE songs SET album_id = ? WHERE '
+    const params: any[] = [targetAlbumId]
+
+    if (songIds && songIds.length > 0) {
+      query += `id IN (${songIds.map(() => '?').join(',')})`
+      params.push(...songIds)
+    } else if (songIdRange && songIdRange.length === 2) {
+      query += 'id BETWEEN ? AND ?'
+      params.push(songIdRange[0], songIdRange[1])
+    } else {
+      return c.json({ code: 400, message: 'Missing songIds or songIdRange' }, 400)
+    }
+
+    const result = await c.env.DB.prepare(query).bind(...params).run()
+
+    return c.json({
+      code: 200,
+      message: `成功移动 ${result.meta.changes} 首歌曲到专辑 ${targetAlbumId}`,
+      meta: result.meta
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message }, 500)
+  }
+})
+
+// ==========================================
+// 13. Admin: Merge Albums
+// ==========================================
+app.post('/api/admin/albums/merge', async (c) => {
+  try {
+    const { sourceId, targetId } = await c.req.json() as { sourceId: number, targetId: number }
+
+    if (!sourceId || !targetId) {
+      return c.json({ code: 400, message: 'Missing sourceId or targetId' }, 400)
+    }
+
+    // Move all songs from source to target
+    const moveSongs = c.env.DB.prepare('UPDATE songs SET album_id = ? WHERE album_id = ?').bind(targetId, sourceId)
+    // Delete source album
+    const deleteAlbum = c.env.DB.prepare('DELETE FROM albums WHERE id = ?').bind(sourceId)
+
+    const results = await c.env.DB.batch([moveSongs, deleteAlbum])
+
+    return c.json({
+      code: 200,
+      message: `成功将专辑 ${sourceId} 合并至 ${targetId}`,
+      data: {
+        songsMoved: results[0].meta.changes
+      }
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message }, 500)
+  }
+})
+
+// ==========================================
+// 14. Admin: Update Album Info
+// ==========================================
+app.patch('/api/admin/albums/:id', async (c) => {
+  try {
+    const id = c.req.param('id')
+    const body = await c.req.json()
+    const allowedFields = ['title', 'release_date', 'cover_url', 'artist_id']
+    
+    const updates = Object.keys(body)
+      .filter(k => allowedFields.includes(k))
+      .map(k => `${k} = ?`)
+    
+    if (updates.length === 0) {
+      return c.json({ code: 400, message: 'No valid fields provided' }, 400)
+    }
+
+    const query = `UPDATE albums SET ${updates.join(', ')} WHERE id = ?`
+    const params = Object.keys(body)
+      .filter(k => allowedFields.includes(k))
+      .map(k => body[k])
+    params.push(id)
+
+    const result = await c.env.DB.prepare(query).bind(...params).run()
+
+    return c.json({
+      code: 200,
+      message: `成功更新专辑 ${id}`,
+      meta: result.meta
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message }, 500)
+  }
+})
+
+// ==========================================
+// 15. Admin: Batch Update Songs
+// ==========================================
+app.post('/api/admin/songs/batch-update', async (c) => {
+  try {
+    const { updates } = await c.req.json() as { 
+      updates: Array<{ id: number, title?: string, track_index?: number, album_id?: number }> 
+    }
+
+    if (!updates || !updates.length) {
+      return c.json({ code: 400, message: 'Missing updates' }, 400)
+    }
+
+    const stmts: D1PreparedStatement[] = []
+    for (const item of updates) {
+      if (!item.id) continue
+      
+      const setClauses: string[] = []
+      const params: any[] = []
+      
+      if (item.title !== undefined) {
+        setClauses.push('title = ?')
+        params.push(item.title)
+      }
+      if (item.track_index !== undefined) {
+        setClauses.push('track_index = ?')
+        params.push(item.track_index)
+      }
+      if (item.album_id !== undefined) {
+        setClauses.push('album_id = ?')
+        params.push(item.album_id)
+      }
+      
+      if (setClauses.length > 0) {
+        params.push(item.id)
+        stmts.push(c.env.DB.prepare(`UPDATE songs SET ${setClauses.join(', ')} WHERE id = ?`).bind(...params))
+      }
+    }
+
+    if (stmts.length === 0) {
+      return c.json({ code: 400, message: 'No valid updates found' }, 400)
+    }
+
+    await c.env.DB.batch(stmts)
+
+    return c.json({
+      code: 200,
+      message: `成功批量更新 ${stmts.length} 条歌曲信息`
     })
   } catch (error: any) {
     return c.json({ code: 500, message: error.message }, 500)

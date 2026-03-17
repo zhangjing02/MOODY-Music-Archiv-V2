@@ -176,6 +176,36 @@ function initFixer() {
             showToast('请求异常', 'error');
         }
     });
+
+    document.getElementById('btn-fix-song').addEventListener('click', async () => {
+        const songId = parseInt(document.getElementById('fix-song-id').value);
+        const newTitle = document.getElementById('fix-song-title').value.trim();
+
+        if (isNaN(songId) || !newTitle) {
+            showToast('请填写完整 ID 和新标题', 'error');
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/admin/album/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    artist_name: "ADMIN_OVERRIDE", // 后端逻辑需支持跳过歌手校验或由前端传正确值
+                    old_album_title: "ADMIN_OVERRIDE",
+                    specific_tracks: [{ id: songId, title: newTitle }]
+                })
+            });
+            if (res.ok) {
+                showToast('曲目名已成功覆盖！');
+                loadStats();
+            } else {
+                showToast('覆盖失败', 'error');
+            }
+        } catch (e) {
+            showToast('请求异常', 'error');
+        }
+    });
 }
 
 // === 模块 5：运维治理 ===
@@ -222,7 +252,7 @@ function initGovernance() {
         if (!confirm('确认执行路径自修复？此操作将自动补全所有缺失的 music/ 前缀。')) return;
         try {
             showToast('正在对齐路径，请稍候...');
-            const res = await fetch('/api/admin/fix-paths', { method: 'POST' });
+            const res = await fetch('/api/admin/scrub', { method: 'POST' });
             const data = await res.json();
             if (res.ok) {
                 showToast(data.message || '修复完成！');

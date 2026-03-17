@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"moody-backend/internal/database"
+	"moody-backend/internal/model"
 	"moody-backend/internal/service"
 	"moody-backend/pkg/s3client"
 )
@@ -81,6 +82,8 @@ func AdminUploadHandler(musicDir string) http.HandlerFunc {
 			uploadSubDir = "Uploaded_Queue"
 		}
 
+		// [V2.2 Fix] 统一路径分隔符，确保在 Windows 环境下也能通过目录段识别歌手/专辑
+		uploadSubDir = filepath.ToSlash(uploadSubDir)
 		targetBaseDir := filepath.Join(musicDir, uploadSubDir)
 		if err := os.MkdirAll(targetBaseDir, 0755); err != nil {
 			respondJSON(w, http.StatusInternalServerError, "创建落盘目录失败: "+err.Error(), nil)
@@ -177,6 +180,134 @@ func AdminUploadHandler(musicDir string) http.HandlerFunc {
 		respondJSON(w, http.StatusOK, fmt.Sprintf("上传并入库成功 (R2已同步): 解析音频 %d 首，外延歌词 %d 首", parsedMusic, syncedLrcs), map[string]interface{}{
 			"saved_count": len(savedFiles),
 			"target_dir":  targetBaseDir,
+		})
+	}
+}
+
+// AdminUpdateAlbumHandler 处理专辑与曲目的深度修正 (迁移并增强自 handlers.go)
+func AdminUpdateAlbumHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			respondJSON(w, http.StatusMethodNotAllowed, "Only POST supported", nil)
+			return
+		}
+
+		var req model.UpdateAlbumRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			respondJSON(w, http.StatusBadRequest, "无法解析请求数据: "+err.Error(), nil)
+			return
+		}
+
+		if req.ArtistName == "" || req.OldAlbumTitle == "" {
+			respondJSON(w, http.StatusBadRequest, "artist_name 与 old_album_title 为必填项", nil)
+			return
+		}
+
+		// [New] 特殊路径：如果指定了 ADMIN_OVERRIDE，跳过专辑查找，仅处理 SpecificTracks
+		if req.ArtistName == "ADMIN_OVERRIDE" {
+			tx, err := database.DB.Begin()
+			if err != nil {
+				respondJSON(w, http.StatusInternalServerError, "DB Transaction Error", nil)
+				return
+			}
+			defer tx.Rollback()
+
+			if len(req.SpecificTracks) > 0 {
+				for _, st := range req.SpecificTracks {
+					if st.ID > 0 && st.Title != "" {
+						_, err := tx.Exec("UPDATE songs SET title = ? WHERE id = ?", st.Title, st.ID)
+						if err != nil {
+							log.Printf("更新歌曲 ID %d 失败: %v", st.ID, err)
+						}
+					}
+				}
+			}
+			tx.Commit()
+			service.LoadSkeleton()
+			respondJSON(w, http.StatusOK, "曲目名已通过强力模式覆盖", nil)
+			return
+		}
+
+		log.Printf("🛠️ [Admin] 收到清洗请求：歌手 <%s> 专辑 <%s>...", req.ArtistName, req.OldAlbumTitle)
+
+		tx, err := database.DB.Begin()
+		if err != nil {
+			respondJSON(w, http.StatusInternalServerError, "DB Transaction Error", nil)
+			return
+		}
+		defer tx.Rollback()
+
+		// 1. 获取歌手 ID
+		var artistID int64
+		_ = tx.QueryRow("SELECT id FROM artists WHERE name = ?", req.ArtistName).Scan(&artistID)
+		if artistID == 0 {
+			respondJSON(w, http.StatusNotFound, "未找到该歌手", nil)
+			return
+		}
+
+		// 2. 获取目标专辑 ID
+		var albumID int64
+		_ = tx.QueryRow("SELECT id FROM albums WHERE artist_id = ? AND title = ? LIMIT 1", artistID, req.OldAlbumTitle).Scan(&albumID)
+		if albumID == 0 {
+			respondJSON(w, http.StatusNotFound, "在该歌手下未找到指定专辑", nil)
+			return
+		}
+
+		// 3. 更新专辑名称
+		if req.NewAlbumTitle != "" && req.NewAlbumTitle != req.OldAlbumTitle {
+			_, err = tx.Exec("UPDATE albums SET title = ? WHERE id = ?", req.NewAlbumTitle, albumID)
+			if err != nil {
+				respondJSON(w, http.StatusInternalServerError, "更新专辑名失败: "+err.Error(), nil)
+				return
+			}
+		}
+
+		// 4. 处理曲目更新
+		if len(req.Tracks) > 0 {
+			for idxStr, newTitle := range req.Tracks {
+				var trackIdx int
+				fmt.Sscanf(idxStr, "%d", &trackIdx)
+				_, err := tx.Exec("UPDATE songs SET title = ? WHERE album_id = ? AND track_index = ?", newTitle, albumID, trackIdx)
+				if err != nil {
+					log.Printf("更新音轨 %d 失败: %v", trackIdx, err)
+				}
+			}
+		}
+
+		// 5. 处理曲目直接更新 (通过 song_id)
+		if len(req.SpecificTracks) > 0 {
+			for _, st := range req.SpecificTracks {
+				if st.ID > 0 && st.Title != "" {
+					_, err := tx.Exec("UPDATE songs SET title = ? WHERE id = ?", st.Title, st.ID)
+					if err != nil {
+						log.Printf("更新歌曲 ID %d 失败: %v", st.ID, err)
+					}
+				}
+			}
+		}
+
+		tx.Commit()
+		service.LoadSkeleton()
+
+		respondJSON(w, http.StatusOK, "数据修正成功", nil)
+	}
+}
+
+// AdminCleanupDuplicatesHandler 处理重复名录清理
+func AdminCleanupDuplicatesHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			respondJSON(w, http.StatusMethodNotAllowed, "Only POST supported", nil)
+			return
+		}
+
+		mergedArtists := service.DeduplicateArtists()
+		mergedAlbums := service.DeduplicateAlbums()
+		service.LoadSkeleton()
+
+		respondJSON(w, http.StatusOK, "冗余清理完成", map[string]int{
+			"merged_artists": mergedArtists,
+			"merged_albums":  mergedAlbums,
 		})
 	}
 }
