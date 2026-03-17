@@ -417,6 +417,17 @@ func ExtractMetadata(path string, musicBaseDir string) (*MusicMetadata, error) {
 				title = strings.TrimSpace(title[dotIdx+1:])
 			}
 		}
+	} else {
+		// [加固] 路径深度不足 3 层时的兜底逻辑
+		if artist == "" {
+			artist = "未知艺术家"
+		}
+		if album == "" {
+			album = "未知专辑"
+		}
+		if title == "" {
+			title = fileName
+		}
 	}
 
 	metadata := &MusicMetadata{

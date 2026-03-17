@@ -119,9 +119,15 @@ function initUploader() {
         try {
             const res = await fetch('/api/admin/upload', {
                 method: 'POST',
-                body: formData // 浏览器会自动设为 multipart/form-data
+                body: formData 
             });
-            const data = await res.json();
+            
+            let data = {};
+            try {
+                data = await res.json();
+            } catch (jsonErr) {
+                data = { message: `HTTP ${res.status}: 服务器返回了非 JSON 错误` };
+            }
 
             progBar.style.width = '100%';
 
@@ -129,12 +135,13 @@ function initUploader() {
                 showToast('上传与入库成功！');
                 pendingFiles = [];
                 renderFileList();
-                loadStats(); // 刷新统计
+                loadStats(); 
             } else {
                 showToast(`上传失败: ${data.message || '未知错误'}`, 'error');
+                console.error("Upload Error Details:", data);
             }
         } catch (err) {
-            showToast('网络错误', 'error');
+            showToast(`网络错误: ${err.message}`, 'error');
         } finally {
             setTimeout(() => {
                 btnUpload.disabled = pendingFiles.length === 0;

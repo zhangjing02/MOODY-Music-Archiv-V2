@@ -33,6 +33,13 @@ func respondJSON(w http.ResponseWriter, statusCode int, message string, data int
 
 // AdminStatsHandler 负责提供大盘数据概览
 func AdminStatsHandler(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("🔥 [Panic] AdminStatsHandler: %v", r)
+			respondJSON(w, http.StatusInternalServerError, "服务器内部发生严重错误 (Panic)", nil)
+		}
+	}()
+
 	if r.Method != "GET" {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
@@ -53,6 +60,13 @@ func AdminStatsHandler(w http.ResponseWriter, r *http.Request) {
 // AdminUploadHandler 负责处理超级上传中心的表单及文件落盘
 func AdminUploadHandler(musicDir string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				log.Printf("🔥 [Panic] AdminUploadHandler: %v", rec)
+				respondJSON(w, http.StatusInternalServerError, "文件处理过程中发生严重错误 (Panic)", nil)
+			}
+		}()
+
 		if r.Method != "POST" {
 			respondJSON(w, http.StatusMethodNotAllowed, "必须使用 POST 提交", nil)
 			return
