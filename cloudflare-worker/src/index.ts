@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import { registerUploadRoutes } from './upload'
 
 type Bindings = {
   DB: D1Database
@@ -645,8 +646,8 @@ app.patch('/api/admin/albums/:id', async (c) => {
 // ==========================================
 app.post('/api/admin/songs/batch-update', async (c) => {
   try {
-    const { updates } = await c.req.json() as { 
-      updates: Array<{ id: number, title?: string, track_index?: number, album_id?: number }> 
+    const { updates } = await c.req.json() as {
+      updates: Array<{ id: number, title?: string, track_index?: number, album_id?: number }>
     }
 
     if (!updates || !updates.length) {
@@ -656,10 +657,10 @@ app.post('/api/admin/songs/batch-update', async (c) => {
     const stmts: D1PreparedStatement[] = []
     for (const item of updates) {
       if (!item.id) continue
-      
+
       const setClauses: string[] = []
       const params: any[] = []
-      
+
       if (item.title !== undefined) {
         setClauses.push('title = ?')
         params.push(item.title)
@@ -672,7 +673,7 @@ app.post('/api/admin/songs/batch-update', async (c) => {
         setClauses.push('album_id = ?')
         params.push(item.album_id)
       }
-      
+
       if (setClauses.length > 0) {
         params.push(item.id)
         stmts.push(c.env.DB.prepare(`UPDATE songs SET ${setClauses.join(', ')} WHERE id = ?`).bind(...params))
@@ -693,5 +694,104 @@ app.post('/api/admin/songs/batch-update', async (c) => {
     return c.json({ code: 500, message: error.message }, 500)
   }
 })
+
+// ==========================================
+// 16. Admin: Create Full Song Metadata (Artist + Album + Song)
+// [CRITICAL FIX] 用于 Go 后端上传后同步数据到 D1
+// ==========================================
+app.post('/api/admin/songs/create-full', async (c) => {
+  try {
+    const { songs } = await c.req.json() as {
+      songs: Array<{
+        title: string
+        artist_name: string
+        album_title: string
+        file_path: string
+        lrc_path?: string
+        track_index?: number
+        duration?: number
+      }>
+    }
+
+    if (!songs || !songs.length) {
+      return c.json({ code: 400, message: 'Missing songs array' }, 400)
+    }
+
+    const stmts: D1PreparedStatement[] = []
+    const createdArtists = new Map<string, number>()
+    const createdAlbums = new Map<string, number>()
+    const createdSongs: number[] = []
+
+    for (const song of songs) {
+      // 1. 查找或创建艺人
+      let artistId: number
+      const artistKey = song.artist_name
+
+      if (createdArtists.has(artistKey)) {
+        artistId = createdArtists.get(artistKey)!
+      } else {
+        const { results: artistResults } = await c.env.DB.prepare('SELECT id FROM artists WHERE name = ?').bind(song.artist_name).all()
+        if (artistResults.length > 0) {
+          artistId = (artistResults[0] as any).id
+        } else {
+          // 创建新艺人
+          const artistResult = await c.env.DB.prepare('INSERT INTO artists (name, region) VALUES (?, ?)').bind(song.artist_name, '华语').run()
+          artistId = artistResult.meta.last_row_id
+        }
+        createdArtists.set(artistKey, artistId)
+      }
+
+      // 2. 查找或创建专辑
+      let albumId: number
+      const albumKey = `${artistId}-${song.album_title}`
+
+      if (createdAlbums.has(albumKey)) {
+        albumId = createdAlbums.get(albumKey)!
+      } else {
+        const { results: albumResults } = await c.env.DB.prepare('SELECT id FROM albums WHERE artist_id = ? AND title = ?').bind(artistId, song.album_title).all()
+        if (albumResults.length > 0) {
+          albumId = (albumResults[0] as any).id
+        } else {
+          // 创建新专辑
+          const albumResult = await c.env.DB.prepare('INSERT INTO albums (artist_id, title) VALUES (?, ?)').bind(artistId, song.album_title).run()
+          albumId = albumResult.meta.last_row_id
+        }
+        createdAlbums.set(albumKey, albumId)
+      }
+
+      // 3. 创建歌曲记录
+      const songResult = await c.env.DB.prepare(
+        'INSERT INTO songs (title, album_id, file_path, lrc_path, track_index) VALUES (?, ?, ?, ?, ?)'
+      ).bind(
+        song.title,
+        albumId,
+        song.file_path,
+        song.lrc_path || null,
+        song.track_index || null
+      ).run()
+
+      createdSongs.push(songResult.meta.last_row_id)
+    }
+
+    return c.json({
+      code: 200,
+      message: `成功创建 ${createdSongs.length} 首歌曲（艺人: ${createdArtists.size}, 专辑: ${createdAlbums.size}）`,
+      data: {
+        created_songs: createdSongs.length,
+        created_artists: createdArtists.size,
+        created_albums: createdAlbums.size,
+        song_ids: createdSongs
+      }
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message }, 500)
+  }
+})
+
+// ==========================================
+// 17. Admin: Upload Routes
+// 注册新的文件上传路由
+// ==========================================
+registerUploadRoutes(app)
 
 export default app

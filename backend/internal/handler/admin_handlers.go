@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -17,6 +18,57 @@ import (
 	"moody-backend/internal/service"
 	"moody-backend/pkg/s3client"
 )
+
+// SongMetadata 用于同步到 Worker D1 的歌曲元数据结构
+type SongMetadata struct {
+	Title      string `json:"title"`
+	ArtistName string `json:"artist_name"`
+	AlbumTitle string `json:"album_title"`
+	FilePath   string `json:"file_path"`
+	LrcPath    string `json:"lrc_path,omitempty"`
+	TrackIndex *int   `json:"track_index,omitempty"`
+}
+
+// syncToWorkerD1 将上传的歌曲元数据同步到 Cloudflare Worker D1
+func syncToWorkerD1(songs []SongMetadata) error {
+	workerEndpoint := os.Getenv("WORKER_ENDPOINT")
+	if workerEndpoint == "" {
+		workerEndpoint = "https://moody-worker.changgepd.workers.dev"
+	}
+
+	url := fmt.Sprintf("%s/api/admin/songs/create-full", workerEndpoint)
+
+	payload := map[string][]SongMetadata{
+		"songs": songs,
+	}
+
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("JSON 序列化失败: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("创建请求失败: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("请求 Worker API 失败: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("Worker API 返回错误 %d: %s", resp.StatusCode, string(body))
+	}
+
+	log.Printf("✅ [D1-Sync] 成功同步 %d 首歌曲到 Worker D1", len(songs))
+	return nil
+}
 
 // respondJSON 封装统一响应
 func respondJSON(w http.ResponseWriter, statusCode int, message string, data interface{}) {
@@ -155,18 +207,31 @@ func AdminUploadHandler(musicDir string) http.HandlerFunc {
 		}
 
 		// 文件全部处理后，立刻触发仅针对该目标目录的识别进库
-		log.Printf("🚀 批量上传完毕，准备自动挂载并计算 ID...")
+		log.Printf("🚀 [%s] 批量上传完毕，准备自动挂载并计算 ID...", reqID)
 		scanSubDir := uploadSubDir
 		parsedMusic, syncedLrcs, syncErr := service.SyncMusic(musicDir, scanSubDir, nil)
+
+		// [CRITICAL FIX] R2 上传状态跟踪
+		r2UploadStatus := "unknown"
+		r2UploadCount := 0
+		r2UploadErrors := 0
+
+		// [NEW] D1 同步状态跟踪
+		d1SyncStatus := "skipped"
+		var d1SyncErr error
 
 		if syncErr == nil {
 			// [New] 核心强化：入库成功后，查询所有刚同步好的 s_ID 文件并推送到 R2
 			// 这样做可以确保云端存储的是 ID 命名的规范文件
-			go func() {
-				s3 := s3client.GetClient()
-				if s3 == nil {
-					return
-				}
+			log.Printf("📤 [%s] 开始上传文件到 R2...", reqID)
+
+			s3 := s3client.GetClient()
+			if s3 == nil {
+				// [CRITICAL] 如果 R2 客户端未初始化，记录严重错误
+				log.Printf("❌ [%s] [CRITICAL] R2 客户端未初始化！文件未上传到云端，前端将无法播放。请检查 R2 环境变量配置。", reqID)
+				r2UploadStatus = "failed"
+			} else {
+				// 同步上传（不使用 goroutine），确保所有文件都上传完成
 				for _, localPath := range savedFiles {
 					// 注意：SyncMusic 可能会把文件改名为 s_ID.mp3
 					// 我们需要探测最新的状态
@@ -174,25 +239,92 @@ func AdminUploadHandler(musicDir string) http.HandlerFunc {
 					ext := filepath.Ext(localPath)
 					pattern := filepath.Join(dir, "s_*" + ext)
 					matches, _ := filepath.Glob(pattern)
-					
+
+					if len(matches) == 0 {
+						// 如果没有找到 s_* 文件，尝试上传原始文件
+						matches = []string{localPath}
+					}
+
 					for _, match := range matches {
-						// 检查文件的修改时间，确保是刚刚生成的 (简单启发式)
 						if f, err := os.Open(match); err == nil {
 							defer f.Close()
 							rel, _ := filepath.Rel(musicDir, match)
 							objectKey := filepath.ToSlash(filepath.Join("music", rel))
-							
+
 							contentType := "application/octet-stream"
 							if strings.HasSuffix(match, ".mp3") { contentType = "audio/mpeg" }
 							if strings.HasSuffix(match, ".lrc") { contentType = "text/plain" }
-							
+
 							if err := s3.UploadFile(context.Background(), objectKey, f, contentType); err == nil {
-								log.Printf("✨ [Upload-to-R2] ID 化资产已成功归位: %s", objectKey)
+								log.Printf("✨ [%s] [Upload-to-R2] 成功: %s", reqID, objectKey)
+								r2UploadCount++
+							} else {
+								log.Printf("❌ [%s] [Upload-to-R2] 失败: %s, 错误: %v", reqID, objectKey, err)
+								r2UploadErrors++
 							}
 						}
 					}
 				}
-			}()
+
+				if r2UploadErrors == 0 {
+					r2UploadStatus = "success"
+				} else {
+					r2UploadStatus = "partial"
+				}
+
+				// [NEW] R2 上传成功后，同步元数据到 Cloudflare D1
+				if r2UploadStatus == "success" {
+					log.Printf("🌐 [%s] 开始同步元数据到 Cloudflare Worker D1...", reqID)
+					d1SyncStatus = "attempting"
+
+					// 提取所有 MP3 文件的元数据
+					var songsToSync []SongMetadata
+					for _, localPath := range savedFiles {
+						if filepath.Ext(localPath) == ".mp3" {
+							// 读取 MP3 元数据
+							if meta, err := service.ExtractMetadata(localPath, musicDir); err == nil {
+								rel, _ := filepath.Rel(musicDir, localPath)
+								rel = filepath.ToSlash(rel)
+
+								// 检查是否被重命名为 s_ID.mp3
+								dir := filepath.Dir(localPath)
+								ext := filepath.Ext(localPath)
+								pattern := filepath.Join(dir, "s_*" + ext)
+								if matches, _ := filepath.Glob(pattern); len(matches) > 0 {
+									// 使用重命名后的文件
+									relNew, _ := filepath.Rel(musicDir, matches[0])
+									rel = filepath.ToSlash(relNew)
+								}
+
+								songsToSync = append(songsToSync, SongMetadata{
+									Title:      meta.Title,
+									ArtistName: meta.Artist,
+									AlbumTitle: meta.Album,
+									FilePath:   rel,
+									LrcPath:    "",
+									TrackIndex: meta.TrackNumber,
+								})
+							}
+						}
+					}
+
+					if len(songsToSync) > 0 {
+						d1SyncErr = syncToWorkerD1(songsToSync)
+						if d1SyncErr != nil {
+							d1SyncStatus = "failed"
+							log.Printf("❌ [%s] [D1-Sync] 失败: %v", reqID, d1SyncErr)
+						} else {
+							d1SyncStatus = "success"
+						}
+					} else {
+						d1SyncStatus = "no_data"
+						log.Printf("⚠️ [%s] [D1-Sync] 没有找到需要同步的歌曲元数据", reqID)
+					}
+				}
+			}
+		} else {
+			r2UploadStatus = "skipped"
+			log.Printf("⚠️ [%s] SyncMusic 失败，跳过 R2 上传和 D1 同步: %v", reqID, syncErr)
 		}
 
 		// [Note] 这里的逻辑在 R2 模式下需要优化：
@@ -204,9 +336,34 @@ func AdminUploadHandler(musicDir string) http.HandlerFunc {
 			return
 		}
 
-		respondJSON(w, http.StatusOK, fmt.Sprintf("上传并入库成功 (R2已同步): 解析音频 %d 首，外延歌词 %d 首", parsedMusic, syncedLrcs), map[string]interface{}{
-			"saved_count": len(savedFiles),
-			"target_dir":  targetBaseDir,
+		// [FIX] 在响应中包含 R2 上传和 D1 同步状态
+		responseMsg := fmt.Sprintf("上传并入库成功 (解析音频 %d 首，外延歌词 %d 首)", parsedMusic, syncedLrcs)
+
+		// R2 状态
+		if r2UploadStatus == "success" {
+			responseMsg += fmt.Sprintf(", R2 上传成功 %d 个文件", r2UploadCount)
+		} else if r2UploadStatus == "failed" {
+			responseMsg += ", ❌ R2 上传失败（前端将无法播放）"
+		} else if r2UploadStatus == "partial" {
+			responseMsg += fmt.Sprintf(", ⚠️ R2 部分上传失败（成功: %d, 失败: %d）", r2UploadCount, r2UploadErrors)
+		}
+
+		// D1 同步状态
+		if d1SyncStatus == "success" {
+			responseMsg += ", ✅ D1 数据同步成功（前端可立即查看）"
+		} else if d1SyncStatus == "failed" {
+			responseMsg += fmt.Sprintf(", ⚠️ D1 同步失败: %v（前端可能无法查看）", d1SyncErr)
+		} else if d1SyncStatus == "skipped" {
+			responseMsg += ", ⚠️ D1 同步已跳过（R2 上传未成功）"
+		}
+
+		respondJSON(w, http.StatusOK, responseMsg, map[string]interface{}{
+			"saved_count":    len(savedFiles),
+			"target_dir":     targetBaseDir,
+			"r2_status":      r2UploadStatus,
+			"r2_uploaded":    r2UploadCount,
+			"r2_errors":      r2UploadErrors,
+			"d1_status":      d1SyncStatus,
 		})
 	}
 }

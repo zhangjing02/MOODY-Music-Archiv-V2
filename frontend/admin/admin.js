@@ -130,7 +130,8 @@ function initUploader() {
             if (album) formData.append('albumOverride', album);
 
             const xhr = new XMLHttpRequest();
-            xhr.open('POST', '/api/admin/upload', true);
+            // [CRITICAL CHANGE] 改为调用 Worker API
+            xhr.open('POST', 'https://moody-worker.changgepd.workers.dev/api/admin/upload', true);
 
             xhr.upload.onprogress = (e) => {
                 if (e.lengthComputable) {
@@ -142,9 +143,13 @@ function initUploader() {
             xhr.onload = () => {
                 let data = {};
                 try { data = JSON.parse(xhr.responseText); } catch(e) { data = { message: "非 JSON 响应" }; }
-                
+
                 if (xhr.status >= 200 && xhr.status < 300 && data.code === 200) {
                     fObj.status = 'success';
+                    // 显示详细的上传结果
+                    if (data.data && data.data.details) {
+                        console.log('上传详情:', data.data.details);
+                    }
                 } else {
                     fObj.status = 'error';
                     fObj.error = data.message || `HTTP ${xhr.status}`;

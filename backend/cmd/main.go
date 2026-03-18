@@ -97,9 +97,11 @@ func main() {
 	}
 
 	// [New] 2.2 Setup Cloudflare R2 / S3 Storage (Multi-Storage Support)
+	// [CRITICAL FIX] 如果 R2 未配置，必须拒绝启动，否则上传会静默失败
 	if err := s3client.InitMultiS3(); err != nil {
-		log.Printf("⚠️  S3 initialization encountered errors: %v", err)
+		log.Fatalf("❌ [CRITICAL] R2 初始化失败，上传功能将无法工作。请检查环境变量 R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME: %v", err)
 	}
+	log.Printf("✅ R2 存储客户端初始化成功")
 
 	// 3. 注册 API 路由
 	http.HandleFunc("/api/status", handler.StatusHandler)

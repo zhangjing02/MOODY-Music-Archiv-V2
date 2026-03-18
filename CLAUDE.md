@@ -33,6 +33,12 @@ Worker API： https://moody-worker.changgepd.workers.dev
 
 ### ⚠️ 重要架构理解
 
+**为什么采用 Worker 边缘上传？**
+- Go 后端（运行在 ClawCloud）到 Cloudflare R2 的跨云上传延迟高
+- Cloudflare Worker 与 R2 同地域，上传速度提升 10x+
+- Worker 直接绑定 D1 和 R2，无需网络调用
+- 参考 `云端上传架构设计方案.md` 了解完整决策过程
+
 **双数据库架构**：
 1. **Cloudflare D1**：生产环境的真实数据库，存储所有艺人、专辑、歌曲数据
 2. **本地 SQLite**：仅为空架构（`storage/db/moody.db`），**不存储实际数据**
@@ -73,6 +79,25 @@ MOODY_FRONTEND_PATH=/path/to/frontend \
 go test ./...
 ```
 
+**前端测试**：
+```bash
+cd frontend/tests
+npm install
+npm test  # 运行前端测试套件
+```
+
+### 前端（本地调试）
+```bash
+cd frontend
+
+# 前端为纯静态 HTML/CSS/JS，无需构建
+# 直接用浏览器打开 index.html 即可
+
+# 或使用简易 HTTP 服务器
+python -m http.server 8000
+# 然后访问 http://localhost:8000
+```
+
 ### Cloudflare Worker（生产 API）
 ```bash
 cd cloudflare-worker
@@ -80,19 +105,24 @@ cd cloudflare-worker
 # 安装依赖
 npm install
 
-# 本地开发
-npm run dev
+# 本地开发（使用 wrangler）
+npx wrangler dev
 
 # 部署到 Cloudflare
-npm run deploy
+npx wrangler deploy
 
 # 类型检查
 npx tsc --noEmit
 ```
 
+**Wrangler 配置**：
+- `wrangler.toml` 定义了 D1 数据库绑定（`moody-d1-test`）
+- R2 bucket 绑定（`moody-music-asset`）
+- 部署前确保已登录：`npx wrangler login`
+
 ### Docker（生产部署）
 ```bash
-# 构建镜像
+# 构建镜像（注意：Go 1.24 需要 golang:1.24-alpine 基础镜像）
 docker build -t moodymusic:latest .
 
 # 运行容器
@@ -100,6 +130,11 @@ docker run -p 8080:8080 -p 8082:8082 \
   -e MOODY_STORAGE_PATH=/app/storage \
   moodymusic:latest
 ```
+
+**Docker 构建注意事项**：
+- 使用 `CGO_ENABLED=0` 构建纯 Go 二进制，避免动态链接依赖
+- 显式指定 `GOARCH=amd64` 以适配 ClawCloud 平台
+- 前端静态资源直接复制到容器内（无需构建过程）
 
 ---
 
@@ -368,6 +403,19 @@ response = requests.post(
 
 ## ⚠️ 重要实现细节
 
+### 上传流程与 autoIDify
+**文件上传的关键步骤**（v12.60+）：
+1. **前端**：用户拖拽文件到管理后台
+2. **本地重命名**：Go 后端通过 `autoIDify` 为文件生成唯一 ID（如 `s_10025.mp3`）
+3. **本地暂存**：重命名后的文件暂存在 `storage/music/` 目录
+4. **Worker 上传**：通过 Worker API 将重命名后的文件上传到 R2
+5. **D1 记录**：元数据写入 Cloudflare D1 数据库
+
+**为什么本地重命名后上传？**
+- 参考 `上传失败问题修复报告.md`
+- 避免 Worker 和本地同时生成 ID 导致冲突
+- 确保 file_path 字段与 R2 物理路径一致
+
 ### 文件路径处理
 - 所有音乐文件必须在数据库中带 `music/` 前缀
 - 治理工具（`/api/admin/fix-paths`）可自动修复缺失前缀
@@ -495,5 +543,19 @@ curl http://localhost:8080/api/status
 
 ---
 
-**最后更新**：2025-03-18
+**最后更新**：2026-03-18
 **维护者**：zhangjing02
+**版本**：v12.60+ (autoIDify 本地重命名架构)
+
+---
+
+## 🔍 进一步阅读
+
+### 项目演进历史
+- `云端上传架构设计方案.md` - 为什么选择 Worker 边缘上传而非 Go 后端直传
+- `上传失败问题修复报告.md` - v12.60 之前的上传问题排查与解决方案
+- `李宗盛专辑修复总结.md` - UTF-8 编码修复与数据治理实战案例
+
+### AI 自动化能力
+- `.agent/skills/` - 可复用的自动化脚本（如数据验证、批量更新）
+- `.agent/workflows/` - 多步骤任务编排（如完整的数据修复流程）
