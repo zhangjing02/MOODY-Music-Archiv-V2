@@ -1,12 +1,10 @@
 /**
- * Worker Upload Handler
- * 处理文件上传到 R2 和数据写入 D1
- *
- * 完整流程：
- * 1. 检查 D1 数据库（艺人/专辑）
- * 2. 检查 R2 目录结构
- * 3. 上传文件到 R2
- * 4. 写入元数据到 D1
+ * Worker Upload Handler - V2 (智能匹配版本)
+ * 核心原则：
+ * 1. 名录（D1）是唯一显示依据
+ * 2. 磁盘文件只是"点亮"作用
+ * 3. 不创建新的艺人/专辑/歌曲记录
+ * 4. 使用智能匹配逻辑匹配歌名
  */
 
 import { Hono } from 'hono';
@@ -16,110 +14,142 @@ type Bindings = {
   BUCKET: R2Bucket;
 };
 
-interface UploadResponse {
-  code: number;
-  message: string;
-  data?: {
-    uploaded: number;
-    failed: number;
-    songs?: Array<{
-      title: string;
-      file_path: string;
-      song_id: number;
-    }>;
-    details?: string[];
+/**
+ * NormalizeTitle 归一化标题（从 Go 代码移植）
+ * 移除标点符号及空格，统一小写，简繁体统一，用于模糊匹配
+ */
+function normalizeTitle(s: string): string {
+  s = s.toLowerCase().trim();
+  s = s.replace(/ /g, '');
+  s = s.replace(/-/g, '');
+  s = s.replace(/_/g, '');
+  s = s.replace(/—/g, '');
+  s = s.replace(/·/g, '');
+
+  // 简繁体映射（部分常用字）
+  const t2sMap: Record<string, string> = {
+    '愛': '爱', '來': '来', '後': '后', '為': '为',
+    '與': '与', '時': '时', '開': '开', '無': '无',
+    '國': '国', '語': '语', '產': '产', '學': '学',
+    '長': '长', '點': '点', '變': '变', '電': '电',
+    '動': '动', '聽': '听', '這': '这', '過': '过',
+    '寫': '写', '會': '会', '經': '经', '關': '关',
+    '們': '们', '傳': '传', '錄': '录', '機': '机',
+    '觀': '观', '場': '场', '實': '实', '驗': '验',
+    '斷': '断', '種': '种', '種': '种', '類': '类',
+    '難': '难', '優': '优', '態': '态', '響': '响',
+    '應': '应', '繫': '续', '調': '调', '轉': '转'
   };
+
+  let result = '';
+  for (const char of s) {
+    // 只保留中文、英文字母和数字
+    if ((char >= 0x4e00 && char <= 0x9fa5) ||
+        (char >= 'a' && char <= 'z') ||
+        (char >= '0' && char <= '9')) {
+      result += t2sMap[char] || char;
+    }
+  }
+  return result;
 }
 
 /**
- * 提取 MP3 元数据（简化版）
- * TODO: 可以使用 mp3tag 等库提取完整元数据
+ * 从文件名提取歌名
+ * 支持格式：
+ * - 歌曲名-歌手-专辑.mp3
+ * - 歌曲名.mp3
+ * - 01. 歌曲名-歌手-专辑.mp3
  */
-async function extractMP3Metadata(file: File): Promise<{
-  title: string;
-  artist: string;
-  album: string;
-  duration?: number;
-}> {
-  // 简化版：从文件名提取
-  const filename = file.name;
-  const title = filename.replace(/\.(mp3|MP3)$/, '');
+function extractSongTitle(filename: string): string {
+  let name = filename.replace(/\.(mp3|MP3)$/, '');
 
-  // 如果文件名包含格式如 "01. 歌曲名"，提取歌曲名
-  const match = title.match(/^\d+\.\s*(.+)$/);
-  const finalTitle = match ? match[1] : title;
+  // 移除序号
+  name = name.replace(/^\d+[\.\s]*/, '');
 
-  return {
-    title: finalTitle,
-    artist: '',
-    album: '',
-  };
+  // 移除后缀（歌手-专辑）
+  const parts = name.split('-');
+  if (parts.length >= 3) {
+    // 格式：歌曲名-歌手-专辑
+    return parts[0].trim();
+  } else if (parts.length === 2) {
+    // 可能是：歌曲名-歌手 或 歌曲名-专辑
+    return parts[0].trim();
+  }
+
+  return name.trim();
 }
 
 /**
- * 确保 D1 中存在艺人记录
+ * 智能匹配歌曲记录（使用 NormalizeTitle）
  */
-async function ensureArtist(
+async function findSongMatch(
   db: D1Database,
-  artistName: string
-): Promise<number> {
-  // 查找艺人
-  const { results } = await db
+  artistName: string,
+  albumTitle: string,
+  songTitle: string
+): Promise<{ song_id: number; title: string; file_path: string } | null> {
+  // 1. 查找艺人
+  const artistResult = await db
     .prepare('SELECT id FROM artists WHERE name = ?')
     .bind(artistName)
-    .all();
+    .first<{ id: number }>();
 
-  if (results.length > 0) {
-    return (results[0] as any).id;
+  if (!artistResult) {
+    return null; // 艺人不存在
   }
 
-  // 创建新艺人
-  const result = await db
-    .prepare('INSERT INTO artists (name, region) VALUES (?, ?)')
-    .bind(artistName, '华语')
-    .run();
+  const artistId = artistResult.id;
 
-  return result.meta.last_row_id;
-}
-
-/**
- * 确保 D1 中存在专辑记录
- */
-async function ensureAlbum(
-  db: D1Database,
-  artistId: number,
-  albumTitle: string
-): Promise<number> {
-  // 查找专辑
-  const { results } = await db
+  // 2. 查找专辑
+  const albumResult = await db
     .prepare('SELECT id FROM albums WHERE artist_id = ? AND title = ?')
     .bind(artistId, albumTitle)
-    .all();
+    .first<{ id: number }>();
 
-  if (results.length > 0) {
-    return (results[0] as any).id;
+  if (!albumResult) {
+    return null; // 专辑不存在
   }
 
-  // 创建新专辑
-  const result = await db
-    .prepare('INSERT INTO albums (artist_id, title) VALUES (?, ?)')
-    .bind(artistId, albumTitle)
-    .run();
+  const albumId = albumResult.id;
 
-  return result.meta.last_row_id;
-}
+  // 3. 智能匹配歌曲
+  const songTitleNorm = normalizeTitle(songTitle);
 
-/**
- * 生成唯一歌曲 ID
- */
-async function generateSongId(db: D1Database): Promise<number> {
-  // 获取当前最大 ID
-  const { results } = await db
-    .prepare('SELECT MAX(id) as max_id FROM songs')
-    .all();
+  // 3.1 首先尝试精确匹配
+  const exactMatch = await db
+    .prepare('SELECT id, title, file_path FROM songs WHERE album_id = ? AND title = ?')
+    .bind(albumId, songTitle)
+    .first<{ id: number; title: string; file_path: string }>();
 
-  const maxId = (results[0] as any)?.max_id || 0;
-  return maxId + 1;
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  // 3.2 模糊匹配：遍历专辑下所有歌曲，使用 NormalizeTitle 匹配
+  const songs = await db
+    .prepare('SELECT id, title, file_path FROM songs WHERE album_id = ?')
+    .bind(albumId)
+    .all<{ id: number; title: string; file_path: string }>();
+
+  for (const song of songs.results) {
+    const dbTitleNorm = normalizeTitle(song.title);
+
+    // 匹配规则：
+    // 1. 完全相等
+    if (dbTitleNorm === songTitleNorm) {
+      return song;
+    }
+
+    // 2. 包含关系（文件名包含名录歌名，或名录歌名包含文件名）
+    if (songTitleNorm.includes(dbTitleNorm) || dbTitleNorm.includes(songTitleNorm)) {
+      // 避免太短的匹配
+      if (dbTitleNorm.length >= 2 && songTitleNorm.length >= 2) {
+        return song;
+      }
+    }
+  }
+
+  return null; // 未找到匹配
 }
 
 /**
@@ -128,7 +158,7 @@ async function generateSongId(db: D1Database): Promise<number> {
 export async function handleUpload(
   request: Request,
   env: Bindings
-): Promise<UploadResponse> {
+): Promise<Response> {
   try {
     // 1. 解析表单数据
     const formData = await request.formData();
@@ -137,114 +167,135 @@ export async function handleUpload(
     const albumOverride = formData.get('albumOverride') as string;
 
     if (!files || files.length === 0) {
-      return {
+      return Response.json({
         code: 400,
         message: '未检测到上传的文件',
-      };
+      });
     }
 
-    // 过滤掉非文件对象
     const validFiles = files.filter((f) => f instanceof File && f.size > 0);
     if (validFiles.length === 0) {
-      return {
+      return Response.json({
         code: 400,
         message: '没有有效的文件',
-      };
+      });
     }
 
-    // 2. 确定艺人和专辑
     const artistName = artistOverride?.trim() || 'Unknown Artist';
     const albumTitle = albumOverride?.trim() || 'Unknown Album';
 
-    console.log(`📤 开始上传: 艺人="${artistName}", 专辑="${albumTitle}", 文件数=${validFiles.length}`);
+    console.log(`📤 开始智能匹配上传: 艺人="${artistName}", 专辑="${albumTitle}", 文件数=${validFiles.length}`);
 
-    // 3. 确保 D1 中存在艺人和专辑
-    const artistId = await ensureArtist(env.DB, artistName);
-    const albumId = await ensureAlbum(env.DB, artistId, albumTitle);
-
-    console.log(`✅ D1 准备完成: 艺人ID=${artistId}, 专辑ID=${albumId}`);
-
-    // 4. 构建 R2 目录路径
-    const r2Prefix = `music/${artistName}/${albumTitle}/`;
-    console.log(`📁 R2 目标路径: ${r2Prefix}`);
-
-    // 5. 逐个处理文件
-    const uploadedSongs: Array<{
-      title: string;
-      file_path: string;
-      song_id: number;
+    const results: Array<{
+      filename: string;
+      song_title: string;
+      match: boolean;
+      song_id?: number;
+      file_path?: string;
+      message: string;
     }> = [];
-    const details: string[] = [];
-    let uploadedCount = 0;
-    let failedCount = 0;
 
+    let matchedCount = 0;
+    let unmatchedCount = 0;
+
+    // 2. 逐个处理文件
     for (let i = 0; i < validFiles.length; i++) {
       const file = validFiles[i];
-      const songId = await generateSongId(env.DB);
+      const filename = file.name;
 
-      // 提取元数据
-      const metadata = await extractMP3Metadata(file);
+      // 提取歌名
+      const songTitle = extractSongTitle(filename);
+      console.log(`  [${i + 1}/${validFiles.length}] 处理: ${filename} -> 歌名="${songTitle}"`);
 
-      // 如果用户指定了艺人和专辑，使用指定的值
-      const finalArtist = artistOverride || metadata.artist || artistName;
-      const finalAlbum = albumOverride || metadata.album || albumTitle;
-      const finalTitle = metadata.title || file.name;
+      // 智能匹配歌曲记录
+      const match = await findSongMatch(env.DB, artistName, albumTitle, songTitle);
 
-      // 生成文件名
-      const fileName = `s_${songId}.mp3`;
-      const r2Key = r2Prefix + fileName;
+      if (match) {
+        // 找到匹配：上传文件并点亮
+        const r2Key = `music/${artistName}/${albumTitle}/s_${match.song_id}.mp3`;
 
-      try {
-        // 上传到 R2
-        console.log(`  [${i + 1}/${validFiles.length}] 上传: ${file.name} -> ${r2Key}`);
-        await env.BUCKET.put(r2Key, file.stream(), {
-          httpMetadata: {
-            contentType: 'audio/mpeg',
-          },
-        });
+        try {
+          await env.BUCKET.put(r2Key, file.stream(), {
+            httpMetadata: {
+              contentType: 'audio/mpeg',
+            },
+          });
 
-        // 写入 D1
-        await env.DB.prepare(
-          'INSERT INTO songs (title, album_id, file_path, track_index) VALUES (?, ?, ?, ?)'
-        ).bind(finalTitle, albumId, r2Key, i + 1).run();
+          // 更新 D1 的 file_path（点亮歌曲）
+          await env.DB.prepare(
+            'UPDATE songs SET file_path = ? WHERE id = ?'
+          ).bind(r2Key, match.song_id).run();
 
-        uploadedSongs.push({
-          title: finalTitle,
-          file_path: r2Key,
-          song_id: songId,
-        });
+          matchedCount++;
+          results.push({
+            filename: filename,
+            song_title: match.title,
+            match: true,
+            song_id: match.song_id,
+            file_path: r2Key,
+            message: `✅ 点亮成功: ${match.title} (ID: ${match.song_id})`,
+          });
 
-        details.push(`✅ [${i + 1}] ${finalTitle} (ID: ${songId})`);
-        uploadedCount++;
+          console.log(`    ✅ 匹配成功: ${match.title} -> ${r2Key}`);
+        } catch (error: any) {
+          results.push({
+            filename: filename,
+            song_title: songTitle,
+            match: false,
+            message: `❌ 上传失败: ${error.message}`,
+          });
+          console.error(`    ❌ 上传失败:`, error);
+        }
+      } else {
+        // 未找到匹配：仍然上传文件，但不会在页面显示
+        const r2Key = `music/${artistName}/${albumTitle}/${filename}`;
 
-        console.log(`  ✅ 成功: ${finalTitle} -> ${r2Key}`);
-      } catch (error: any) {
-        failedCount++;
-        details.push(`❌ [${i + 1}] ${file.name} 失败: ${error.message}`);
-        console.error(`  ❌ 失败: ${file.name}`, error);
+        try {
+          await env.BUCKET.put(r2Key, file.stream(), {
+            httpMetadata: {
+              contentType: 'audio/mpeg',
+            },
+          });
+
+          unmatchedCount++;
+          results.push({
+            filename: filename,
+            song_title: songTitle,
+            match: false,
+            file_path: r2Key,
+            message: `⚠️ 未找到匹配（已上传但不会显示）`,
+          });
+
+          console.log(`    ⚠️ 未匹配: ${songTitle} -> 已上传但不显示`);
+        } catch (error: any) {
+          results.push({
+            filename: filename,
+            song_title: songTitle,
+            match: false,
+            message: `❌ 上传失败: ${error.message}`,
+          });
+          console.error(`    ❌ 上传失败:`, error);
+        }
       }
     }
 
-    // 6. 返回结果
-    const response: UploadResponse = {
+    // 3. 返回结果
+    return Response.json({
       code: 200,
-      message: `上传完成: 成功 ${uploadedCount} 首，失败 ${failedCount} 首`,
+      message: `上传完成: 匹配 ${matchedCount} 首，未匹配 ${unmatchedCount} 首`,
       data: {
-        uploaded: uploadedCount,
-        failed: failedCount,
-        songs: uploadedSongs,
-        details,
+        total: validFiles.length,
+        matched: matchedCount,
+        unmatched: unmatchedCount,
+        results,
       },
-    };
-
-    console.log(`🎉 上传完成: 成功=${uploadedCount}, 失败=${failedCount}`);
-    return response;
+    });
   } catch (error: any) {
     console.error('❌ 上传处理失败:', error);
-    return {
+    return Response.json({
       code: 500,
       message: `上传失败: ${error.message}`,
-    };
+    });
   }
 }
 
@@ -252,24 +303,24 @@ export async function handleUpload(
  * 注册上传路由
  */
 export function registerUploadRoutes(app: Hono<{ Bindings: Bindings }>) {
-  // 文件上传 API
+  // 文件上传 API (V2 - 智能匹配版本)
   app.post('/api/admin/upload', async (c) => {
     const response = await handleUpload(c.req.raw, c.env);
-    return c.json(response);
+    return response;
   });
 
   // 检查上传状态
   app.get('/api/admin/upload/status', async (c) => {
     try {
       const { results } = await c.env.DB.prepare(
-        'SELECT COUNT(*) as count FROM songs WHERE file_path LIKE "music/%"'
+        'SELECT COUNT(*) as count FROM songs WHERE file_path IS NOT NULL AND file_path != ""'
       ).all();
 
       return c.json({
         code: 200,
         message: 'success',
         data: {
-          total_songs_in_r2: (results[0] as any)?.count || 0,
+          total_songs: (results[0] as any)?.count || 0,
         },
       });
     } catch (error: any) {
