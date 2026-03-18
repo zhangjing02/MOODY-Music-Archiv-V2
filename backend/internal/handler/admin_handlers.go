@@ -302,7 +302,7 @@ func AdminUploadHandler(musicDir string) http.HandlerFunc {
 									AlbumTitle: meta.Album,
 									FilePath:   rel,
 									LrcPath:    "",
-									TrackIndex: meta.TrackNumber,
+									TrackIndex: &meta.TrackIndex,
 								})
 							}
 						}
