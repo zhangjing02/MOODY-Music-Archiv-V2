@@ -20,11 +20,9 @@ type Bindings = {
  */
 function normalizeTitle(s: string): string {
   s = s.toLowerCase().trim();
-  s = s.replace(/ /g, '');
-  s = s.replace(/-/g, '');
-  s = s.replace(/_/g, '');
-  s = s.replace(/—/g, '');
-  s = s.replace(/·/g, '');
+
+  // 统一各种标点符号（包括中文标点）
+  s = s.replace(/[ \t\n\r\-_—·、，,。．；;：:！!？?（）\(\)\[\]【】《》〈〉]/g, '');
 
   // 简繁体映射（部分常用字）
   const t2sMap: Record<string, string> = {
@@ -36,9 +34,11 @@ function normalizeTitle(s: string): string {
     '寫': '写', '會': '会', '經': '经', '關': '关',
     '們': '们', '傳': '传', '錄': '录', '機': '机',
     '觀': '观', '場': '场', '實': '实', '驗': '验',
-    '斷': '断', '種': '种', '種': '种', '類': '类',
+    '斷': '断', '種': '种', '類': '类',
     '難': '难', '優': '优', '態': '态', '響': '响',
-    '應': '应', '繫': '续', '調': '调', '轉': '转'
+    '應': '应', '繫': '续', '調': '调', '轉': '转',
+    '遙': '遥', '麵': '面', '彎': '弯', '單': '单',
+    '願': '愿', '義': '义', '務': '务', '標': '标'
   };
 
   let result = '';
@@ -232,6 +232,13 @@ export async function handleUpload(
 
       // 智能匹配歌曲记录
       const match = await findSongMatch(env.DB, artistName, albumTitle, songTitle);
+
+      if (!match) {
+        // 调试：输出归一化后的结果
+        const normalizedTitle = normalizeTitle(songTitle);
+        console.log(`    ❌ 匹配失败，归一化结果: "${normalizedTitle}"`);
+        console.log(`    提示: 检查专辑名="${albumTitle}" 和歌名="${songTitle}" 是否与数据库匹配`);
+      }
 
       if (match) {
         // 找到匹配：上传文件并点亮
