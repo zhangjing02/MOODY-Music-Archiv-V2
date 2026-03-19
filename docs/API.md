@@ -19,6 +19,7 @@
 5. [歌曲管理](#歌曲管理)
 6. [数据治理](#数据治理)
 7. [调试工具](#调试工具)
+8. [运营友好接口](#运营友好接口) ⭐ **推荐使用**
 
 ---
 
@@ -1104,6 +1105,481 @@ curl https://moody-worker.changgepd.workers.dev/api/debug/audit
    ```bash
    curl -X POST "https://moody-worker.changgepd.workers.dev/api/admin/cleanup-duplicates"
    ```
+
+---
+
+## 运营友好接口
+
+> ⭐ **推荐使用**：这些接口专为运营人员设计，使用**名称**而非 ID，操作简单直观，无需了解数据库结构。
+
+所有运营接口都支持 **dry_run（预览模式）**，可以在不实际修改数据的情况下预览操作结果。
+
+---
+
+### 🎵 批量更新歌曲（按名称）
+
+通过歌手名、专辑名来批量更新歌曲标题和曲目序号。
+
+**接口**: `POST /api/admin/ops/songs/batch-update`
+
+**参数**:
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| artist_name | string | 是 | 歌手名称（支持模糊匹配） |
+| album_title | string | 是 | 专辑名称（支持模糊匹配） |
+| updates | array | 是 | 更新列表 |
+| dry_run | boolean | 否 | 预览模式（不实际修改），默认 false |
+
+**updates 数组项**:
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| old_title | string | 是 | 歌曲旧标题（模糊匹配） |
+| new_title | string | 是 | 歌曲新标题 |
+| track_index | number | 否 | 新的曲目序号 |
+
+**请求示例**:
+```bash
+# 预览模式（不实际修改）
+curl -X POST "https://moody-worker.changgepd.workers.dev/api/admin/ops/songs/batch-update" \
+  -H "Content-Type: application/json; charset=utf-8" \
+  -d '{
+    "artist_name": "张学友",
+    "album_title": "Smile",
+    "dry_run": true,
+    "updates": [
+      {"old_title": "轻抚你的脸", "new_title": "轻抚你的脸", "track_index": 1},
+      {"old_title": "爱的卡帮", "new_title": "爱的卡帮", "track_index": 2}
+    ]
+  }'
+
+# 实际执行
+curl -X POST "https://moody-worker.changgepd.workers.dev/api/admin/ops/songs/batch-update" \
+  -H "Content-Type: application/json; charset=utf-8" \
+  -d '{
+    "artist_name": "张学友",
+    "album_title": "Smile",
+    "dry_run": false,
+    "updates": [
+      {"old_title": "轻抚你的脸", "new_title": "轻抚你的脸", "track_index": 1},
+      {"old_title": "爱的卡帮", "new_title": "爱的卡帮", "track_index": 2}
+    ]
+  }'
+```
+
+**返回示例**:
+```json
+{
+  "code": 200,
+  "message": "成功更新 2 首歌曲",
+  "data": {
+    "artist": { "id": 109, "name": "张学友" },
+    "album": { "id": 1562, "title": "Smile" },
+    "dry_run": false,
+    "results": [
+      {
+        "old_title": "轻抚你的脸",
+        "new_title": "轻抚你的脸",
+        "track_index": 1,
+        "status": "updated",
+        "message": "已更新: 轻抚你的脸 → 轻抚你的脸"
+      },
+      {
+        "old_title": "爱的卡帮",
+        "new_title": "爱的卡帮",
+        "track_index": 2,
+        "status": "updated",
+        "message": "已更新: 爱的卡帮 → 爱的卡帮"
+      }
+    ]
+  }
+}
+```
+
+**使用场景**:
+- 修复专辑中的歌曲标题乱码
+- 调整歌曲的曲目序号
+- 批量修改歌曲名称
+
+---
+
+### 💿 重命名专辑
+
+修改专辑的标题。
+
+**接口**: `POST /api/admin/ops/albums/rename`
+
+**参数**:
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| artist_name | string | 是 | 歌手名称（支持模糊匹配） |
+| old_title | string | 是 | 专辑旧标题（支持模糊匹配） |
+| new_title | string | 是 | 专辑新标题 |
+| dry_run | boolean | 否 | 预览模式，默认 false |
+
+**请求示例**:
+```bash
+# 预览
+curl -X POST "https://moody-worker.changgepd.workers.dev/api/admin/ops/albums/rename" \
+  -H "Content-Type: application/json; charset=utf-8" \
+  -d '{
+    "artist_name": "周杰伦",
+    "old_title": "Jay",
+    "new_title": "Jay (20周年纪念版)",
+    "dry_run": true
+  }'
+
+# 实际执行
+curl -X POST "https://moody-worker.changgepd.workers.dev/api/admin/ops/albums/rename" \
+  -H "Content-Type: application/json; charset=utf-8" \
+  -d '{
+    "artist_name": "周杰伦",
+    "old_title": "Jay",
+    "new_title": "Jay (20周年纪念版)",
+    "dry_run": false
+  }'
+```
+
+**返回示例**:
+```json
+{
+  "code": 200,
+  "message": "成功将专辑 \"Jay\" 重命名为 \"Jay (20周年纪念版)\"",
+  "data": {
+    "artist": { "id": 1, "name": "周杰伦" },
+    "old_album": { "id": 1, "title": "Jay" },
+    "new_title": "Jay (20周年纪念版)"
+  }
+}
+```
+
+---
+
+### 🎤 重命名艺人
+
+修改艺人的名称。
+
+**接口**: `POST /api/admin/ops/artists/rename`
+
+**参数**:
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| old_name | string | 是 | 艺人旧名称（支持模糊匹配） |
+| new_name | string | 是 | 艺人新名称 |
+| dry_run | boolean | 否 | 预览模式，默认 false |
+
+**请求示例**:
+```bash
+# 预览
+curl -X POST "https://moody-worker.changgepd.workers.dev/api/admin/ops/artists/rename" \
+  -H "Content-Type: application/json; charset=utf-8" \
+  -d '{
+    "old_name": "周杰伦",
+    "new_name": "Jay Chou 周杰伦",
+    "dry_run": true
+  }'
+
+# 实际执行
+curl -X POST "https://moody-worker.changgepd.workers.dev/api/admin/ops/artists/rename" \
+  -H "Content-Type: application/json; charset=utf-8" \
+  -d '{
+    "old_name": "周杰伦",
+    "new_name": "Jay Chou 周杰伦",
+    "dry_run": false
+  }'
+```
+
+**返回示例**:
+```json
+{
+  "code": 200,
+  "message": "成功将艺人 \"周杰伦\" 重命名为 \"Jay Chou 周杰伦\"",
+  "data": {
+    "old_artist": { "id": 1, "name": "周杰伦" },
+    "new_name": "Jay Chou 周杰伦"
+  }
+}
+```
+
+---
+
+### 🔀 合并专辑（按名称）
+
+将一个专辑的所有歌曲合并到另一个专辑（按名称操作）。
+
+**接口**: `POST /api/admin/ops/albums/merge`
+
+**参数**:
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| artist_name | string | 是 | 歌手名称（支持模糊匹配） |
+| source_album_title | string | 是 | 源专辑标题（将被删除） |
+| target_album_title | string | 是 | 目标专辑标题（保留） |
+| dry_run | boolean | 否 | 预览模式，默认 false |
+
+**请求示例**:
+```bash
+# 预览
+curl -X POST "https://moody-worker.changgepd.workers.dev/api/admin/ops/albums/merge" \
+  -H "Content-Type: application/json; charset=utf-8" \
+  -d '{
+    "artist_name": "周杰伦",
+    "source_album_title": "Jay (再版)",
+    "target_album_title": "Jay",
+    "dry_run": true
+  }'
+
+# 实际执行
+curl -X POST "https://moody-worker.changgepd.workers.dev/api/admin/ops/albums/merge" \
+  -H "Content-Type: application/json; charset=utf-8" \
+  -d '{
+    "artist_name": "周杰伦",
+    "source_album_title": "Jay (再版)",
+    "target_album_title": "Jay",
+    "dry_run": false
+  }'
+```
+
+**返回示例**:
+```json
+{
+  "code": 200,
+  "message": "成功将 12 首歌曲从 \"Jay (再版)\" 合并到 \"Jay\"",
+  "data": {
+    "artist": { "id": 1, "name": "周杰伦" },
+    "source_album": { "id": 100, "title": "Jay (再版)" },
+    "target_album": { "id": 1, "title": "Jay" },
+    "songs_moved": 12
+  }
+}
+```
+
+**使用场景**:
+- 合并重复的专辑
+- 合并同一专辑的不同版本
+
+---
+
+### 🗑️ 删除专辑（按名称）
+
+删除指定专辑及其所有歌曲（按名称操作）。
+
+**接口**: `POST /api/admin/ops/albums/delete`
+
+**参数**:
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| artist_name | string | 是 | 歌手名称（支持模糊匹配） |
+| album_title | string | 是 | 专辑标题（支持模糊匹配） |
+| dry_run | boolean | 否 | 预览模式，默认 false |
+
+**请求示例**:
+```bash
+# 预览
+curl -X POST "https://moody-worker.changgepd.workers.dev/api/admin/ops/albums/delete" \
+  -H "Content-Type: application/json; charset=utf-8" \
+  -d '{
+    "artist_name": "测试歌手",
+    "album_title": "测试专辑",
+    "dry_run": true
+  }'
+
+# 实际执行
+curl -X POST "https://moody-worker.changgepd.workers.dev/api/admin/ops/albums/delete" \
+  -H "Content-Type: application/json; charset=utf-8" \
+  -d '{
+    "artist_name": "测试歌手",
+    "album_title": "测试专辑",
+    "dry_run": false
+  }'
+```
+
+**返回示例**:
+```json
+{
+  "code": 200,
+  "message": "成功删除专辑 \"测试专辑\" 及其 10 首歌曲",
+  "data": {
+    "artist": { "id": 999, "name": "测试歌手" },
+    "deleted_album": { "id": 1234, "title": "测试专辑" },
+    "deleted_songs": 10
+  }
+}
+```
+
+**⚠️ 警告**: 删除操作不可恢复，建议先使用 `dry_run: true` 预览！
+
+---
+
+### ➕ 批量插入歌曲（按名称）
+
+向指定专辑批量插入新歌曲（按名称操作）。
+
+**接口**: `POST /api/admin/ops/songs/batch-insert`
+
+**参数**:
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| artist_name | string | 是 | 歌手名称（如果不存在会自动创建） |
+| album_title | string | 是 | 专辑名称（如果不存在会自动创建） |
+| songs | array | 是 | 歌曲列表 |
+| dry_run | boolean | 否 | 预览模式，默认 false |
+
+**songs 数组项**:
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| title | string | 是 | 歌曲标题 |
+| file_path | string | 否 | 文件路径 |
+| track_index | number | 否 | 曲目序号 |
+
+**请求示例**:
+```bash
+# 预览
+curl -X POST "https://moody-worker.changgepd.workers.dev/api/admin/ops/songs/batch-insert" \
+  -H "Content-Type: application/json; charset=utf-8" \
+  -d '{
+    "artist_name": "周杰伦",
+    "album_title": "最新专辑",
+    "dry_run": true,
+    "songs": [
+      {"title": "新歌1", "track_index": 1},
+      {"title": "新歌2", "track_index": 2}
+    ]
+  }'
+
+# 实际执行
+curl -X POST "https://moody-worker.changgepd.workers.dev/api/admin/ops/songs/batch-insert" \
+  -H "Content-Type: application/json; charset=utf-8" \
+  -d '{
+    "artist_name": "周杰伦",
+    "album_title": "最新专辑",
+    "dry_run": false,
+    "songs": [
+      {"title": "新歌1", "track_index": 1},
+      {"title": "新歌2", "track_index": 2}
+    ]
+  }'
+```
+
+**返回示例**:
+```json
+{
+  "code": 200,
+  "message": "成功插入 2 首歌曲",
+  "data": {
+    "artist_id": 1,
+    "album_id": 20,
+    "inserted_count": 2,
+    "song_ids": [10001, 10002]
+  }
+}
+```
+
+**特点**:
+- 如果歌手不存在，会自动创建
+- 如果专辑不存在，会自动创建
+- 适合快速添加新内容
+
+---
+
+### 📝 运营接口最佳实践
+
+#### 1. 始终先使用预览模式
+
+```bash
+# 第一步：预览
+curl -X POST "https://moody-worker.changgepd.workers.dev/api/admin/ops/songs/batch-update" \
+  -H "Content-Type: application/json; charset=utf-8" \
+  -d '{
+    "artist_name": "张学友",
+    "album_title": "Smile",
+    "dry_run": true,
+    "updates": [...]
+  }'
+
+# 第二步：检查预览结果，确认无误后再执行
+curl -X POST "https://moody-worker.changgepd.workers.dev/api/admin/ops/songs/batch-update" \
+  -H "Content-Type: application/json; charset=utf-8" \
+  -d '{
+    "artist_name": "张学友",
+    "album_title": "Smile",
+    "dry_run": false,
+    "updates": [...]
+  }'
+```
+
+#### 2. 模糊匹配的优势
+
+```bash
+# 不需要输入完整名称，支持模糊匹配
+"artist_name": "周杰伦"      # 可以找到 "周杰伦"
+"album_title": "Jay"         # 可以找到 "Jay"
+"old_title": "晴天"          # 可以找到 "晴天"
+```
+
+#### 3. 常见运营场景
+
+**场景 1：修复专辑乱码**
+```bash
+curl -X POST "https://moody-worker.changgepd.workers.dev/api/admin/ops/songs/batch-update" \
+  -H "Content-Type: application/json; charset=utf-8" \
+  -d '{
+    "artist_name": "张学友",
+    "album_title": "Smile",
+    "updates": [
+      {"old_title": "轻抚你的脸", "new_title": "轻抚你的脸", "track_index": 1},
+      {"old_title": "爱的卡帮", "new_title": "爱的卡帮", "track_index": 2}
+    ]
+  }'
+```
+
+**场景 2：重命名专辑**
+```bash
+curl -X POST "https://moody-worker.changgepd.workers.dev/api/admin/ops/albums/rename" \
+  -H "Content-Type: application/json; charset=utf-8" \
+  -d '{
+    "artist_name": "周杰伦",
+    "old_title": "Jay",
+    "new_title": "Jay (20周年纪念版)"
+  }'
+```
+
+**场景 3：合并重复专辑**
+```bash
+curl -X POST "https://moody-worker.changgepd.workers.dev/api/admin/ops/albums/merge" \
+  -H "Content-Type: application/json; charset=utf-8" \
+  -d '{
+    "artist_name": "周杰伦",
+    "source_album_title": "Jay (再版)",
+    "target_album_title": "Jay"
+  }'
+```
+
+**场景 4：删除错误专辑**
+```bash
+curl -X POST "https://moody-worker.changgepd.workers.dev/api/admin/ops/albums/delete" \
+  -H "Content-Type: application/json; charset=utf-8" \
+  -d '{
+    "artist_name": "测试歌手",
+    "album_title": "错误专辑"
+  }'
+```
+
+---
+
+### 🌟 运营接口 vs 技术接口对比
+
+| 功能 | 运营接口 ⭐ | 技术接口 |
+|------|------------|----------|
+| 更新歌曲 | `POST /api/admin/ops/songs/batch-update` | `POST /api/admin/songs/batch-update` |
+| 重命名专辑 | `POST /api/admin/ops/albums/rename` | `PATCH /api/admin/albums/:id` |
+| 合并专辑 | `POST /api/admin/ops/albums/merge` | `POST /api/admin/albums/merge` |
+| 删除专辑 | `POST /api/admin/ops/albums/delete` | `POST /api/admin/albums/delete` |
+| 参数方式 | 使用**名称**（歌手、专辑、歌曲） | 使用 **ID** |
+| 预览模式 | ✅ 支持 (`dry_run`) | ❌ 不支持 |
+| 模糊匹配 | ✅ 支持 | ❌ 不支持 |
+| 适用人群 | 运营人员、非技术人员 | 开发人员、技术工具 |
+
+**推荐**：日常运营操作优先使用运营接口，更安全、更直观！
 
 ---
 

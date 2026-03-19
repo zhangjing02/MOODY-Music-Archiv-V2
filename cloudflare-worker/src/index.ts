@@ -1213,7 +1213,495 @@ app.post('/api/admin/songs/cleanup-no-path', async (c) => {
 })
 
 // ==========================================
-// 18. Admin: Upload Routes
+// 19. Operations-Friendly APIs (运营友好接口)
+// 这些接口使用名称而非 ID，方便运营人员使用
+// ==========================================
+
+// ==========================================
+// 19.1 批量更新歌曲（按名称）
+// ==========================================
+app.post('/api/admin/ops/songs/batch-update', async (c) => {
+  try {
+    const { artist_name, album_title, updates, dry_run = false } = await c.req.json() as {
+      artist_name?: string
+      album_title?: string
+      updates?: Array<{ old_title: string, new_title: string, track_index?: number }>
+      dry_run?: boolean
+    }
+
+    if (!artist_name || !album_title) {
+      return c.json({ code: 400, message: '缺少 artist_name 或 album_title 参数' }, 400)
+    }
+
+    if (!updates || !updates.length) {
+      return c.json({ code: 400, message: '缺少 updates 数组' }, 400)
+    }
+
+    // 1. 查找艺人（模糊匹配）
+    const artistResult = await c.env.DB.prepare(
+      'SELECT id, name FROM artists WHERE name LIKE ?'
+    ).bind(`%${artist_name}%`).all()
+
+    if (!artistResult.results.length) {
+      return c.json({ code: 404, message: `未找到艺人: ${artist_name}` }, 404)
+    }
+
+    const artist = artistResult.results[0] as any
+
+    // 2. 查找专辑（模糊匹配）
+    const albumResult = await c.env.DB.prepare(
+      'SELECT id, title FROM albums WHERE artist_id = ? AND title LIKE ?'
+    ).bind(artist.id, `%${album_title}%`).all()
+
+    if (!albumResult.results.length) {
+      return c.json({ code: 404, message: `未找到专辑: ${album_title} (艺人: ${artist.name})` }, 404)
+    }
+
+    const album = albumResult.results[0] as any
+
+    // 3. 查找并更新歌曲
+    const stmts: D1PreparedStatement[] = []
+    const results: any[] = []
+
+    for (const update of updates) {
+      const { old_title, new_title, track_index } = update
+
+      // 查找歌曲
+      const songResult = await c.env.DB.prepare(
+        'SELECT id, title, track_index FROM songs WHERE album_id = ? AND title LIKE ?'
+      ).bind(album.id, `%${old_title}%`).all()
+
+      if (!songResult.results.length) {
+        results.push({
+          old_title,
+          status: 'not_found',
+          message: `未找到歌曲: ${old_title}`
+        })
+        continue
+      }
+
+      const song = songResult.results[0] as any
+
+      if (dry_run) {
+        results.push({
+          old_title: song.title,
+          new_title,
+          track_index: track_index || song.track_index,
+          status: 'preview',
+          message: `[预览] 将更新: ${song.title} → ${new_title}`
+        })
+      } else {
+        stmts.push(c.env.DB.prepare(
+          'UPDATE songs SET title = ?, track_index = ? WHERE id = ?'
+        ).bind(new_title, track_index || song.track_index, song.id))
+
+        results.push({
+          old_title: song.title,
+          new_title,
+          status: 'updated',
+          message: `已更新: ${song.title} → ${new_title}`
+        })
+      }
+    }
+
+    if (!dry_run && stmts.length > 0) {
+      await c.env.DB.batch(stmts)
+    }
+
+    return c.json({
+      code: 200,
+      message: dry_run ? '预览完成' : `成功更新 ${stmts.length} 首歌曲`,
+      data: {
+        artist: { id: artist.id, name: artist.name },
+        album: { id: album.id, title: album.title },
+        dry_run,
+        results
+      }
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message }, 500)
+  }
+})
+
+// ==========================================
+// 19.2 重命名专辑
+// ==========================================
+app.post('/api/admin/ops/albums/rename', async (c) => {
+  try {
+    const { artist_name, old_title, new_title, dry_run = false } = await c.req.json() as {
+      artist_name?: string
+      old_title?: string
+      new_title?: string
+      dry_run?: boolean
+    }
+
+    if (!artist_name || !old_title || !new_title) {
+      return c.json({ code: 400, message: '缺少必要参数: artist_name, old_title, new_title' }, 400)
+    }
+
+    // 1. 查找艺人
+    const artistResult = await c.env.DB.prepare(
+      'SELECT id, name FROM artists WHERE name LIKE ?'
+    ).bind(`%${artist_name}%`).first()
+
+    if (!artistResult) {
+      return c.json({ code: 404, message: `未找到艺人: ${artist_name}` }, 404)
+    }
+
+    // 2. 查找专辑
+    const albumResult = await c.env.DB.prepare(
+      'SELECT id, title FROM albums WHERE artist_id = ? AND title LIKE ?'
+    ).bind((artistResult as any).id, `%${old_title}%`).first()
+
+    if (!albumResult) {
+      return c.json({ code: 404, message: `未找到专辑: ${old_title}` }, 404)
+    }
+
+    if (dry_run) {
+      return c.json({
+        code: 200,
+        message: '预览完成',
+        data: {
+          artist: artistResult,
+          album: albumResult,
+          new_title,
+          action: `[预览] 将把专辑 "${(albumResult as any).title}" 重命名为 "${new_title}"`
+        }
+      })
+    }
+
+    // 3. 执行重命名
+    await c.env.DB.prepare(
+      'UPDATE albums SET title = ? WHERE id = ?'
+    ).bind(new_title, (albumResult as any).id).run()
+
+    return c.json({
+      code: 200,
+      message: `成功将专辑 "${(albumResult as any).title}" 重命名为 "${new_title}"`,
+      data: {
+        artist: artistResult,
+        old_album: albumResult,
+        new_title
+      }
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message }, 500)
+  }
+})
+
+// ==========================================
+// 19.3 重命名艺人
+// ==========================================
+app.post('/api/admin/ops/artists/rename', async (c) => {
+  try {
+    const { old_name, new_name, dry_run = false } = await c.req.json() as {
+      old_name?: string
+      new_name?: string
+      dry_run?: boolean
+    }
+
+    if (!old_name || !new_name) {
+      return c.json({ code: 400, message: '缺少必要参数: old_name, new_name' }, 400)
+    }
+
+    // 1. 查找艺人
+    const artistResult = await c.env.DB.prepare(
+      'SELECT id, name FROM artists WHERE name LIKE ?'
+    ).bind(`%${old_name}%`).first()
+
+    if (!artistResult) {
+      return c.json({ code: 404, message: `未找到艺人: ${old_name}` }, 404)
+    }
+
+    if (dry_run) {
+      return c.json({
+        code: 200,
+        message: '预览完成',
+        data: {
+          artist: artistResult,
+          new_name,
+          action: `[预览] 将把艺人 "${(artistResult as any).name}" 重命名为 "${new_name}"`
+        }
+      })
+    }
+
+    // 2. 执行重命名
+    await c.env.DB.prepare(
+      'UPDATE artists SET name = ? WHERE id = ?'
+    ).bind(new_name, (artistResult as any).id).run()
+
+    return c.json({
+      code: 200,
+      message: `成功将艺人 "${(artistResult as any).name}" 重命名为 "${new_name}"`,
+      data: {
+        old_artist: artistResult,
+        new_name
+      }
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message }, 500)
+  }
+})
+
+// ==========================================
+// 19.4 合并专辑（按名称）
+// ==========================================
+app.post('/api/admin/ops/albums/merge', async (c) => {
+  try {
+    const { artist_name, source_album_title, target_album_title, dry_run = false } = await c.req.json() as {
+      artist_name?: string
+      source_album_title?: string
+      target_album_title?: string
+      dry_run?: boolean
+    }
+
+    if (!artist_name || !source_album_title || !target_album_title) {
+      return c.json({ code: 400, message: '缺少必要参数: artist_name, source_album_title, target_album_title' }, 400)
+    }
+
+    // 1. 查找艺人
+    const artistResult = await c.env.DB.prepare(
+      'SELECT id, name FROM artists WHERE name LIKE ?'
+    ).bind(`%${artist_name}%`).first()
+
+    if (!artistResult) {
+      return c.json({ code: 404, message: `未找到艺人: ${artist_name}` }, 404)
+    }
+
+    // 2. 查找源专辑和目标专辑
+    const sourceResult = await c.env.DB.prepare(
+      'SELECT id, title FROM albums WHERE artist_id = ? AND title LIKE ?'
+    ).bind((artistResult as any).id, `%${source_album_title}%`).first()
+
+    const targetResult = await c.env.DB.prepare(
+      'SELECT id, title FROM albums WHERE artist_id = ? AND title LIKE ?'
+    ).bind((artistResult as any).id, `%${target_album_title}%`).first()
+
+    if (!sourceResult) {
+      return c.json({ code: 404, message: `未找到源专辑: ${source_album_title}` }, 404)
+    }
+
+    if (!targetResult) {
+      return c.json({ code: 404, message: `未找到目标专辑: ${target_album_title}` }, 404)
+    }
+
+    if ((sourceResult as any).id === (targetResult as any).id) {
+      return c.json({ code: 400, message: '源专辑和目标专辑不能相同' }, 400)
+    }
+
+    // 3. 统计歌曲数量
+    const songCountResult = await c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM songs WHERE album_id = ?'
+    ).bind((sourceResult as any).id).first<{ count: number }>()
+
+    const songCount = songCountResult?.count || 0
+
+    if (dry_run) {
+      return c.json({
+        code: 200,
+        message: '预览完成',
+        data: {
+          artist: artistResult,
+          source_album: sourceResult,
+          target_album: targetResult,
+          songs_to_move: songCount,
+          action: `[预览] 将把 ${songCount} 首歌曲从 "${(sourceResult as any).title}" 移动到 "${(targetResult as any).title}"，然后删除源专辑`
+        }
+      })
+    }
+
+    // 4. 执行合并
+    await c.env.DB.batch([
+      c.env.DB.prepare('UPDATE songs SET album_id = ? WHERE album_id = ?').bind((targetResult as any).id, (sourceResult as any).id),
+      c.env.DB.prepare('DELETE FROM albums WHERE id = ?').bind((sourceResult as any).id)
+    ])
+
+    return c.json({
+      code: 200,
+      message: `成功将 ${songCount} 首歌曲从 "${(sourceResult as any).title}" 合并到 "${(targetResult as any).title}"`,
+      data: {
+        artist: artistResult,
+        source_album: sourceResult,
+        target_album: targetResult,
+        songs_moved: songCount
+      }
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message }, 500)
+  }
+})
+
+// ==========================================
+// 19.5 删除专辑（按名称）
+// ==========================================
+app.post('/api/admin/ops/albums/delete', async (c) => {
+  try {
+    const { artist_name, album_title, dry_run = false } = await c.req.json() as {
+      artist_name?: string
+      album_title?: string
+      dry_run?: boolean
+    }
+
+    if (!artist_name || !album_title) {
+      return c.json({ code: 400, message: '缺少必要参数: artist_name, album_title' }, 400)
+    }
+
+    // 1. 查找艺人
+    const artistResult = await c.env.DB.prepare(
+      'SELECT id, name FROM artists WHERE name LIKE ?'
+    ).bind(`%${artist_name}%`).first()
+
+    if (!artistResult) {
+      return c.json({ code: 404, message: `未找到艺人: ${artist_name}` }, 404)
+    }
+
+    // 2. 查找专辑
+    const albumResult = await c.env.DB.prepare(
+      'SELECT id, title FROM albums WHERE artist_id = ? AND title LIKE ?'
+    ).bind((artistResult as any).id, `%${album_title}%`).first()
+
+    if (!albumResult) {
+      return c.json({ code: 404, message: `未找到专辑: ${album_title}` }, 404)
+    }
+
+    // 3. 统计歌曲数量
+    const songCountResult = await c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM songs WHERE album_id = ?'
+    ).bind((albumResult as any).id).first<{ count: number }>()
+
+    const songCount = songCountResult?.count || 0
+
+    if (dry_run) {
+      return c.json({
+        code: 200,
+        message: '预览完成',
+        data: {
+          artist: artistResult,
+          album: albumResult,
+          songs_to_delete: songCount,
+          action: `[预览] 将删除专辑 "${(albumResult as any).title}" 及其 ${songCount} 首歌曲`
+        }
+      })
+    }
+
+    // 4. 执行删除
+    await c.env.DB.batch([
+      c.env.DB.prepare('DELETE FROM songs WHERE album_id = ?').bind((albumResult as any).id),
+      c.env.DB.prepare('DELETE FROM albums WHERE id = ?').bind((albumResult as any).id)
+    ])
+
+    return c.json({
+      code: 200,
+      message: `成功删除专辑 "${(albumResult as any).title}" 及其 ${songCount} 首歌曲`,
+      data: {
+        artist: artistResult,
+        deleted_album: albumResult,
+        deleted_songs: songCount
+      }
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message }, 500)
+  }
+})
+
+// ==========================================
+// 19.6 批量插入歌曲（按名称）
+// ==========================================
+app.post('/api/admin/ops/songs/batch-insert', async (c) => {
+  try {
+    const { artist_name, album_title, songs, dry_run = false } = await c.req.json() as {
+      artist_name?: string
+      album_title?: string
+      songs?: Array<{ title: string, file_path?: string, track_index?: number }>
+      dry_run?: boolean
+    }
+
+    if (!artist_name || !album_title) {
+      return c.json({ code: 400, message: '缺少 artist_name 或 album_title 参数' }, 400)
+    }
+
+    if (!songs || !songs.length) {
+      return c.json({ code: 400, message: '缺少 songs 数组' }, 400)
+    }
+
+    // 1. 查找或创建艺人
+    let artistId: number
+    const artistLookup = await c.env.DB.prepare(
+      'SELECT id FROM artists WHERE name LIKE ?'
+    ).bind(`%${artist_name}%`).first()
+
+    if (artistLookup) {
+      artistId = (artistLookup as any).id
+    } else {
+      const newArtist = await c.env.DB.prepare(
+        'INSERT INTO artists (name, region) VALUES (?, ?)'
+      ).bind(artist_name, '华语').run()
+      artistId = newArtist.meta.last_row_id
+    }
+
+    // 2. 查找或创建专辑
+    let albumId: number
+    const albumLookup = await c.env.DB.prepare(
+      'SELECT id FROM albums WHERE artist_id = ? AND title LIKE ?'
+    ).bind(artistId, `%${album_title}%`).first()
+
+    if (albumLookup) {
+      albumId = (albumLookup as any).id
+    } else {
+      const newAlbum = await c.env.DB.prepare(
+        'INSERT INTO albums (artist_id, title) VALUES (?, ?)'
+      ).bind(artistId, album_title).run()
+      albumId = newAlbum.meta.last_row_id
+    }
+
+    if (dry_run) {
+      return c.json({
+        code: 200,
+        message: '预览完成',
+        data: {
+          artist_id: artistId,
+          album_id: albumId,
+          songs_to_insert: songs.length,
+          songs: songs.map(s => ({
+            ...s,
+            status: 'preview',
+            message: `[预览] 将插入歌曲: ${s.title}`
+          }))
+        }
+      })
+    }
+
+    // 3. 插入歌曲
+    const insertedIds: number[] = []
+    for (const song of songs) {
+      const result = await c.env.DB.prepare(
+        'INSERT INTO songs (title, file_path, album_id, track_index) VALUES (?, ?, ?, ?)'
+      ).bind(
+        song.title,
+        song.file_path || null,
+        albumId,
+        song.track_index || 0
+      ).run()
+      insertedIds.push(result.meta.last_row_id)
+    }
+
+    return c.json({
+      code: 200,
+      message: `成功插入 ${insertedIds.length} 首歌曲`,
+      data: {
+        artist_id: artistId,
+        album_id: albumId,
+        inserted_count: insertedIds.length,
+        song_ids: insertedIds
+      }
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message }, 500)
+  }
+})
+
+// ==========================================
+// 20. Admin: Upload Routes
 // 注册新的文件上传路由
 // ==========================================
 registerUploadRoutes(app)
