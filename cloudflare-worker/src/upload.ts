@@ -100,11 +100,34 @@ async function findSongMatch(
 
   const artistId = artistResult.id;
 
-  // 2. 查找专辑
-  const albumResult = await db
+  // 2. 查找专辑（支持繁简体模糊匹配）
+  const albumTitleNorm = normalizeTitle(albumTitle);
+
+  // 2.1 首先尝试精确匹配
+  let albumResult = await db
     .prepare('SELECT id FROM albums WHERE artist_id = ? AND title = ?')
     .bind(artistId, albumTitle)
     .first<{ id: number }>();
+
+  // 2.2 如果精确匹配失败，使用繁简体模糊匹配
+  if (!albumResult) {
+    const albums = await db
+      .prepare('SELECT id, title FROM albums WHERE artist_id = ?')
+      .bind(artistId)
+      .all<{ id: number; title: string }>();
+
+    for (const album of albums.results) {
+      const dbTitleNorm = normalizeTitle(album.title);
+
+      // 完全相等或包含关系
+      if (dbTitleNorm === albumTitleNorm ||
+          dbTitleNorm.includes(albumTitleNorm) ||
+          albumTitleNorm.includes(dbTitleNorm)) {
+        albumResult = album;
+        break;
+      }
+    }
+  }
 
   if (!albumResult) {
     return null; // 专辑不存在
