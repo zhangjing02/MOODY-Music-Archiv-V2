@@ -789,7 +789,431 @@ app.post('/api/admin/songs/create-full', async (c) => {
 })
 
 // ==========================================
-// 17. Admin: Upload Routes
+// 17. Admin: Debug Song by ID
+// 调试：查询指定 ID 的歌曲详细信息
+// ==========================================
+app.get('/api/admin/songs/debug', async (c) => {
+  try {
+    const id = c.req.query('id')
+    if (!id) {
+      return c.json({ code: 400, message: 'Missing id parameter' }, 400)
+    }
+
+    const song = await c.env.DB.prepare(
+      'SELECT id, title, file_path, track_index, album_id FROM songs WHERE id = ?'
+    ).bind(id).first()
+
+    if (!song) {
+      return c.json({ code: 404, message: 'Song not found' }, 404)
+    }
+
+    return c.json({
+      code: 200,
+      message: 'success',
+      data: song
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message }, 500)
+  }
+})
+
+// ==========================================
+// 17.3 Admin: Fix Jacky Smile Album
+// 智能修复张学友 Smile 专辑的乱码标题
+// ==========================================
+app.post('/api/admin/fix-jacky-smile', async (c) => {
+  try {
+    // 正确的曲目列表（从参考数据获取）
+    const correctSongs = [
+      { id: 27661, title: '轻抚你的脸', track_index: 1 },
+      { id: 27657, title: '爱的卡帮', track_index: 2 },
+      { id: 27663, title: '丝丝记忆', track_index: 3 },
+      { id: 27660, title: '局外人', track_index: 4 },
+      { id: 27658, title: '怀抱的您', track_index: 5 },
+      { id: 27664, title: '甜梦', track_index: 6 },
+      { id: 27662, title: '情已逝', track_index: 7 },
+      { id: 27666, title: '造梦者', track_index: 8 },
+      { id: 27665, title: '温柔', track_index: 9 },
+      { id: 27659, title: '交叉算了', track_index: 10 },
+      { id: 27656, title: 'Smile Again 玛莉亚', track_index: 11 },
+    ]
+
+    const stmts: D1PreparedStatement[] = []
+
+    for (const song of correctSongs) {
+      // 使用 UPDATE OR REPLACE 确保数据真正被更新
+      stmts.push(
+        c.env.DB.prepare(
+          'UPDATE songs SET title = ?, track_index = ? WHERE id = ?'
+        ).bind(song.title, song.track_index, song.id)
+      )
+    }
+
+    await c.env.DB.batch(stmts)
+
+    // 验证更新结果
+    const verification = await c.env.DB.prepare(
+      'SELECT id, title, track_index FROM songs WHERE album_id = 1562 ORDER BY track_index'
+    ).all()
+
+    return c.json({
+      code: 200,
+      message: `修复完成：更新了 ${correctSongs.length} 首歌曲`,
+      data: {
+        updated_count: correctSongs.length,
+        verification: verification.results
+      }
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message, stack: error.stack }, 500)
+  }
+})
+
+// ==========================================
+// 17.4 Admin: Get Album Details with Songs
+// 获取专辑详情（包含艺人信息和歌曲列表）
+// ==========================================
+app.get('/api/admin/albums/detail', async (c) => {
+  try {
+    const album_id = c.req.query('album_id')
+    if (!album_id) {
+      return c.json({ code: 400, message: 'Missing album_id parameter' }, 400)
+    }
+
+    // 查询专辑信息
+    const album = await c.env.DB.prepare(
+      'SELECT id, title, artist_id, release_date, cover_url FROM albums WHERE id = ?'
+    ).bind(album_id).first()
+
+    if (!album) {
+      return c.json({ code: 404, message: 'Album not found' }, 404)
+    }
+
+    // 查询艺人信息
+    const artist = await c.env.DB.prepare(
+      'SELECT id, name, region FROM artists WHERE id = ?'
+    ).bind((album as any).artist_id).first()
+
+    // 查询歌曲列表
+    const songs = await c.env.DB.prepare(
+      'SELECT id, title, file_path, lrc_path, track_index, storage_id FROM songs WHERE album_id = ? ORDER BY track_index, id'
+    ).bind(album_id).all()
+
+    return c.json({
+      code: 200,
+      message: 'success',
+      data: {
+        album: album,
+        artist: artist,
+        songs: songs.results,
+        song_count: songs.results.length
+      }
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message }, 500)
+  }
+})
+
+// ==========================================
+// 17.5 Admin: Delete All Songs in Album
+// 删除专辑下所有歌曲（保留专辑本身）
+// ==========================================
+app.post('/api/admin/songs/delete-all', async (c) => {
+  try {
+    const { album_id } = await c.req.json() as { album_id?: number }
+
+    if (!album_id) {
+      return c.json({ code: 400, message: 'Missing album_id parameter' }, 400)
+    }
+
+    // 先统计歌曲数量
+    const countResult = await c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM songs WHERE album_id = ?'
+    ).bind(album_id).first<{ count: number }>()
+
+    const count = countResult?.count || 0
+
+    // 删除所有歌曲
+    const deleteResult = await c.env.DB.prepare(
+      'DELETE FROM songs WHERE album_id = ?'
+    ).bind(album_id).run()
+
+    return c.json({
+      code: 200,
+      message: `成功删除专辑 ${album_id} 下的 ${deleteResult.meta.changes} 首歌曲`,
+      data: {
+        album_id: album_id,
+        deleted_count: deleteResult.meta.changes
+      }
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message }, 500)
+  }
+})
+
+// ==========================================
+// 17.6 Admin: Batch Insert Songs to Album
+// 批量插入歌曲到指定专辑
+// ==========================================
+app.post('/api/admin/songs/batch-insert', async (c) => {
+  try {
+    const { album_id, songs } = await c.req.json() as {
+      album_id?: number
+      songs?: Array<{
+        title: string
+        file_path?: string
+        lrc_path?: string
+        track_index?: number
+        storage_id?: string
+      }>
+    }
+
+    if (!album_id) {
+      return c.json({ code: 400, message: 'Missing album_id parameter' }, 400)
+    }
+
+    if (!songs || !songs.length) {
+      return c.json({ code: 400, message: 'Missing songs array' }, 400)
+    }
+
+    // 验证专辑存在
+    const album = await c.env.DB.prepare(
+      'SELECT id FROM albums WHERE id = ?'
+    ).bind(album_id).first()
+
+    if (!album) {
+      return c.json({ code: 404, message: 'Album not found' }, 404)
+    }
+
+    const stmts: D1PreparedStatement[] = []
+    const insertedIds: number[] = []
+
+    for (const song of songs) {
+      const stmt = c.env.DB.prepare(
+        'INSERT INTO songs (title, file_path, lrc_path, album_id, storage_id, track_index) VALUES (?, ?, ?, ?, ?, ?)'
+      ).bind(
+        song.title,
+        song.file_path || null,
+        song.lrc_path || null,
+        album_id,
+        song.storage_id || 'primary',
+        song.track_index || 0
+      )
+      stmts.push(stmt)
+
+      // 为了获取插入的 ID，我们需要逐个执行
+      const result = await stmt.run()
+      insertedIds.push(result.meta.last_row_id)
+    }
+
+    return c.json({
+      code: 200,
+      message: `成功插入 ${insertedIds.length} 首歌曲`,
+      data: {
+        album_id: album_id,
+        inserted_count: insertedIds.length,
+        song_ids: insertedIds
+      }
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message }, 500)
+  }
+})
+
+// ==========================================
+// 17.7 Admin: Search Albums by Name
+// 搜索专辑（支持模糊搜索）
+// ==========================================
+app.get('/api/admin/albums/search', async (c) => {
+  try {
+    const keyword = c.req.query('keyword')
+    const artist_id = c.req.query('artist_id')
+    const limit = c.req.query('limit') || '20'
+
+    if (!keyword && !artist_id) {
+      return c.json({ code: 400, message: 'Missing keyword or artist_id parameter' }, 400)
+    }
+
+    let query = `
+      SELECT a.id, a.title, a.artist_id, a.release_date, a.cover_url,
+             ar.name as artist_name,
+             COUNT(s.id) as song_count
+      FROM albums a
+      LEFT JOIN artists ar ON a.artist_id = ar.id
+      LEFT JOIN songs s ON a.id = s.album_id
+      WHERE 1=1
+    `
+    const params: any[] = []
+
+    if (keyword) {
+      query += ' AND a.title LIKE ?'
+      params.push(`%${keyword}%`)
+    }
+
+    if (artist_id) {
+      query += ' AND a.artist_id = ?'
+      params.push(artist_id)
+    }
+
+    query += ` GROUP BY a.id ORDER BY ar.name, a.title LIMIT ?`
+    params.push(parseInt(limit))
+
+    const albums = await c.env.DB.prepare(query).bind(...params).all()
+
+    return c.json({
+      code: 200,
+      message: 'success',
+      data: {
+        count: albums.results.length,
+        albums: albums.results
+      }
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message }, 500)
+  }
+})
+
+// ==========================================
+// 17.8 Admin: Delete Album (with all songs)
+// 删除专辑及其所有歌曲
+// ==========================================
+app.post('/api/admin/albums/delete', async (c) => {
+  try {
+    const { album_id } = await c.req.json() as { album_id?: number }
+
+    if (!album_id) {
+      return c.json({ code: 400, message: 'Missing album_id parameter' }, 400)
+    }
+
+    // 先统计歌曲数量
+    const songsResult = await c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM songs WHERE album_id = ?'
+    ).bind(album_id).first<{ count: number }>()
+
+    const songCount = songsResult?.count || 0
+
+    // 删除所有歌曲
+    await c.env.DB.prepare('DELETE FROM songs WHERE album_id = ?').bind(album_id).run()
+
+    // 删除专辑
+    const albumResult = await c.env.DB.prepare('DELETE FROM albums WHERE id = ?').bind(album_id).run()
+
+    if (albumResult.meta.changes === 0) {
+      return c.json({ code: 404, message: 'Album not found' }, 404)
+    }
+
+    return c.json({
+      code: 200,
+      message: `成功删除专辑及其 ${songCount} 首歌曲`,
+      data: {
+        album_id: album_id,
+        deleted_songs: songCount
+      }
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message }, 500)
+  }
+})
+
+// ==========================================
+// 17.1 Admin: Test Single Update
+// 测试：单条更新并返回详细信息
+// ==========================================
+app.post('/api/admin/songs/test-update', async (c) => {
+  try {
+    const { id, title, track_index } = await c.req.json() as {
+      id?: number, title?: string, track_index?: number
+    }
+
+    if (!id) {
+      return c.json({ code: 400, message: 'Missing id parameter' }, 400)
+    }
+
+    // 先查询当前值
+    const before = await c.env.DB.prepare(
+      'SELECT id, title, file_path, track_index, album_id FROM songs WHERE id = ?'
+    ).bind(id).first()
+
+    if (!before) {
+      return c.json({ code: 404, message: 'Song not found' }, 404)
+    }
+
+    // 执行更新
+    const setClauses: string[] = []
+    const params: any[] = []
+
+    if (title !== undefined) {
+      setClauses.push('title = ?')
+      params.push(title)
+    }
+    if (track_index !== undefined) {
+      setClauses.push('track_index = ?')
+      params.push(track_index)
+    }
+
+    if (setClauses.length === 0) {
+      return c.json({ code: 400, message: 'No fields to update' }, 400)
+    }
+
+    params.push(id)
+    const updateResult = await c.env.DB.prepare(
+      `UPDATE songs SET ${setClauses.join(', ')} WHERE id = ?`
+    ).bind(...params).run()
+
+    // 查询更新后的值
+    const after = await c.env.DB.prepare(
+      'SELECT id, title, file_path, track_index, album_id FROM songs WHERE id = ?'
+    ).bind(id).first()
+
+    return c.json({
+      code: 200,
+      message: 'Update completed',
+      data: {
+        update_success: updateResult.meta.changes > 0,
+        rows_changed: updateResult.meta.changes,
+        before: before,
+        after: after
+      }
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message, stack: error.stack }, 500)
+  }
+})
+
+// ==========================================
+// 18. Admin: Cleanup Songs Without Path
+// 清理指定专辑中没有 file_path 的歌曲记录
+// ==========================================
+app.post('/api/admin/songs/cleanup-no-path', async (c) => {
+  try {
+    const { album_id } = await c.req.json() as { album_id?: number }
+
+    if (!album_id) {
+      return c.json({ code: 400, message: 'Missing album_id parameter' }, 400)
+    }
+
+    // 删除指定专辑中没有 path 的歌曲
+    const deleteStmt = await c.env.DB.prepare(`
+      DELETE FROM songs
+      WHERE album_id = ?
+      AND (file_path IS NULL OR file_path = '' OR file_path = 'music/')
+    `).bind(album_id).run()
+
+    return c.json({
+      code: 200,
+      message: `清理完成：删除了 ${deleteStmt.meta.changes} 条无 path 的歌曲记录`,
+      data: {
+        deleted_count: deleteStmt.meta.changes,
+        album_id: album_id
+      }
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message }, 500)
+  }
+})
+
+// ==========================================
+// 18. Admin: Upload Routes
 // 注册新的文件上传路由
 // ==========================================
 registerUploadRoutes(app)

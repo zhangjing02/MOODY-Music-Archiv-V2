@@ -26,6 +26,9 @@
                 <a href="#governance" class="nav-item" data-target="governance">
                     <span class="icon">🧹</span> 运维治理
                 </a>
+                <a href="#album-manager" class="nav-item" data-target="album-manager">
+                    <span class="icon">💿</span> 专辑管理
+                </a>
             </nav>
             <div class="sidebar-footer">
                 Port: 8082 🟢
@@ -150,6 +153,71 @@
                     </div>
                 </div>
             </section>
+
+            <!-- 专辑管理 板块 -->
+            <section id="album-manager" class="panel hidden">
+                <header>
+                    <h2>专辑管理 <small>Album Manager</small></h2>
+                    <p class="subtitle">查看专辑详情，批量管理歌曲，删除或重建专辑数据。</p>
+                </header>
+
+                <!-- 搜索专辑 -->
+                <div class="form-card">
+                    <h3>🔍 搜索专辑</h3>
+                    <div class="form-row" style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>关键词</label>
+                            <input type="text" id="am-search-keyword" placeholder="专辑名称（支持模糊搜索）">
+                        </div>
+                        <div class="form-group" style="width: 200px;">
+                            <label>&nbsp;</label>
+                            <button class="btn btn-primary" id="btn-am-search" style="width: 100%;">搜索</button>
+                        </div>
+                    </div>
+                    <div class="search-results" id="am-search-results"></div>
+                </div>
+
+                <!-- 专辑详情 -->
+                <div class="form-card hidden" id="am-detail-card">
+                    <h3>📀 专辑详情</h3>
+                    <div class="album-info" id="am-album-info"></div>
+
+                    <!-- 操作按钮 -->
+                    <div class="action-buttons" style="margin: 20px 0;">
+                        <button class="btn btn-warning" id="btn-am-clear-songs">清空所有歌曲</button>
+                        <button class="btn btn-danger" id="btn-am-delete-album">删除专辑</button>
+                        <button class="btn btn-primary" id="btn-am-batch-edit">批量编辑歌曲</button>
+                    </div>
+
+                    <!-- 歌曲列表 -->
+                    <h4>歌曲列表 (<span id="am-song-count">0</span> 首)</h4>
+                    <div class="songs-list" id="am-songs-list"></div>
+                </div>
+
+                <!-- 批量编辑表单 -->
+                <div class="form-card hidden" id="am-batch-edit-card">
+                    <h3>✏️ 批量编辑歌曲</h3>
+                    <p class="hint">格式：每行一首歌，格式为 "歌曲标题,TrackIndex"（逗号分隔）</p>
+                    <div class="form-group">
+                        <label>歌曲列表</label>
+                        <textarea id="am-batch-data" rows="15" placeholder="轻抚你的脸,1
+爱的卡帮,2
+丝丝记忆,3
+局外人,4
+怀抱的您,5
+甜梦,6
+情已逝,7
+造梦者,8
+温柔,9
+交叉算了,10
+Smile Again 玛莉亚,11"></textarea>
+                    </div>
+                    <div class="form-row" style="display: flex; gap: 10px;">
+                        <button class="btn btn-success" id="btn-am-save-batch">保存更改</button>
+                        <button class="btn btn-secondary" id="btn-am-cancel-batch">取消</button>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -157,6 +225,7 @@
     <div id="toast" class="toast hidden">操作成功</div>
 
     <script src="admin.js"></script>
+    <script src="album-manager.js"></script>
 </body>
 
 </html>

@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initGovernance();
     initFixer();
     initUploader();
+    initAlbumManager();
     loadStats();
 });
 
