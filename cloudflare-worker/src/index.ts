@@ -10,6 +10,45 @@ type Bindings = {
 const app = new Hono<{ Bindings: Bindings }>()
 
 /**
+ * NormalizeTitle 归一化标题（用于繁简体模糊匹配）
+ * 移除标点符号及空格，统一小写，简繁体统一
+ */
+function normalizeTitle(s: string): string {
+  s = s.toLowerCase().trim();
+
+  // 统一各种标点符号（包括中文标点）
+  s = s.replace(/[ \t\n\r\-_—·、，,。．；;：:！!？?（）\(\)\[\]【】《》〈〉]/g, '');
+
+  // 简繁体映射
+  const t2sMap: Record<string, string> = {
+    '愛': '爱', '來': '来', '後': '后', '為': '为',
+    '與': '与', '時': '时', '開': '开', '無': '无',
+    '國': '国', '語': '语', '產': '产', '學': '学',
+    '長': '长', '點': '点', '變': '变', '電': '电',
+    '動': '动', '聽': '听', '這': '这', '過': '过',
+    '寫': '写', '會': '会', '經': '经', '關': '关',
+    '們': '们', '傳': '传', '錄': '录', '機': '机',
+    '觀': '观', '場': '场', '實': '实', '驗': '验',
+    '斷': '断', '種': '种', '類': '类',
+    '難': '难', '優': '优', '態': '态', '響': '响',
+    '應': '应', '繫': '续', '調': '调', '轉': '转',
+    '遙': '遥', '麵': '面', '彎': '弯', '單': '单',
+    '願': '愿', '義': '义', '務': '务', '標': '标'
+  };
+
+  let result = '';
+  for (const char of s) {
+    // 只保留中文、英文字母和数字
+    if ((char >= 0x4e00 && char <= 0x9fa5) ||
+        (char >= 'a' && char <= 'z') ||
+        (char >= '0' && char <= '9')) {
+      result += t2sMap[char] || char;
+    }
+  }
+  return result;
+}
+
+/**
  * Normalizes resource URLs to be absolute and correctly prefixed
  */
 function normalizeResourceUrl(path: string | null | undefined, baseUrl: string, type: 'avatar' | 'cover' | 'mp3' | 'lrc'): string {
@@ -198,22 +237,36 @@ app.get('/api/songs', async (c) => {
     }
 
     if (queryAlbum) {
-      // Normalize query: remove spaces and common brackets for better matching
-      const normalizedAlbum = queryAlbum.replace(/[()（）\s]/g, '');
-      sql += ` AND (al.title LIKE ? OR REPLACE(REPLACE(REPLACE(REPLACE(al.title, '(', ''), ')', ''), '（', ''), '）', '') LIKE ?)`
+      // 专辑查询：使用模糊匹配（支持部分匹配）
+      sql += ` AND al.title LIKE ?`
       params.push(`%${queryAlbum}%`)
-      params.push(`%${normalizedAlbum}%`)
     }
 
     sql += ` ORDER BY a.name ASC, al.release_date ASC, s.track_index ASC`
 
     const { results } = await c.env.DB.prepare(sql).bind(...params).all()
 
+    // 如果有专辑查询参数，进行繁简体过滤
+    let filteredResults = results as any[]
+    if (queryAlbum) {
+      const normalizedQuery = normalizeTitle(queryAlbum)
+      filteredResults = (results as any[]).filter((row: any) => {
+        if (!row.album_title) return false
+        const normalizedTitle = normalizeTitle(row.album_title)
+        // 匹配规则：完全相等或包含关系
+        return normalizedTitle === normalizedQuery ||
+               normalizedTitle.includes(normalizedQuery) ||
+               normalizedQuery.includes(normalizedTitle)
+      })
+    } else {
+      filteredResults = results as any[]
+    }
+
     // Process flat rows into hierarchical structure
     const artistMap = new Map<number, any>()
     const baseUrl = new URL(c.req.url).origin
 
-    for (const row of results as any[]) {
+    for (const row of filteredResults) {
       if (!row.artist_id) continue
 
       if (!artistMap.has(row.artist_id)) {
