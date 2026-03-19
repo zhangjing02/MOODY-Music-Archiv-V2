@@ -41,10 +41,10 @@ http {
     keepalive_timeout 65;
     types_hash_max_size 2048;
 
-    # 前端播放器（8080 端口）
+    # 前端播放器（80 端口）
     server {
-        listen 8080;
-        server_name _;
+        listen 80;
+        server_name ddjokbqwfbce.ap-southeast-1.clawcloudrun.com;
         root /usr/share/nginx/html/src;
         index index.html;
 
@@ -75,10 +75,10 @@ http {
         }
     }
 
-    # 管理后台（8082 端口）
+    # 管理后台（80 端口）
     server {
-        listen 8082;
-        server_name _;
+        listen 80;
+        server_name qbxnkwidzabx.ap-southeast-1.clawcloudrun.com;
         root /usr/share/nginx/html/admin;
         index index.html;
 
@@ -112,7 +112,7 @@ http {
 EOF
 
 # 暴露端口
-EXPOSE 8080 8082
+EXPOSE 80
 
 # 启动 Nginx（前台运行，监听两个端口）
 CMD ["nginx", "-g", "daemon off;"]
