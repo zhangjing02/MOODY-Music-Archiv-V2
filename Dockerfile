@@ -1,46 +1,46 @@
-# [Multi-Stage Build] MOODY Music Archive for ClawCloud Run
+# MOODY Music Archive - Pure Frontend (Worker Architecture)
+# 生产环境完全依赖 Cloudflare Worker，Docker 只用于托管前端静态资源
 
-# Stage 1: Build Backend
-FROM golang:1.24-alpine AS builder
-RUN apk add --no-cache gcc musl-dev
-WORKDIR /app
-COPY backend/go.mod backend/go.sum ./backend/
-WORKDIR /app/backend
-RUN go mod download
-COPY backend/ ./
-# 使用 CGO_ENABLED=0 构建 pure Go 二进制，显式指定 GOARCH=amd64 适配 ClawCloud
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main ./cmd/main.go
+FROM nginx:alpine
 
-# Stage 2: Runtime Environment
-FROM alpine:latest
-RUN apk add --no-cache ca-certificates tzdata curl bash
-WORKDIR /app
+# 安装 tzdata 和 ca-certificates
+RUN apk add --no-cache tzdata ca-certificates
 
-# 拷贝后端二进制
-COPY --from=builder /app/backend/main .
+# 设置时区
+ENV TZ=Asia/Shanghai
 
-# 拷贝前端静态资源
-COPY frontend ./frontend
+# 拷贝前端静态资源到 Nginx
+COPY frontend /usr/share/nginx/html
 
-# 构造启动脚本 (仅保留 MOODY 主进程)
-RUN printf '#!/bin/sh\n\
-mkdir -p /app/storage/db\n\
-echo "🎵 Starting MOODY Backend (All-in-One) on port 8080..."\n\
-./main\n' > start.sh && chmod +x start.sh
+# 创建 nginx 配置
+RUN echo 'server { \
+    listen 80; \
+    server_name _; \
+    root /usr/share/nginx/html; \
+    index index.html; \
+    \
+    location / { \
+        try_files $uri $uri/ /index.html; \
+    } \
+    \
+    # API 请求代理到 Worker（可选）\
+    location /api/ { \
+        proxy_pass https://moody-worker.changgepd.workers.dev; \
+        proxy_set_header Host $host; \
+        proxy_set_header X-Real-IP $remote_addr; \
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; \
+        proxy_set_header X-Forwarded-Proto $scheme; \
+    } \
+    \
+    # 静态资源缓存\
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ { \
+        expires 30d; \
+        add_header Cache-Control "public, immutable"; \
+    } \
+}' > /etc/nginx/conf.d/default.conf
 
-# 预设存储目录
-RUN mkdir -p storage/music storage/covers storage/lyrics storage/db
+# 暴露端口
+EXPOSE 80
 
-# 暴露服务端口
-# 8080: 播放、API 与 数据库管理 (New!)
-# 8082: 后端管理接口 (治理、上传、统计)
-EXPOSE 8080 8082
-
-# 生产环境环境变量
-ENV MOODY_PORT=8080
-ENV MOODY_ADMIN_PORT=8082
-ENV MOODY_VERSION="v12.59 (2026-03-18)"
-ENV GIN_MODE=release
-
-# 执行启动脚本
-CMD ["/bin/sh", "/app/start.sh"]
+# 启动 Nginx
+CMD ["nginx", "-g", "daemon off;"]
