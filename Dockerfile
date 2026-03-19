@@ -1,24 +1,30 @@
-# MOODY Music Archive - 双端口架构
+# MOODY Music Archive - 双端口架构（v2）
 # 前端代码保持灵活，可以在任意平台部署
 
 FROM nginx:alpine
 
-# 安装 supervisord（进程管理器）和 tzdata
-RUN apk add --no-cache supervisor tzdata ca-certificates
+# 安装必要工具
+RUN apk add --no-cache tzdata ca-certificates bash
 
 # 设置时区
 ENV TZ=Asia/Shanghai
 
 # 拷贝前端静态文件
-COPY frontend /app/frontend
+COPY frontend /usr/share/nginx/html
 
-# 创建前端 Nginx 配置（8080 端口）
-RUN cat > /etc/nginx/frontend.conf << 'EOF'
+# 创建前端 Nginx 配置（8080 端口 - 播放器）
+RUN cat > /etc/nginx/conf.d/frontend.conf << 'EOF'
 server {
     listen 8080;
     server_name _;
-    root /app/frontend/src;
+    root /usr/share/nginx/html/src;
     index index.html;
+
+    # 添加健康检查端点
+    location /health {
+        access_log off;
+        return 200 "healthy\n";
+    }
 
     location / {
         try_files $uri $uri/ /index.html;
@@ -42,12 +48,18 @@ server {
 EOF
 
 # 创建管理后台 Nginx 配置（8082 端口）
-RUN cat > /etc/nginx/admin.conf << 'EOF'
+RUN cat > /etc/nginx/conf.d/admin.conf << 'EOF'
 server {
     listen 8082;
     server_name _;
-    root /app/frontend/admin;
+    root /usr/share/nginx/html/admin;
     index index.html;
+
+    # 添加健康检查端点
+    location /health {
+        access_log off;
+        return 200 "healthy\n";
+    }
 
     location / {
         try_files $uri $uri/ /index.html;
@@ -70,31 +82,27 @@ server {
 }
 EOF
 
-# 创建 supervisord 配置
-RUN cat > /etc/supervisord.conf << 'EOF'
-[supervisord]
-nodaemon=true
-user=root
-logfile=/var/log/supervisord.log
-pidfile=/var/run/supervisord.pid
+# 删除默认配置
+RUN rm -f /etc/nginx/conf.d/default.conf
 
-[program:frontend]
-command=/usr/sbin/nginx -c /etc/nginx/frontend.conf -g 'daemon off;'
-autostart=true
-autorestart=true
-stderr_logfile=/var/log/frontend.err.log
-stdout_logfile=/var/log/frontend.out.log
+# 创建启动脚本，同时启动两个 Nginx
+RUN cat > /start.sh << 'EOF'
+#!/bin/bash
+echo "Starting MOODY Music Archive..."
 
-[program:admin]
-command=/usr/sbin/nginx -c /etc/nginx/admin.conf -g 'daemon off;'
-autostart=true
-autorestart=true
-stderr_logfile=/var/log/admin.err.log
-stdout_logfile=/var/log/admin.out.log
+# 启动前端 Nginx（8080 端口，后台运行）
+echo "Starting frontend on port 8080..."
+/usr/sbin/nginx -c /etc/nginx/conf.d/frontend.conf &
+
+# 启动管理后台 Nginx（8082 端口，前台运行）
+echo "Starting admin on port 8082..."
+exec /usr/sbin/nginx -c /etc/nginx/conf.d/admin.conf
 EOF
+
+RUN chmod +x /start.sh
 
 # 暴露端口
 EXPOSE 8080 8082
 
-# 启动 supervisord（会自动启动两个 Nginx）
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
+# 启动服务
+CMD ["/start.sh"]
