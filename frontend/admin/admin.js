@@ -206,8 +206,8 @@ function readMP3Title(file) {
                             title = decoder.decode(dataView);
                         }
 
-                        // 移除空字符
-                        title = title.replace(/\x00+/g, '').trim();
+                        // 移除空字符和null字符
+                        title = title.replace(/\x00+/g, '').replace(/\uFFFD+/g, '').trim();
 
                         if (title) {
                             console.log(`      ✅ [readMP3Title] 成功读取标题: "${title}"`);
