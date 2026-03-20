@@ -40,7 +40,7 @@ function initNavigation() {
 // === 模块 2：运行大盘 ===
 async function loadStats() {
     try {
-        const res = await fetch('/api/admin/stats');
+        const res = await fetch('https://m-api.changgepd.top/api/admin/stats');
         if (res.ok) {
             const data = await res.json();
             // Handle both legacy (data.data) and new Worker format (data.data)
@@ -75,7 +75,7 @@ function readMP3Title(file) {
                 const byte0 = view.getUint8(0);
                 const byte1 = view.getUint8(1);
                 const byte2 = view.getUint8(2);
-                console.log(`      🔍 [readMP3Title] 前3字节: ${byte0.toString(16)} ${byte1.toString(16)} ${byte2.toString(16)} (应该是: 49 44 43)`);
+                console.log(`      🔍 [readMP3Title] 前3字节: ${byte0.toString(16)} ${byte1.toString(16)} ${byte2.toString(16)} (ID3标识应该是: 49 44 33)`);
 
                 if (byte0 !== 0x49 || byte1 !== 0x44 || byte2 !== 0x33) {
                     console.log(`      ❌ [readMP3Title] 不是 ID3v2 格式`);
@@ -467,7 +467,7 @@ function initFixer() {
         }
 
         try {
-            const res = await fetch('/api/admin/album/update', {
+            const res = await fetch('https://m-api.changgepd.top/api/admin/album/update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -496,7 +496,7 @@ function initFixer() {
         }
 
         try {
-            const res = await fetch('/api/admin/album/update', {
+            const res = await fetch('https://m-api.changgepd.top/api/admin/album/update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -522,7 +522,7 @@ function initGovernance() {
     const postGov = async (targets) => {
         try {
             showToast('正在执行任务...');
-            const res = await fetch('/api/admin/governance', {
+            const res = await fetch('https://m-api.changgepd.top/api/admin/governance', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ targets })
@@ -544,7 +544,7 @@ function initGovernance() {
         if (!confirm('确认清理冗余专辑？此操作将保留包含歌曲最多的版本并删除重复占位符。')) return;
         try {
             showToast('正在清理中...');
-            const res = await fetch('/api/admin/cleanup-duplicates', { method: 'POST' });
+            const res = await fetch('https://m-api.changgepd.top/api/admin/cleanup-duplicates', { method: 'POST' });
             const data = await res.json();
             if (res.ok) {
                 showToast(data.message || '清理完成');
@@ -561,7 +561,7 @@ function initGovernance() {
         if (!confirm('确认执行路径自修复？此操作将自动补全所有缺失的 music/ 前缀。')) return;
         try {
             showToast('正在对齐路径，请稍候...');
-            const res = await fetch('/api/admin/scrub', { method: 'POST' });
+            const res = await fetch('https://m-api.changgepd.top/api/admin/scrub', { method: 'POST' });
             const data = await res.json();
             if (res.ok) {
                 showToast(data.message || '修复完成！');
