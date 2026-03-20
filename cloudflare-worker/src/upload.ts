@@ -204,6 +204,7 @@ export async function handleUpload(
     const files = allFiles.filter((f): f is File => f instanceof File);
     const artistOverride = formData.get('artistOverride') as string;
     const albumOverride = formData.get('albumOverride') as string;
+    const titleOverride = formData.get('titleOverride') as string; // 新增：接收标题标签
 
     if (!files || files.length === 0) {
       return Response.json({
@@ -242,9 +243,15 @@ export async function handleUpload(
       const file = validFiles[i];
       const filename = file.name;
 
-      // 提取歌名
-      const songTitle = extractSongTitle(filename);
-      console.log(`  [${i + 1}/${validFiles.length}] 处理: ${filename} -> 歌名="${songTitle}"`);
+      // 优先使用标题标签，其次才从文件名提取
+      let songTitle: string;
+      if (titleOverride && titleOverride.trim()) {
+        songTitle = titleOverride.trim();
+        console.log(`  [${i + 1}/${validFiles.length}] 处理: ${filename} -> 使用标题标签="${songTitle}"`);
+      } else {
+        songTitle = extractSongTitle(filename);
+        console.log(`  [${i + 1}/${validFiles.length}] 处理: ${filename} -> 从文件名提取="${songTitle}"`);
+      }
 
       // 智能匹配歌曲记录
       const match = await findSongMatch(env.DB, artistName, albumTitle, songTitle);

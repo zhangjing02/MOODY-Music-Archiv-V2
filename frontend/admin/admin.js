@@ -55,6 +55,125 @@ async function loadStats() {
 }
 
 // === 模块 3：超级上传 ===
+
+/**
+ * 读取 MP3 文件的 ID3v2 标签（标题）
+ * 返回 Promise，解析成功返回标题，失败返回 null
+ */
+function readMP3Title(file) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            try {
+                const buffer = e.target.result;
+                const view = new DataView(buffer);
+
+                // 检查 ID3v2 标识 (前3个字节应该是 "ID3")
+                if (view.getUint8(0) !== 0x49 || view.getUint8(1) !== 0x44 || view.getUint8(2) !== 0x33) {
+                    resolve(null);
+                    return;
+                }
+
+                // ID3v2 版本 (第4个字节)
+                const version = view.getUint8(3);
+
+                // 读取标签大小（最后4个字节，synchsafe整数）
+                const tagSize =
+                    ((view.getUint8(6) & 0x7F) << 21) |
+                    ((view.getUint8(7) & 0x7F) << 14) |
+                    ((view.getUint8(8) & 0x7F) << 7) |
+                    (view.getUint8(9) & 0x7F);
+
+                let offset = 10; // 跳过 ID3 头部
+
+                while (offset < tagSize) {
+                    // 读取帧 ID (4字节)
+                    let frameId = '';
+                    for (let i = 0; i < 4; i++) {
+                        const charCode = view.getUint8(offset + i);
+                        if (charCode >= 65 && charCode <= 90) { // A-Z
+                            frameId += String.fromCharCode(charCode);
+                        } else {
+                            break;
+                        }
+                    }
+
+                    if (frameId.length < 4) break; // 帧ID无效，结束
+
+                    // 读取帧大小
+                    let frameSize;
+                    if (version === 3) {
+                        // ID3v2.3: 32位整数
+                        frameSize = view.getUint32(offset + 4);
+                    } else if (version === 4) {
+                        // ID3v2.4: synchsafe整数
+                        frameSize =
+                            ((view.getUint8(offset + 4) & 0x7F) << 21) |
+                            ((view.getUint8(offset + 5) & 0x7F) << 14) |
+                            ((view.getUint8(offset + 6) & 0x7F) << 7) |
+                            (view.getUint8(offset + 7) & 0x7F);
+                    } else {
+                        break; // 不支持的版本
+                    }
+
+                    // 检查是否是标题帧
+                    if (frameId === 'TIT2') {
+                        // 跳过帧头（10字节）
+                        const contentOffset = offset + 10;
+                        const encoding = view.getUint8(contentOffset);
+
+                        // 读取标题内容
+                        let title = '';
+                        const contentSize = frameSize - 1; // 减去编码字节
+
+                        if (encoding === 0) {
+                            // ISO-8859-1
+                            for (let i = 1; i <= contentSize; i++) {
+                                title += String.fromCharCode(view.getUint8(contentOffset + i));
+                            }
+                        } else if (encoding === 1 || encoding === 2) {
+                            // UTF-16 with BOM
+                            const dataView = new Uint8Array(buffer, contentOffset + 1, contentSize);
+                            const decoder = new TextDecoder('utf-16le');
+                            title = decoder.decode(dataView);
+                        } else if (encoding === 3) {
+                            // UTF-8
+                            const dataView = new Uint8Array(buffer, contentOffset + 1, contentSize);
+                            const decoder = new TextDecoder('utf-8');
+                            title = decoder.decode(dataView);
+                        }
+
+                        // 移除空字符
+                        title = title.replace(/\x00+/g, '').trim();
+
+                        if (title) {
+                            console.log(`📝 读取到标题: "${title}" 从 ${file.name}`);
+                            resolve(title);
+                            return;
+                        }
+                    }
+
+                    // 跳到下一个帧
+                    offset += 10 + frameSize;
+                }
+
+                resolve(null); // 未找到标题帧
+            } catch (error) {
+                console.warn('读取 ID3 标签失败:', error);
+                resolve(null);
+            }
+        };
+
+        reader.onerror = () => resolve(null);
+
+        // 只读取前 10KB 数据（足够包含 ID3 标签）
+        const blobSlice = File.prototype.slice || File.prototype.mozSlice || File.prototype.webkitSlice;
+        const blob = blobSlice.call(file, 0, 10240);
+        reader.readAsArrayBuffer(blob);
+    });
+}
+
 function initUploader() {
     const dropzone = document.getElementById('dropzone');
     const fileInput = document.getElementById('file-input');
@@ -104,13 +223,24 @@ function initUploader() {
         btnUpload.disabled = pendingFiles.length === 0 || pendingFiles.some(f => f.status === 'uploading');
     }
 
-    function handleFiles(files) {
+    async function handleFiles(files) {
         for (let f of files) {
+            // 只读取 MP3 文件的标题
+            let title = null;
+            if (f.name.toLowerCase().endsWith('.mp3')) {
+                try {
+                    title = await readMP3Title(f);
+                } catch (e) {
+                    console.warn('读取标题失败:', e);
+                }
+            }
+
             pendingFiles.push({
                 file: f,
                 status: 'waiting',
                 progress: 0,
-                error: null
+                error: null,
+                title: title // 存储从 ID3 标签读取的标题
             });
         }
         renderFileList();
@@ -129,6 +259,11 @@ function initUploader() {
             formData.append('files', fObj.file);
             if (artist) formData.append('artistOverride', artist);
             if (album) formData.append('albumOverride', album);
+            // 发送标题信息（优先级高于文件名）
+            if (fObj.title) {
+                formData.append('titleOverride', fObj.title);
+                console.log(`📤 使用标题标签: "${fObj.title}"`);
+            }
 
             const xhr = new XMLHttpRequest();
             // [CRITICAL CHANGE] 改为调用 Worker API
