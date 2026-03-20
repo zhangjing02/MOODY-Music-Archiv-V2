@@ -191,17 +191,55 @@ function initUploader() {
 
         const allSuccess = toUpload.every(f => f.status === 'success');
         if (allSuccess) {
-            showToast(`全部 ${toUpload.length} 首歌曲处理完毕！`);
+            showToast(`✅ 全部 ${toUpload.length} 首歌曲处理完毕！`);
             loadStats();
+
+            // 上传成功后清空页面，方便继续上传
+            setTimeout(() => {
+                clearUploadForm();
+            }, 1500);
         } else {
             showToast('部分文件上传失败，请检查列表状态', 'error');
         }
 
         setTimeout(() => {
             btnUpload.disabled = false;
-            // 不自动隐藏 progContainer 以便查看结果？
-            // 还是决定由用户收到通知后决定
         }, 1000);
+    });
+
+    // 清空上传表单和文件列表
+    function clearUploadForm() {
+        // 清空文件列表
+        pendingFiles.length = 0;
+
+        // 清空输入框
+        document.getElementById('up-artist').value = '';
+        document.getElementById('up-album').value = '';
+
+        // 隐藏进度条
+        progContainer.classList.add('hidden');
+        progBar.style.width = '0%';
+
+        // 重新渲染文件列表
+        renderFileList();
+
+        showToast('🔄 页面已清空，可继续上传', 'success');
+    }
+
+    // 清空按钮事件监听
+    document.getElementById('btn-clear-upload').addEventListener('click', () => {
+        if (pendingFiles.length === 0) {
+            showToast('文件列表已经是空的', 'success');
+            return;
+        }
+
+        // 如果有正在上传的文件，不允许清空
+        if (pendingFiles.some(f => f.status === 'uploading')) {
+            showToast('有文件正在上传中，请等待上传完成', 'error');
+            return;
+        }
+
+        clearUploadForm();
     });
 }
 

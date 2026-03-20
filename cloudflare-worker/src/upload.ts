@@ -24,8 +24,9 @@ function normalizeTitle(s: string): string {
   // 统一各种标点符号（包括中文标点）
   s = s.replace(/[ \t\n\r\-_—·、，,。．；;：:！!？?（）\(\)\[\]【】《》〈〉]/g, '');
 
-  // 简繁体映射（部分常用字）
+  // 简繁体映射（扩展版）
   const t2sMap: Record<string, string> = {
+    // 常用繁体字
     '愛': '爱', '來': '来', '後': '后', '為': '为',
     '與': '与', '時': '时', '開': '开', '無': '无',
     '國': '国', '語': '语', '產': '产', '學': '学',
@@ -38,15 +39,29 @@ function normalizeTitle(s: string): string {
     '難': '难', '優': '优', '態': '态', '響': '响',
     '應': '应', '繫': '续', '調': '调', '轉': '转',
     '遙': '遥', '麵': '面', '彎': '弯', '單': '单',
-    '願': '愿', '義': '义', '務': '务', '標': '标'
+    '願': '愿', '義': '义', '務': '务', '標': '标',
+    // 补充常用繁体字
+    '遠': '远', '選': '选', '邊': '边', '處': '处',
+    '風': '风', '頭': '头', '門': '门', '間': '间',
+    '題': '题', '導': '导', '讓': '让', '識': '识',
+    '設': '设', '屬': '属', '據': '据', '築': '筑',
+    '緊': '紧', '陳': '陈', '蓋': '盖', '舉': '举',
+    '壓': '压', '質': '质', '儘': '尽', '護': '护',
+    '戲': '戏', '臺': '台', '鄉': '乡', '現': '现',
+    '規': '规', '視': '视', '藝': '艺', '價': '价',
+    '證': '证', '獨': '独', '劇': '剧',
+    '歲': '岁', '備': '备', '敵': '敌'
   };
 
   let result = '';
   for (const char of s) {
+    const code = char.charCodeAt(0);
     // 只保留中文、英文字母和数字
-    if ((char >= 0x4e00 && char <= 0x9fa5) ||
-        (char >= 'a' && char <= 'z') ||
-        (char >= '0' && char <= '9')) {
+    const isCJK = (code >= 0x4e00 && code <= 0x9fa5);
+    const isEnglish = (code >= 0x0061 && code <= 0x007a); // a-z
+    const isDigit = (code >= 0x0030 && code <= 0x0039);   // 0-9
+
+    if (isCJK || isEnglish || isDigit) {
       result += t2sMap[char] || char;
     }
   }
@@ -145,7 +160,7 @@ async function findSongMatch(
     .first<{ id: number; title: string; file_path: string }>();
 
   if (exactMatch) {
-    return exactMatch;
+    return { song_id: exactMatch.id, title: exactMatch.title, file_path: exactMatch.file_path };
   }
 
   // 3.2 模糊匹配：遍历专辑下所有歌曲，使用 NormalizeTitle 匹配
@@ -160,14 +175,14 @@ async function findSongMatch(
     // 匹配规则：
     // 1. 完全相等
     if (dbTitleNorm === songTitleNorm) {
-      return song;
+      return { song_id: song.id, title: song.title, file_path: song.file_path };
     }
 
     // 2. 包含关系（文件名包含名录歌名，或名录歌名包含文件名）
     if (songTitleNorm.includes(dbTitleNorm) || dbTitleNorm.includes(songTitleNorm)) {
       // 避免太短的匹配
       if (dbTitleNorm.length >= 2 && songTitleNorm.length >= 2) {
-        return song;
+        return { song_id: song.id, title: song.title, file_path: song.file_path };
       }
     }
   }
@@ -185,7 +200,8 @@ export async function handleUpload(
   try {
     // 1. 解析表单数据
     const formData = await request.formData();
-    const files = formData.getAll('files') as File[];
+    const allFiles = formData.getAll('files') as unknown[];
+    const files = allFiles.filter((f): f is File => f instanceof File);
     const artistOverride = formData.get('artistOverride') as string;
     const albumOverride = formData.get('albumOverride') as string;
 
@@ -196,7 +212,7 @@ export async function handleUpload(
       });
     }
 
-    const validFiles = files.filter((f) => f instanceof File && f.size > 0);
+    const validFiles = files.filter((f) => f.size > 0);
     if (validFiles.length === 0) {
       return Response.json({
         code: 400,

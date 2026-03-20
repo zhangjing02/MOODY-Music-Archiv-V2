@@ -11,16 +11,17 @@ const app = new Hono<{ Bindings: Bindings }>()
 
 /**
  * NormalizeTitle 归一化标题（用于繁简体模糊匹配）
- * 移除标点符号及空格，统一小写，简繁体统一
+ * 移除标点符号及空格，统一小写，简繁体统一，保留英文字母和数字
  */
 function normalizeTitle(s: string): string {
   s = s.toLowerCase().trim();
 
   // 统一各种标点符号（包括中文标点）
-  s = s.replace(/[ \t\n\r\-_—·、，,。．；;：:！!？?（）\(\)\[\]【】《》〈〉]/g, '');
+  s = s.replace(/[ \t\n\r\-_—·、，,。．；;：:！!？?（）\(\)\[\]【】《》〈⟩]/g, '');
 
-  // 简繁体映射
+  // 简繁体映射（扩展版）
   const t2sMap: Record<string, string> = {
+    // 常用繁体字
     '愛': '爱', '來': '来', '後': '后', '為': '为',
     '與': '与', '時': '时', '開': '开', '無': '无',
     '國': '国', '語': '语', '產': '产', '學': '学',
@@ -33,15 +34,30 @@ function normalizeTitle(s: string): string {
     '難': '难', '優': '优', '態': '态', '響': '响',
     '應': '应', '繫': '续', '調': '调', '轉': '转',
     '遙': '遥', '麵': '面', '彎': '弯', '單': '单',
-    '願': '愿', '義': '义', '務': '务', '標': '标'
+    '願': '愿', '義': '义', '務': '务', '標': '标',
+    // 补充常用繁体字
+    '遠': '远', '選': '选', '邊': '边', '處': '处',
+    '風': '风', '頭': '头', '門': '门', '間': '间',
+    '題': '题', '導': '导', '讓': '让', '識': '识',
+    '設': '设', '屬': '属', '據': '据', '築': '筑',
+    '緊': '紧', '陳': '陈', '蓋': '盖', '舉': '举',
+    '壓': '压', '質': '质', '儘': '尽', '護': '护',
+    '戲': '戏', '臺': '台', '鄉': '乡', '現': '现',
+    '規': '规', '視': '视', '藝': '艺', '價': '价',
+    '證': '证', '獨': '独', '劇': '剧',
+    '歲': '岁', '備': '备', '敵': '敌'
   };
 
   let result = '';
   for (const char of s) {
-    // 只保留中文、英文字母和数字
-    if ((char >= 0x4e00 && char <= 0x9fa5) ||
-        (char >= 'a' && char <= 'z') ||
-        (char >= '0' && char <= '9')) {
+    const code = char.charCodeAt(0);
+    // 保留：中文（使用更宽泛的 CJK 范围）、英文字母（a-z）、数字（0-9）
+    const isCJK = (code >= 0x4e00 && code <= 0x9fff) || // CJK Unified Ideographs
+                   (code >= 0x3400 && code <= 0x4dbf);   // CJK Extension A
+    const isEnglish = (code >= 0x0061 && code <= 0x007a); // a-z
+    const isDigit = (code >= 0x0030 && code <= 0x0039);   // 0-9
+
+    if (isCJK || isEnglish || isDigit) {
       result += t2sMap[char] || char;
     }
   }
@@ -237,9 +253,8 @@ app.get('/api/songs', async (c) => {
     }
 
     if (queryAlbum) {
-      // 专辑查询：使用模糊匹配（支持部分匹配）
-      sql += ` AND al.title LIKE ?`
-      params.push(`%${queryAlbum}%`)
+      // 专辑查询：不在 SQL 中过滤，因为需要繁简体模糊匹配
+      // 繁简体匹配在查询后进行
     }
 
     sql += ` ORDER BY a.name ASC, al.release_date ASC, s.track_index ASC`
@@ -1754,7 +1769,123 @@ app.post('/api/admin/ops/songs/batch-insert', async (c) => {
 })
 
 // ==========================================
-// 20. Admin: Upload Routes
+// 21. Debug: Test Album Query
+// 调试：测试专辑查询
+// ==========================================
+app.get('/api/debug/album-query', async (c) => {
+  try {
+    const artist = c.req.query('artist')
+    const album = c.req.query('album')
+
+    if (!artist || !album) {
+      return c.json({ code: 400, message: 'Missing artist or album parameter' }, 400)
+    }
+
+    // 执行 SQL 查询
+    let sql = `
+      SELECT
+        a.id AS artist_id, a.name AS artist_name, a.region, a.photo_url,
+        al.id AS album_id, al.title AS album_title, al.release_date, al.cover_url,
+        s.title AS song_title, s.file_path, s.lrc_path, s.track_index
+      FROM artists a
+      LEFT JOIN albums al ON a.id = al.artist_id
+      LEFT JOIN songs s ON al.id = s.album_id
+      WHERE a.name LIKE ?
+      ORDER BY al.release_date ASC, s.track_index ASC
+    `
+
+    const { results } = await c.env.DB.prepare(sql).bind(`%${artist}%`).all()
+
+    // 繁简体过滤
+    const normalizedQuery = normalizeTitle(album)
+    const filteredResults = (results as any[]).filter((row: any) => {
+      if (!row.album_title) return false
+      const normalizedTitle = normalizeTitle(row.album_title)
+      return normalizedTitle === normalizedQuery ||
+             normalizedTitle.includes(normalizedQuery) ||
+             normalizedQuery.includes(normalizedTitle)
+    })
+
+    return c.json({
+      code: 200,
+      message: 'success',
+      data: {
+        query: { artist, album, normalizedQuery },
+        total_results: results.length,
+        filtered_results: filteredResults.length,
+        sample_results: filteredResults.slice(0, 5)
+      }
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message }, 500)
+  }
+})
+
+// ==========================================
+// 22. Admin: Cleanup Duplicate Songs in Album
+// 清理指定专辑中的重复歌曲
+// ==========================================
+app.post('/api/admin/albums/cleanup-duplicates', async (c) => {
+  try {
+    const { album_id, song_ids } = await c.req.json() as {
+      album_id?: number
+      song_ids?: number[]
+    }
+
+    if (!album_id) {
+      return c.json({ code: 400, message: 'Missing album_id parameter' }, 400)
+    }
+
+    if (!song_ids || !song_ids.length) {
+      return c.json({ code: 400, message: 'Missing song_ids array' }, 400)
+    }
+
+    // 验证专辑存在
+    const album = await c.env.DB.prepare(
+      'SELECT id, title FROM albums WHERE id = ?'
+    ).bind(album_id).first()
+
+    if (!album) {
+      return c.json({ code: 404, message: 'Album not found' }, 404)
+    }
+
+    // 获取删除前的歌曲数量
+    const beforeCount = await c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM songs WHERE album_id = ?'
+    ).bind(album_id).first<{ count: number }>()
+
+    // 执行批量删除
+    const stmts: D1PreparedStatement[] = []
+    for (const songId of song_ids) {
+      stmts.push(c.env.DB.prepare('DELETE FROM songs WHERE id = ? AND album_id = ?').bind(songId, album_id))
+    }
+
+    await c.env.DB.batch(stmts)
+
+    // 获取删除后的歌曲数量
+    const afterCount = await c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM songs WHERE album_id = ?'
+    ).bind(album_id).first<{ count: number }>()
+
+    return c.json({
+      code: 200,
+      message: `成功删除 ${song_ids.length} 首重复歌曲`,
+      data: {
+        album_id: album_id,
+        album_title: (album as any).title,
+        deleted_count: song_ids.length,
+        before_count: beforeCount?.count || 0,
+        after_count: afterCount?.count || 0,
+        deleted_song_ids: song_ids
+      }
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message }, 500)
+  }
+})
+
+// ==========================================
+// 23. Admin: Upload Routes
 // 注册新的文件上传路由
 // ==========================================
 registerUploadRoutes(app)
