@@ -107,15 +107,18 @@ function readMP3Title(file) {
                     let frameId = '';
                     for (let i = 0; i < 4; i++) {
                         const charCode = view.getUint8(offset + i);
+                        console.log(`      🔍 [readMP3Title] offset=${offset + i}, byte=${charCode} (${String.fromCharCode(charCode)})`);
                         if (charCode >= 65 && charCode <= 90) { // A-Z
                             frameId += String.fromCharCode(charCode);
                         } else {
+                            console.log(`      ⚠️ [readMP3Title] 字节 ${charCode} 不是 A-Z，停止读取帧ID`);
                             break;
                         }
                     }
 
                     if (frameId.length < 4) {
-                        console.log(`      🔚 [readMP3Title] 帧ID无效，结束解析 (offset=${offset})`);
+                        console.log(`      🔚 [readMP3Title] 帧ID无效，结束解析 (offset=${offset}, 已读取${frameCount}个帧)`);
+                        console.log(`      💡 [readMP3Title] 下20个字节: ${Array.from({length: 20}, (_, i) => view.getUint8(offset + i).toString(16).padStart(2, '0')).join(' ')}`);
                         break; // 帧ID无效，结束
                     }
 
