@@ -343,7 +343,7 @@ function initUploader() {
 
             const xhr = new XMLHttpRequest();
             // [CRITICAL CHANGE] 改为调用 Worker API
-            xhr.open('POST', 'https://moody-worker.changgepd.workers.dev/api/admin/upload', true);
+            xhr.open('POST', 'https://m-api.changgepd.top/api/admin/upload', true);
 
             xhr.upload.onprogress = (e) => {
                 if (e.lengthComputable) {

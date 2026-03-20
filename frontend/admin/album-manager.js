@@ -2,7 +2,7 @@
 // 专辑管理模块
 // ==========================================
 function initAlbumManager() {
-    const API_BASE = 'https://moody-worker.changgepd.workers.dev';
+    const API_BASE = 'https://m-api.changgepd.top';
     let currentAlbumId = null;
     let currentSongs = [];
 
