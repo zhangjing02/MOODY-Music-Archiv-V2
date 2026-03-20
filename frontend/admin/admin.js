@@ -61,6 +61,7 @@ async function loadStats() {
  * 返回 Promise，解析成功返回标题，失败返回 null
  */
 function readMP3Title(file) {
+    console.log(`      📖 [readMP3Title] 开始读取文件: ${file.name}`);
     return new Promise((resolve) => {
         const reader = new FileReader();
 
@@ -68,15 +69,23 @@ function readMP3Title(file) {
             try {
                 const buffer = e.target.result;
                 const view = new DataView(buffer);
+                console.log(`      📊 [readMP3Title] 读取了 ${buffer.byteLength} bytes`);
 
                 // 检查 ID3v2 标识 (前3个字节应该是 "ID3")
-                if (view.getUint8(0) !== 0x49 || view.getUint8(1) !== 0x44 || view.getUint8(2) !== 0x33) {
+                const byte0 = view.getUint8(0);
+                const byte1 = view.getUint8(1);
+                const byte2 = view.getUint8(2);
+                console.log(`      🔍 [readMP3Title] 前3字节: ${byte0.toString(16)} ${byte1.toString(16)} ${byte2.toString(16)} (应该是: 49 44 43)`);
+
+                if (byte0 !== 0x49 || byte1 !== 0x44 || byte2 !== 0x33) {
+                    console.log(`      ❌ [readMP3Title] 不是 ID3v2 格式`);
                     resolve(null);
                     return;
                 }
 
                 // ID3v2 版本 (第4个字节)
                 const version = view.getUint8(3);
+                console.log(`      📌 [readMP3Title] ID3v2.${version} 版本`);
 
                 // 读取标签大小（最后4个字节，synchsafe整数）
                 const tagSize =
@@ -224,15 +233,25 @@ function initUploader() {
     }
 
     async function handleFiles(files) {
+        console.log(`📁 文件拖入: 共 ${files.length} 个文件`);
         for (let f of files) {
+            console.log(`  📄 处理文件: ${f.name} (${f.size} bytes, ${f.type || 'unknown type'})`);
             // 只读取 MP3 文件的标题
             let title = null;
             if (f.name.toLowerCase().endsWith('.mp3')) {
+                console.log(`    🔍 开始读取 MP3 标签...`);
                 try {
                     title = await readMP3Title(f);
+                    if (title) {
+                        console.log(`    ✅ 读取到标题: "${title}"`);
+                    } else {
+                        console.log(`    ⚠️ 未读取到标题（文件可能没有 ID3 标签）`);
+                    }
                 } catch (e) {
-                    console.warn('读取标题失败:', e);
+                    console.warn('    ❌ 读取标题失败:', e);
                 }
+            } else {
+                console.log(`    ⏭️ 跳过（非 MP3 文件）`);
             }
 
             pendingFiles.push({
@@ -243,6 +262,7 @@ function initUploader() {
                 title: title // 存储从 ID3 标签读取的标题
             });
         }
+        console.log(`✅ 文件列表已更新，待上传文件数: ${pendingFiles.length}`);
         renderFileList();
     }
 
