@@ -169,10 +169,36 @@ function readMP3Title(file) {
                                 title += String.fromCharCode(view.getUint8(contentOffset + i));
                             }
                         } else if (encoding === 1 || encoding === 2) {
-                            // UTF-16 with BOM
+                            // UTF-16 with BOM (encoding=1) or UTF-16BE (encoding=2)
                             const dataView = new Uint8Array(buffer, contentOffset + 1, contentSize);
-                            const decoder = new TextDecoder('utf-16le');
-                            title = decoder.decode(dataView);
+
+                            // 对于 encoding=1，检查 BOM 确定字节序
+                            if (encoding === 1 && contentSize >= 2) {
+                                const bom1 = dataView[0];
+                                const bom2 = dataView[1];
+
+                                if (bom1 === 0xFF && bom2 === 0xFE) {
+                                    // UTF-16 LE BOM
+                                    const decoder = new TextDecoder('utf-16le');
+                                    title = decoder.decode(dataView);
+                                    console.log(`      📝 [readMP3Title] 使用 UTF-16LE 解码 (检测到 BOM: FF FE)`);
+                                } else if (bom1 === 0xFE && bom2 === 0xFF) {
+                                    // UTF-16 BE BOM
+                                    const decoder = new TextDecoder('utf-16be');
+                                    title = decoder.decode(dataView);
+                                    console.log(`      📝 [readMP3Title] 使用 UTF-16BE 解码 (检测到 BOM: FE FF)`);
+                                } else {
+                                    // 没有 BOM，默认使用 UTF-16LE (大多数MP3使用)
+                                    const decoder = new TextDecoder('utf-16le');
+                                    title = decoder.decode(dataView);
+                                    console.log(`      📝 [readMP3Title] 未检测到 BOM，默认使用 UTF-16LE`);
+                                }
+                            } else {
+                                // encoding=2，直接使用 UTF-16BE
+                                const decoder = new TextDecoder('utf-16be');
+                                title = decoder.decode(dataView);
+                                console.log(`      📝 [readMP3Title] 使用 UTF-16BE 解码 (encoding=2)`);
+                            }
                         } else if (encoding === 3) {
                             // UTF-8
                             const dataView = new Uint8Array(buffer, contentOffset + 1, contentSize);
