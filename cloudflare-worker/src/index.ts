@@ -88,7 +88,11 @@ function normalizeResourceUrl(path: string | null | undefined, baseUrl: string, 
 }
 
 // Global CORS for all routes (API and Storage)
-app.use('/*', cors())
+app.use('/*', cors({
+  origin: '*',
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+}))
 
 app.get('/', (c) => c.text('MOODY API Edge Worker is running!'))
 

@@ -94,9 +94,15 @@ function readMP3Title(file) {
                     ((view.getUint8(8) & 0x7F) << 7) |
                     (view.getUint8(9) & 0x7F);
 
-                let offset = 10; // 跳过 ID3 头部
+                console.log(`      📏 [readMP3Title] 标签大小: ${tagSize} bytes`);
 
-                while (offset < tagSize) {
+                let offset = 10; // 跳过 ID3 头部
+                let frameCount = 0;
+                const maxFrames = 100; // 防止死循环
+
+                while (offset < tagSize && frameCount < maxFrames) {
+                    frameCount++;
+
                     // 读取帧 ID (4字节)
                     let frameId = '';
                     for (let i = 0; i < 4; i++) {
@@ -108,7 +114,10 @@ function readMP3Title(file) {
                         }
                     }
 
-                    if (frameId.length < 4) break; // 帧ID无效，结束
+                    if (frameId.length < 4) {
+                        console.log(`      🔚 [readMP3Title] 帧ID无效，结束解析 (offset=${offset})`);
+                        break; // 帧ID无效，结束
+                    }
 
                     // 读取帧大小
                     let frameSize;
@@ -123,14 +132,20 @@ function readMP3Title(file) {
                             ((view.getUint8(offset + 6) & 0x7F) << 7) |
                             (view.getUint8(offset + 7) & 0x7F);
                     } else {
+                        console.log(`      ⚠️ [readMP3Title] 不支持的 ID3 版本: ${version}`);
                         break; // 不支持的版本
                     }
 
+                    console.log(`      📦 [readMP3Title] 帧 #${frameCount}: ID="${frameId}", Size=${frameSize}, Offset=${offset}`);
+
                     // 检查是否是标题帧
                     if (frameId === 'TIT2') {
+                        console.log(`      ✅ [readMP3Title] 找到标题帧 TIT2!`);
                         // 跳过帧头（10字节）
                         const contentOffset = offset + 10;
                         const encoding = view.getUint8(contentOffset);
+
+                        console.log(`      🔤 [readMP3Title] 编码方式: ${encoding} (0=ISO-8859-1, 1/2=UTF-16, 3=UTF-8)`);
 
                         // 读取标题内容
                         let title = '';
@@ -157,9 +172,11 @@ function readMP3Title(file) {
                         title = title.replace(/\x00+/g, '').trim();
 
                         if (title) {
-                            console.log(`📝 读取到标题: "${title}" 从 ${file.name}`);
+                            console.log(`      ✅ [readMP3Title] 成功读取标题: "${title}"`);
                             resolve(title);
                             return;
+                        } else {
+                            console.log(`      ⚠️ [readMP3Title] 标题为空`);
                         }
                     }
 
@@ -167,9 +184,10 @@ function readMP3Title(file) {
                     offset += 10 + frameSize;
                 }
 
+                console.log(`      🔚 [readMP3Title] 解析完成，共扫描 ${frameCount} 个帧，未找到 TIT2`);
                 resolve(null); // 未找到标题帧
             } catch (error) {
-                console.warn('读取 ID3 标签失败:', error);
+                console.warn('      ❌ [readMP3Title] 解析失败:', error);
                 resolve(null);
             }
         };
