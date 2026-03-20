@@ -107,13 +107,22 @@ function readMP3Title(file) {
                     let frameId = '';
                     for (let i = 0; i < 4; i++) {
                         const charCode = view.getUint8(offset + i);
-                        console.log(`      🔍 [readMP3Title] offset=${offset + i}, byte=${charCode} (${String.fromCharCode(charCode)})`);
-                        if (charCode >= 65 && charCode <= 90) { // A-Z
+                        // 前3个字符必须是 A-Z，第4个字符可以是 A-Z 或 0-9
+                        const isValid = (i < 3)
+                            ? (charCode >= 65 && charCode <= 90)  // A-Z
+                            : (charCode >= 65 && charCode <= 90) || (charCode >= 48 && charCode <= 57);  // A-Z 或 0-9
+
+                        if (isValid) {
                             frameId += String.fromCharCode(charCode);
                         } else {
-                            console.log(`      ⚠️ [readMP3Title] 字节 ${charCode} 不是 A-Z，停止读取帧ID`);
+                            console.log(`      ⚠️ [readMP3Title] offset=${offset + i}, 字节 ${charCode} 不是有效帧ID字符`);
                             break;
                         }
+                    }
+
+                    // 每10帧输出一次，避免日志太多
+                    if (frameCount % 10 === 0 || frameId.startsWith('TIT')) {
+                        console.log(`      🔍 [readMP3Title] 扫描中... 已扫描 ${frameCount} 个帧`);
                     }
 
                     if (frameId.length < 4) {
