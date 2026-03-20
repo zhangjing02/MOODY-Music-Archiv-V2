@@ -72,25 +72,47 @@ function normalizeTitle(s: string): string {
  * 从文件名提取歌名
  * 支持格式：
  * - 歌曲名-歌手-专辑.mp3
+ * - 歌手-序号.歌曲名.mp3
  * - 歌曲名.mp3
  * - 01. 歌曲名-歌手-专辑.mp3
  */
 function extractSongTitle(filename: string): string {
   let name = filename.replace(/\.(mp3|MP3)$/, '');
 
-  // 移除序号
+  // 移除开头的序号
   name = name.replace(/^\d+[\.\s]*/, '');
 
-  // 移除后缀（歌手-专辑）
-  const parts = name.split('-');
+  // 按连字符分割
+  const parts = name.split('-').map(p => p.trim());
+
   if (parts.length >= 3) {
     // 格式：歌曲名-歌手-专辑
     return parts[0].trim();
   } else if (parts.length === 2) {
-    // 可能是：歌曲名-歌手 或 歌曲名-专辑
-    return parts[0].trim();
+    // 两种可能：
+    // 1. 歌曲名-歌手/专辑
+    // 2. 歌手-序号.歌曲名
+
+    // 检查哪一部分包含序号（如 "05."）
+    const part0HasNumber = /^\d+\./.test(parts[0]);
+    const part1HasNumber = /^\d+\./.test(parts[1]);
+
+    if (part1HasNumber) {
+      // 格式：歌手-序号.歌曲名，返回第二部分
+      let title = parts[1].replace(/^\d+\.\s*/, ''); // 移除序号
+      return title;
+    } else if (part0HasNumber) {
+      // 格式：序号.歌曲名-歌手，返回第一部分
+      let title = parts[0].replace(/^\d+\.\s*/, ''); // 移除序号
+      return title;
+    } else {
+      // 默认：假设是歌曲名-歌手格式
+      return parts[0];
+    }
   }
 
+  // 没有连字符，移除可能的序号前缀
+  name = name.replace(/^\d+[\.\s]*/, '');
   return name.trim();
 }
 
