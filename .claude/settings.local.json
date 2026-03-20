@@ -41,7 +41,11 @@
       "Bash(done:*)",
       "Bash(tasklist:*)",
       "Bash(taskkill:*)",
-      "Bash(cmd.exe:*)"
+      "Bash(cmd.exe:*)",
+      "Bash(git reset:*)",
+      "Bash(docker build:*)",
+      "Bash(grep:*)",
+      "mcp__zread__read_file"
     ]
   }
 }

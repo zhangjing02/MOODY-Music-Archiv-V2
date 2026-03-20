@@ -15,8 +15,10 @@ const DB_VERSION = 1;
 const STORE_NAME = 'audioFiles';
 
 const API_CONFIG = {
-    // 指向 Cloudflare Workers 边缘节点集群
-    apiBase: 'https://moody-worker.changgepd.workers.dev',
+    // 自动识别本地开发环境或生产环境自定义域名
+    apiBase: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? 'http://127.0.0.1:8787'
+        : 'https://m-api.changgepd.top',
     itunes: { enabled: false }
 };
 
