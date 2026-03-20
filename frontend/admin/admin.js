@@ -194,9 +194,9 @@ function readMP3Title(file) {
 
         reader.onerror = () => resolve(null);
 
-        // 只读取前 10KB 数据（足够包含 ID3 标签）
+        // 读取前 100KB 数据（足够包含大型 ID3 标签）
         const blobSlice = File.prototype.slice || File.prototype.mozSlice || File.prototype.webkitSlice;
-        const blob = blobSlice.call(file, 0, 10240);
+        const blob = blobSlice.call(file, 0, 102400); // 100KB
         reader.readAsArrayBuffer(blob);
     });
 }
