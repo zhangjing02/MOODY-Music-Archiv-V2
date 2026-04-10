@@ -16,5 +16,5 @@ binding = "BUCKET"
 bucket_name = "moody-music-asset"
 
 [vars]
-SUPABASE_URL = "https://litovetdmuzslxzctko.supabase.co"
-SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxpdG92ZXRkbXV6c2xpeHpjdGtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5Mjg2NDMsImV4cCI6MjA5MDUwNDY0M30.FKpmTo6W3rKWNHSZST7WmfOo23jXQEoSJztAxQeN_vk"
+SUPABASE_URL = "https://tvrnftaciirswmvpsngp.supabase.co"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2cm5mdGFjaWlyc3dtdnBzbmdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MTkwODgsImV4cCI6MjA5MTM5NTA4OH0.nKHLdkBXOCwA_e5TQZfSDFVZ8ucHbJb8JuIt4DC4Kuc"

@@ -99,11 +99,11 @@ app.get('/', (c) => c.text('MOODY API Edge Worker is running!'))
 registerAuthRoutes(app)
 
 // ==========================================
-// Admin 路由保护（需要登录 + 管理员权限）
-// 必须在所有 admin 路由之前注册
+// Admin 路由保护（暂时开放，后续按需开启）
+// Token 仅用于用户个人功能（评论、收藏、关注等）
 // ==========================================
-app.use('/api/admin/*', authMiddleware)
-app.use('/api/admin/*', requireAdmin)
+// app.use('/api/admin/*', authMiddleware)
+// app.use('/api/admin/*', requireAdmin)
 
 // ==========================================
 // 1. Storage Proxy (R2 Direct Access & CDN Cache)
@@ -1891,6 +1891,104 @@ app.post('/api/admin/albums/cleanup-duplicates', async (c) => {
         after_count: afterCount?.count || 0,
         deleted_song_ids: song_ids
       }
+    })
+  } catch (error: any) {
+    return c.json({ code: 500, message: error.message }, 500)
+  }
+})
+
+// ==========================================
+// Debug: Supabase Connectivity Test
+// 测试 Worker 到 Supabase 的连通性
+// ==========================================
+app.get('/api/debug/supabase-test', async (c) => {
+  try {
+    const supabaseUrl = c.env.SUPABASE_URL
+    const results: any = {
+      supabase_url: supabaseUrl,
+      timestamp: new Date().toISOString(),
+      tests: {}
+    }
+
+    // Test 1: DNS resolution (fetch health endpoint)
+    try {
+      const healthStart = Date.now()
+      const healthResponse = await fetch(`${supabaseUrl}/auth/v1/health`, {
+        signal: AbortSignal.timeout(10000),
+      })
+      const healthTime = Date.now() - healthStart
+      const healthText = await healthResponse.text()
+
+      results.tests.health = {
+        status: healthResponse.status,
+        statusText: healthResponse.statusText,
+        time_ms: healthTime,
+        body: healthText.substring(0, 500),
+        ok: healthResponse.ok
+      }
+    } catch (err: any) {
+      results.tests.health = {
+        error: err.message,
+        cause: err.cause?.message || null,
+        ok: false
+      }
+    }
+
+    // Test 2: JWKS endpoint
+    try {
+      const jwksStart = Date.now()
+      const jwksResponse = await fetch(`${supabaseUrl}/auth/v1/jwks`, {
+        signal: AbortSignal.timeout(10000),
+      })
+      const jwksTime = Date.now() - jwksStart
+      const jwksText = await jwksResponse.text()
+
+      results.tests.jwks = {
+        status: jwksResponse.status,
+        statusText: jwksResponse.statusText,
+        time_ms: jwksTime,
+        body: jwksText.substring(0, 500),
+        ok: jwksResponse.ok
+      }
+    } catch (err: any) {
+      results.tests.jwks = {
+        error: err.message,
+        cause: err.cause?.message || null,
+        ok: false
+      }
+    }
+
+    // Test 3: REST API (simple ping)
+    try {
+      const restStart = Date.now()
+      const restResponse = await fetch(`${supabaseUrl}/rest/v1/`, {
+        headers: {
+          'apikey': c.env.SUPABASE_ANON_KEY,
+        },
+        signal: AbortSignal.timeout(10000),
+      })
+      const restTime = Date.now() - restStart
+      const restText = await restResponse.text()
+
+      results.tests.rest = {
+        status: restResponse.status,
+        statusText: restResponse.statusText,
+        time_ms: restTime,
+        body: restText.substring(0, 500),
+        ok: true // any response means connectivity works
+      }
+    } catch (err: any) {
+      results.tests.rest = {
+        error: err.message,
+        cause: err.cause?.message || null,
+        ok: false
+      }
+    }
+
+    return c.json({
+      code: 200,
+      message: 'Supabase connectivity test completed',
+      data: results
     })
   } catch (error: any) {
     return c.json({ code: 500, message: error.message }, 500)

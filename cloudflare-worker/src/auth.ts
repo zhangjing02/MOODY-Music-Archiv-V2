@@ -19,7 +19,7 @@ function getSupabase(env: Bindings) {
 }
 
 function getJWKS(env: Bindings) {
-  return createRemoteJWKSet(new URL(`${env.SUPABASE_URL}/auth/v1/jwks`))
+  return createRemoteJWKSet(new URL(`${env.SUPABASE_URL}/auth/v1/.well-known/jwks.json`))
 }
 
 // ==========================================
@@ -98,7 +98,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       }
 
       const supabase = getSupabase(c.env)
-      const fakeEmail = `${username}@moody.local`
+      const fakeEmail = `${username}@moody.app`
 
       // 调用 Supabase 注册
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
@@ -152,7 +152,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       }
 
       const supabase = getSupabase(c.env)
-      const fakeEmail = `${username}@moody.local`
+      const fakeEmail = `${username}@moody.app`
 
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: fakeEmail,
