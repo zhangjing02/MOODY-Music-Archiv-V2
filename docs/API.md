@@ -2,7 +2,9 @@
 
 本文档描述了 MOODY 系统的所有对外接口，基于 **Cloudflare Worker + D1 + R2** 纯边缘计算架构。
 
-**基础 URL**: `https://moody-worker.changgepd.workers.dev`
+**基础 URL**: `https://m-api.changgepd.top`
+
+> 旧域名 `https://moody-worker.changgepd.workers.dev` 仍可使用，但推荐使用自定义域名。
 
 **架构说明**：
 - ❌ **已废弃**: 8080/8082 双端口 Go 后端架构（2025年前）
@@ -20,6 +22,7 @@
 6. [数据治理](#数据治理)
 7. [调试工具](#调试工具)
 8. [运营友好接口](#运营友好接口) ⭐ **推荐使用**
+9. [用户认证系统](#用户认证系统-v140-新增) 🔐 **v14.0 新增**
 
 ---
 
@@ -1622,6 +1625,437 @@ curl -X POST "https://moody-worker.changgepd.workers.dev/api/admin/ops/albums/de
 
 ---
 
-**最后更新**: 2026-03-19
+**最后更新**: 2026-04-10
 **维护者**: zhangjing02
-**版本**: v13.0 (纯 Worker 架构)
+**版本**: v14.0 (纯 Worker 架构 + 用户认证系统)
+
+---
+
+## 用户认证系统 (v14.0 新增)
+
+> 基于 **Supabase Auth + JWT (ECC P-256)** 的用户认证系统。密码由 Supabase 托管，Worker 通过 JWKS 公钥验证 JWT，无需存储密钥。
+
+### 认证架构
+
+```
+前端 → Worker (jose 验证 JWT) → Supabase Auth (签发 JWT)
+                            → D1 (存储用户资料、设置)
+```
+
+**Token 说明**:
+- 登录/注册成功后返回 `token`（access_token）和 `refresh_token`
+- 所有需要认证的接口需在 Header 中携带: `Authorization: Bearer <token>`
+- Token 过期后可用 `refresh_token` 刷新
+
+---
+
+### 🔐 用户注册
+
+注册新用户。内部使用 `{username}@moody.local` 伪邮箱（对用户透明）。
+
+**接口**: `POST /api/user/register`
+
+**请求体**:
+```json
+{
+  "username": "testuser",
+  "password": "123456"
+}
+```
+
+**字段说明**:
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| username | string | 是 | 用户名，3-20字符，仅支持字母、数字、下划线、中文 |
+| password | string | 是 | 密码，至少6个字符 |
+
+**请求示例**:
+```bash
+curl -X POST "https://m-api.changgepd.top/api/user/register" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "testuser", "password": "123456"}'
+```
+
+**返回示例（成功）**:
+```json
+{
+  "code": 200,
+  "message": "注册成功",
+  "user": {
+    "id": 1,
+    "supabase_uid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "username": "testuser",
+    "email": "testuser@moody.local",
+    "level": 1,
+    "role": "user",
+    "avatar_url": null,
+    "created_at": "2026-04-10T12:00:00Z"
+  },
+  "token": "eyJhbGciOiJFUzI1NiIs...",
+  "refresh_token": "v1.MrH4..."
+}
+```
+
+**错误响应**:
+| HTTP 状态码 | code | 说明 |
+|------------|------|------|
+| 400 | 400 | 用户名或密码格式不符合要求 |
+| 409 | 409 | 用户名已被注册 |
+| 500 | 500 | 服务器错误 |
+
+---
+
+### 🔑 用户登录
+
+用户名 + 密码登录，返回 JWT Token。
+
+**接口**: `POST /api/user/login`
+
+**请求体**:
+```json
+{
+  "username": "testuser",
+  "password": "123456"
+}
+```
+
+**请求示例**:
+```bash
+curl -X POST "https://m-api.changgepd.top/api/user/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "testuser", "password": "123456"}'
+```
+
+**返回示例（成功）**:
+```json
+{
+  "code": 200,
+  "message": "登录成功",
+  "user": {
+    "id": 1,
+    "supabase_uid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "username": "testuser",
+    "email": "testuser@moody.local",
+    "level": 1,
+    "role": "user",
+    "avatar_url": null,
+    "created_at": "2026-04-10T12:00:00Z"
+  },
+  "token": "eyJhbGciOiJFUzI1NiIs...",
+  "refresh_token": "v1.MrH4..."
+}
+```
+
+**错误响应**:
+| HTTP 状态码 | code | 说明 |
+|------------|------|------|
+| 400 | 400 | 用户名或密码为空 |
+| 401 | 401 | 用户名或密码错误 |
+
+---
+
+### 🔄 刷新 Token
+
+当 access_token 过期时，使用 refresh_token 获取新的 token。
+
+**接口**: `POST /api/user/refresh`
+
+**请求体**:
+```json
+{
+  "refresh_token": "v1.MrH4..."
+}
+```
+
+**请求示例**:
+```bash
+curl -X POST "https://m-api.changgepd.top/api/user/refresh" \
+  -H "Content-Type: application/json" \
+  -d '{"refresh_token": "v1.MrH4..."}'
+```
+
+**返回示例**:
+```json
+{
+  "code": 200,
+  "message": "刷新成功",
+  "token": "eyJhbGciOiJFUzI1NiIs...",
+  "refresh_token": "v1.Xk9p..."
+}
+```
+
+---
+
+### 👤 获取当前用户信息
+
+获取当前登录用户的资料。需要 Bearer Token 认证。
+
+**接口**: `GET /api/user/me`
+
+**请求头**:
+```
+Authorization: Bearer <token>
+```
+
+**请求示例**:
+```bash
+curl "https://m-api.changgepd.top/api/user/me" \
+  -H "Authorization: Bearer eyJhbGciOiJFUzI1NiIs..."
+```
+
+**返回示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "user": {
+    "id": 1,
+    "supabase_uid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "username": "testuser",
+    "email": "testuser@moody.local",
+    "level": 1,
+    "role": "user",
+    "avatar_url": null,
+    "created_at": "2026-04-10T12:00:00Z"
+  }
+}
+```
+
+**错误响应**:
+| HTTP 状态码 | code | 说明 |
+|------------|------|------|
+| 401 | 401 | 未登录或 Token 已过期 |
+
+---
+
+### ✏️ 更新用户资料
+
+更新当前用户的头像或用户名。需要 Bearer Token 认证。
+
+**接口**: `PUT /api/user/profile`
+
+**请求头**:
+```
+Authorization: Bearer <token>
+```
+
+**请求体**:
+```json
+{
+  "avatar_url": "https://example.com/avatar.jpg",
+  "username": "newname"
+}
+```
+
+**请求示例**:
+```bash
+curl -X PUT "https://m-api.changgepd.top/api/user/profile" \
+  -H "Authorization: Bearer eyJhbGciOiJFUzI1NiIs..." \
+  -H "Content-Type: application/json" \
+  -d '{"avatar_url": "https://example.com/avatar.jpg"}'
+```
+
+**返回示例**:
+```json
+{
+  "code": 200,
+  "message": "更新成功",
+  "user": {
+    "id": 1,
+    "supabase_uid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "username": "testuser",
+    "email": "testuser@moody.local",
+    "level": 1,
+    "role": "user",
+    "avatar_url": "https://example.com/avatar.jpg",
+    "created_at": "2026-04-10T12:00:00Z"
+  }
+}
+```
+
+---
+
+### 📧 绑定邮箱
+
+为当前用户绑定真实邮箱地址。需要 Bearer Token 认证。
+
+**接口**: `POST /api/user/bind-email`
+
+**请求头**:
+```
+Authorization: Bearer <token>
+```
+
+**请求体**:
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**请求示例**:
+```bash
+curl -X POST "https://m-api.changgepd.top/api/user/bind-email" \
+  -H "Authorization: Bearer eyJhbGciOiJFUzI1NiIs..." \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@example.com"}'
+```
+
+**返回示例**:
+```json
+{
+  "code": 200,
+  "message": "邮箱绑定成功"
+}
+```
+
+---
+
+### ⚙️ 获取用户设置
+
+获取当前用户的个性化设置（音量、主题、自动播放等）。需要 Bearer Token 认证。
+
+**接口**: `GET /api/user/settings`
+
+**请求头**:
+```
+Authorization: Bearer <token>
+```
+
+**请求示例**:
+```bash
+curl "https://m-api.changgepd.top/api/user/settings" \
+  -H "Authorization: Bearer eyJhbGciOiJFUzI1NiIs..."
+```
+
+**返回示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "last_volume": 0.7,
+  "theme_mode": "dark",
+  "auto_play": 1
+}
+```
+
+---
+
+### ⚙️ 更新用户设置
+
+更新当前用户的个性化设置。需要 Bearer Token 认证。
+
+**接口**: `PUT /api/user/settings`
+
+**请求头**:
+```
+Authorization: Bearer <token>
+```
+
+**请求体**:
+```json
+{
+  "last_volume": 0.8,
+  "theme_mode": "light",
+  "auto_play": 0
+}
+```
+
+**字段说明**:
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| last_volume | number | 否 | 音量 (0-1) |
+| theme_mode | string | 否 | 主题模式 ("dark" / "light") |
+| auto_play | number | 否 | 自动播放 (1=开启, 0=关闭) |
+
+**请求示例**:
+```bash
+curl -X PUT "https://m-api.changgepd.top/api/user/settings" \
+  -H "Authorization: Bearer eyJhbGciOiJFUzI1NiIs..." \
+  -H "Content-Type: application/json" \
+  -d '{"last_volume": 0.8, "theme_mode": "dark"}'
+```
+
+**返回示例**:
+```json
+{
+  "code": 200,
+  "message": "设置已更新"
+}
+```
+
+---
+
+### Admin 路由保护 (v14.0 新增)
+
+从 v14.0 开始，所有 `/api/admin/*` 路由需要 Bearer Token 认证且用户 role 为 `admin`。
+
+**请求头**:
+```
+Authorization: Bearer <admin_token>
+```
+
+**未认证响应**:
+```json
+{
+  "code": 401,
+  "message": "未登录，请先登录"
+}
+```
+
+**无权限响应**:
+```json
+{
+  "code": 403,
+  "message": "需要管理员权限"
+}
+```
+
+---
+
+## 用户系统 Postman 测试指南
+
+### 测试流程
+
+**1. 注册**:
+```
+POST https://m-api.changgepd.top/api/user/register
+Content-Type: application/json
+
+Body (raw JSON):
+{
+  "username": "testuser",
+  "password": "123456"
+}
+```
+
+**2. 登录**:
+```
+POST https://m-api.changgepd.top/api/user/login
+Content-Type: application/json
+
+Body (raw JSON):
+{
+  "username": "testuser",
+  "password": "123456"
+}
+```
+> 复制返回的 `token` 值，后续请求需要用到。
+
+**3. 获取用户信息**:
+```
+GET https://m-api.changgepd.top/api/user/me
+Authorization: Bearer <粘贴上一步的token>
+```
+
+**4. 获取用户设置**:
+```
+GET https://m-api.changgepd.top/api/user/settings
+Authorization: Bearer <token>
+```
+
+**5. 验证 Admin 保护（应返回 401）**:
+```
+GET https://m-api.changgepd.top/api/admin/stats
+```
+> 不带 Token 访问，应返回 `{"code": 401, "message": "未登录，请先登录"}`

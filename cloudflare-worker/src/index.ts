@@ -1,13 +1,10 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { registerUploadRoutes } from './upload'
+import { registerAuthRoutes, authMiddleware, requireAdmin } from './auth'
+import type { Bindings } from './types'
 
-type Bindings = {
-  DB: D1Database
-  BUCKET: R2Bucket
-}
-
-const app = new Hono<{ Bindings: Bindings }>()
+const app = new Hono<{ Bindings: Bindings; Variables: { user: any; token: string } }>()
 
 /**
  * NormalizeTitle 归一化标题（用于繁简体模糊匹配）
@@ -95,6 +92,18 @@ app.use('/*', cors({
 }))
 
 app.get('/', (c) => c.text('MOODY API Edge Worker is running!'))
+
+// ==========================================
+// Auth Routes（用户认证系统）- 注册在 admin 路由之前
+// ==========================================
+registerAuthRoutes(app)
+
+// ==========================================
+// Admin 路由保护（需要登录 + 管理员权限）
+// 必须在所有 admin 路由之前注册
+// ==========================================
+app.use('/api/admin/*', authMiddleware)
+app.use('/api/admin/*', requireAdmin)
 
 // ==========================================
 // 1. Storage Proxy (R2 Direct Access & CDN Cache)
@@ -1889,8 +1898,7 @@ app.post('/api/admin/albums/cleanup-duplicates', async (c) => {
 })
 
 // ==========================================
-// 23. Admin: Upload Routes
-// 注册新的文件上传路由
+// Upload Routes
 // ==========================================
 registerUploadRoutes(app)
 

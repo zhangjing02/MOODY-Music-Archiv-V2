@@ -8,11 +8,7 @@
  */
 
 import { Hono } from 'hono';
-
-type Bindings = {
-  DB: D1Database;
-  BUCKET: R2Bucket;
-};
+import type { Bindings } from './types';
 
 /**
  * NormalizeTitle 归一化标题（从 Go 代码移植）
@@ -377,7 +373,7 @@ export async function handleUpload(
 /**
  * 注册上传路由
  */
-export function registerUploadRoutes(app: Hono<{ Bindings: Bindings }>) {
+export function registerUploadRoutes(app: Hono<{ Bindings: Bindings; Variables: { user: any; token: string } }>) {
   // 文件上传 API (V2 - 智能匹配版本)
   app.post('/api/admin/upload', async (c) => {
     const response = await handleUpload(c.req.raw, c.env);

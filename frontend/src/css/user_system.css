@@ -246,3 +246,34 @@
     background: #444;
     color: #888;
 }
+
+/* --- Auth Tabs --- */
+.auth-tabs {
+    display: flex;
+    margin: 0 30px;
+    gap: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.auth-tab {
+    flex: 1;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 12px 0;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-bottom: 2px solid transparent;
+    letter-spacing: 1px;
+}
+
+.auth-tab:hover {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.auth-tab.active {
+    color: var(--accent-gold);
+    border-bottom-color: var(--accent-gold);
+}

@@ -274,22 +274,43 @@
     <div class="modal-overlay" id="loginModal">
         <div class="login-modal">
             <div class="modal-header">
-                <h2>用户登录 / 注册</h2>
+                <h2>MOODY 存档系统</h2>
                 <button class="close-modal" onclick="hideLoginModal()">&times;</button>
             </div>
-            <div class="login-form">
-                <p class="login-hint">新用户将自动完成注册 (Level 2)</p>
+            <!-- Tab 切换 -->
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="loginTab">登录</button>
+                <button class="auth-tab" id="registerTab">注册</button>
+            </div>
+            <!-- 登录表单 -->
+            <div class="login-form" id="loginForm">
                 <div class="input-group">
                     <label>用户名</label>
                     <input type="text" id="loginUsername" placeholder="请输入用户名" required>
                 </div>
                 <div class="input-group">
                     <label>密码</label>
-                    <input type="password" id="loginPassword" placeholder="随便写点什么..." required>
+                    <input type="password" id="loginPassword" placeholder="请输入密码" required>
                 </div>
                 <button class="login-submit-btn" id="loginSubmitBtn">进入 MOODY 存档</button>
-                <div id="loginMessage" class="login-message"></div>
             </div>
+            <!-- 注册表单 -->
+            <div class="login-form" id="registerForm" style="display: none;">
+                <div class="input-group">
+                    <label>用户名</label>
+                    <input type="text" id="registerUsername" placeholder="3-20个字符，字母数字下划线中文" required>
+                </div>
+                <div class="input-group">
+                    <label>密码</label>
+                    <input type="password" id="registerPassword" placeholder="至少 6 个字符" required>
+                </div>
+                <div class="input-group">
+                    <label>确认密码</label>
+                    <input type="password" id="registerConfirmPassword" placeholder="再次输入密码" required>
+                </div>
+                <button class="login-submit-btn" id="registerSubmitBtn">注册新账号</button>
+            </div>
+            <div id="loginMessage" class="login-message"></div>
         </div>
     </div>
 
