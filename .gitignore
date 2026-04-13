@@ -57,3 +57,7 @@ DIAGNOSTIC_REPORT.md
 TEST_GUIDE.md
 check_*.py
 inject_test_data.py
+
+# 7. 内部文档 (不推送)
+需求*.txt
+*.local.json

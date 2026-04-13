@@ -1,62 +1,209 @@
-# MOODY 音乐库 (V2 Edge Edition)
+# 🎵 MOODY — 私人音乐档案库 V2
 
-这是一个基于 Cloudflare 生态系统构建的现代化、高性能音乐存储与流媒体系统。
+> 专为同学录场景设计的私有音乐流媒体系统。仅限受邀成员访问，通过「座位认领」方式完成注册。
 
-## 🚀 核心架构
-
-- **前端**: 使用 Vite + React (或 Vanilla JS) 构建的极简播放器。
-- **边缘后端 (V2)**: 托管于 **Cloudflare Workers** (使用 Hono 框架)，提供高性能 API 与存储代理。
-- **数据库**: **Cloudflare D1** (边缘关系型数据库)，存储艺人、专辑及歌曲元数据。
-- **静态存储**: **Cloudflare R2** (对象存储)，存放音频 (`.mp3`)、歌词 (`.lrc`) 及封面资产。
-- **缓存层**: 利用 Cloudflare Edge Cache 缓存高频访问的音频流，显著降低 R2 延迟。
+[![GitHub Actions](https://img.shields.io/github/actions/workflow/status/zhangjing02/MOODY-Music-Archiv-V2/keep-supabase-alive.yml?label=Supabase%20Keepalive&logo=supabase)](https://github.com/zhangjing02/MOODY-Music-Archiv-V2/actions)
 
 ---
 
-## 🛠️ 管理与自愈能力
+## 🏗️ 系统架构
 
-### 1.4 样式与封面回退 (Style & Cover Fallback)
-- **现象**: 专辑封面缺失时显示系统默认的 `??????` 或第三方不可控的占位图。
-- **最佳实践**: 
-    - 统一使用本地静态资源 `src/assets/images/vinyl_default.png`。
-    - 在前端 `updateView` 逻辑中，不论是加载失败 (`onError`) 还是数据缺失，均强制指向该本地路径。
+```
+移动端 / 浏览器
+       │  HTTPS
+       ▼
+Cloudflare Worker (m-api.changgepd.top)
+   ├── Hono 框架路由
+   ├── Cloudflare D1  ── 元数据（歌曲/专辑/用户名册）
+   ├── Cloudflare R2  ── 音频 / 封面 / 歌词静态资源
+   └── Supabase Auth  ── 身份认证 / Token 颁发
 
-## 2. 运维与部署标准流程 (SOP)
+前端播放器 (Claw Cloud Docker)
+   └── Nginx 托管 Vanilla JS 播放器
+```
 
-### 2.1 镜像更新 (Claw Cloud)
-> [!WARNING]
-> 在 GitHub 进行代码推送 (Push) 后，Claw Cloud 容器并不会自动热重载。
-> - **必须点击 `Update`**: 只有点击控制台的 `Update` 按钮，Dockerrun 才会检查 Docker Hub 的版本更新。
-> - **Restart 无效**: `Restart` 仅重启当前本地容器，无法加载新代码。
+### 核心技术栈
 
-### 2.2 数据点亮检查 (Audit)
-系统内置了一系列运维 API，可通过管理后台一键执行：
-
-1. **路径自愈 (`/api/admin/fix-paths`)**: 自动扫描 D1 记录，补全存储所需的 `music/` 前缀。
-2. **冗余清理 (`/api/admin/cleanup-duplicates`)**: 智能化识别并删除数据库中的重复专辑占位符，保留最完整的版本。
-3. **数据一致性审计 (`/api/debug/audit`)**: 实时比对 R2 物理库存与 D1 元数据，快速定位缺失资产。
-
----
-
-### 容器部署 (Claw Cloud Run)
-
-前端代码通过 GitHub Actions 自动构建并推送到 Docker Hub。
-> [!IMPORTANT]
-> **代码推送后如何生效？**
-> 由于 VPS 环境不会自动监听 Docker 仓库，您需要在 **Claw Cloud 控制台** 手动操作：
-> 1. 登录 Claw Cloud 管理后台。
-> 2. 找到 `moodymusic` 实例。
-> 3. 点击 **`Update`** 按钮（注意：不是 `Restart`），平台才会拉取最新的镜像代码。
-
----
+| 层 | 技术 | 说明 |
+|----|------|------|
+| 边缘 API | Cloudflare Workers + Hono | 全球分布式，p99 < 50ms |
+| 关系数据库 | Cloudflare D1 (SQLite) | 歌曲/专辑/用户名册元数据 |
+| 对象存储 | Cloudflare R2 | 音频(.mp3) / 封面 / 歌词(.lrc) |
+| 身份认证 | Supabase Auth | JWT 颁发、Token 刷新、邮件重置 |
+| 前端托管 | Claw Cloud Run (Docker) | Nginx 托管静态播放器 |
+| CI/CD | GitHub Actions | 构建推送 + Supabase 保活 |
 
 ---
 
 ## 📂 目录结构
 
-- `/cloudflare-worker`: 核心 API 服务代码。
-- `/frontend`: 播放器与管理后台前端。
-- `/docs`: 技术文档与维护指南。
-- `/scripts`: D1 数据初始化与辅助脚本。
+```
+Music-Archiv-V2/
+├── cloudflare-worker/          # 核心 API（Cloudflare Workers + Hono）
+│   ├── src/
+│   │   ├── index.ts            # 路由注册入口、音乐 API
+│   │   ├── auth.ts             # 用户认证系统（认领/登录/管理）
+│   │   ├── upload.ts           # 资产上传处理
+│   │   └── types.ts            # TypeScript 类型定义
+│   ├── migrations/             # D1 数据库迁移文件（按顺序执行）
+│   │   ├── 001_create_user_profiles.sql
+│   │   └── 002_create_roster_system.sql
+│   ├── api_auth_v2.md          # 📖 移动端接入文档（看这里！）
+│   └── wrangler.toml           # Cloudflare Worker 配置
+├── frontend/                   # 浏览器播放器
+├── .github/workflows/
+│   ├── docker-build.yml        # 自动构建 Docker 镜像
+│   └── keep-supabase-alive.yml # Supabase 每日保活
+└── docs/                       # 技术文档
+```
 
-## 📄 许可证
-MIT License
+---
+
+## 👤 用户系统说明
+
+### 设计理念
+
+本系统采用**「白名单座位认领」**而非开放注册：
+
+1. 管理员预置全班同学名录（姓名 + 座位号）
+2. 设置三道只有本班同学才知道答案的安全问题
+3. 同学打开 App，从座位图找到自己，回答安全问题
+4. 通过验证后设置密码，完成注册
+
+**用户名由系统自动生成**，格式：`{年份}.{座位}{姓名}`，例如 `2006.0301张伟`。
+
+### 账户管理流程
+
+```
+管理员配置安全题答案（首次必做）
+         │
+用户：认领座位 → 回答安全题 → 设置密码 → 自动登录
+         │
+正常使用：登录 → 播放音乐 → Token 自动续签
+         │
+忘记密码：
+  ├─ 有邮箱：自助发验证码重置
+  └─ 无邮箱：联系班长（admin）→ 强制设置新密码流程
+```
+
+### 权限体系
+
+| 角色 | 获取方式 | 能力 |
+|------|---------|------|
+| `user` | 完成认领后自动授予 | 播放音乐、修改个人设置 |
+| `admin` | master 授权 | 额外：重置密码、新增名录 |
+| `master` | 内置初始账号 | 额外：撤销认领、修改权限、更新安全题 |
+
+---
+
+## 📖 移动端快速接入
+
+➡️ **完整接口文档**：[`cloudflare-worker/api_auth_v2.md`](./cloudflare-worker/api_auth_v2.md)
+
+**Base URL**：`https://m-api.changgepd.top`
+
+### 最小集成示例（Kotlin）
+
+```kotlin
+// 1. 密码哈希（所有密码都要这样处理）
+fun hashPassword(raw: String): String {
+    val digest = MessageDigest.getInstance("SHA-256")
+    val bytes = digest.digest(raw.trim().toByteArray(Charsets.UTF_8))
+    return bytes.joinToString("") { "%02x".format(it) }
+}
+
+// 2. 获取座位表
+suspend fun getRoster(): RosterResponse {
+    return api.get("https://m-api.changgepd.top/api/roster")
+}
+
+// 3. 登录
+suspend fun login(username: String, password: String): LoginResponse {
+    return api.post("https://m-api.changgepd.top/api/user/login") {
+        body = mapOf(
+            "username" to username,
+            "password_hash" to hashPassword(password)
+        )
+    }
+}
+```
+
+### 关键注意事项
+
+- ✅ 密码必须先 SHA-256 再上传，**明文密码不可接受**
+- ✅ 登录响应中 `reset_pending: true` 时，**必须强制设置新密码，不得绕过**
+- ✅ 收到 `401` 时，先尝试用 `refresh_token` 刷新，失败再引导重新登录
+- ✅ `claim_token` 仅有 **10 分钟**有效期，认领流程要在用户体验上加以引导
+
+---
+
+## 🚀 部署指南
+
+### 首次部署
+
+**环境准备**：
+- Cloudflare 账号（Workers、D1、R2 均在免费额度内）
+- Supabase 账号（免费 Tier）
+- GitHub 账号
+
+**步骤**：
+
+1. **配置 GitHub Secrets**（`Settings → Secrets and variables → Actions`）：
+   - `SUPABASE_URL` — Supabase 项目 URL
+   - `SUPABASE_ANON_KEY` — Supabase anon 公开密钥
+
+2. **配置 Cloudflare Worker Secrets**（在 Cloudflare Dashboard 配置，不提交到 Git）：
+   ```
+   SUPABASE_SERVICE_KEY  ← Supabase service_role 密钥（用于管理员密码重置）
+   ```
+
+3. **应用数据库迁移**：
+   ```bash
+   npx wrangler d1 execute <your-db-name> --remote --file=migrations/001_create_user_profiles.sql
+   npx wrangler d1 execute <your-db-name> --remote --file=migrations/002_create_roster_system.sql
+   ```
+
+4. **部署 Worker**：
+   ```bash
+   cd cloudflare-worker
+   npx wrangler deploy
+   ```
+
+5. **⚠️ 首次必做：设置安全题答案**（否则无人能注册）：
+   ```bash
+   # 用 master 账号调用
+   curl -X PUT https://m-api.changgepd.top/api/admin/questions \
+     -H "Authorization: Bearer <master_token>" \
+     -H "Content-Type: application/json" \
+     -d '{"answers": ["班主任名字", "数学老师名字", "楼层"]}'
+   ```
+
+### 前端更新（浏览器播放器）
+
+推送代码到 `main` 分支后，GitHub Actions 自动构建 Docker 镜像。
+
+> ⚠️ Claw Cloud 不会自动拉取新镜像：登录控制台 → 找到 `moodymusic` 实例 → 点击 **`Update`**（不是 Restart）。
+
+---
+
+## 🔧 日常运维
+
+### Supabase 保活
+
+已配置 GitHub Action（`keep-supabase-alive.yml`），每天 UTC 06:00 自动 ping Supabase，防止免费项目因不活跃（连续 7 天无请求）被暂停。
+
+可在 `Actions` 标签页手动触发验证。
+
+### D1 管理接口
+
+| 接口 | 说明 |
+|------|------|
+| `POST /api/admin/fix-paths` | 自动扫描并补全 `music/` 路径前缀 |
+| `POST /api/admin/cleanup-duplicates` | 清理重复专辑记录 |
+| `GET /api/debug/audit` | 比对 R2 实物与 D1 元数据，定位缺失资产 |
+
+---
+
+## 📄 许可
+
+MIT License — 本项目仅供私人存档，请勿用于商业用途。

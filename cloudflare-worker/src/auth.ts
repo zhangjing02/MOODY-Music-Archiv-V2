@@ -11,15 +11,37 @@ type Variables = {
 type AppType = { Bindings: Bindings; Variables: Variables }
 
 // ==========================================
-// Supabase & JWT Helpers
+// Supabase Helpers
 // ==========================================
 
 function getSupabase(env: Bindings) {
   return createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY)
 }
 
+function getSupabaseAdmin(env: Bindings) {
+  return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_KEY)
+}
+
 function getJWKS(env: Bindings) {
   return createRemoteJWKSet(new URL(`${env.SUPABASE_URL}/auth/v1/.well-known/jwks.json`))
+}
+
+// ==========================================
+// Crypto Helpers
+// ==========================================
+
+async function sha256(text: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(text.trim().toLowerCase())
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+function generateToken(length = 32): string {
+  const array = new Uint8Array(length)
+  crypto.getRandomValues(array)
+  return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
 // ==========================================
@@ -42,7 +64,6 @@ export const authMiddleware = async (c: Context<AppType>, next: any) => {
       return c.json({ code: 401, message: 'Token 无效' }, 401)
     }
 
-    // 查 D1 user_profiles
     const profile = await c.env.DB.prepare(
       'SELECT id, supabase_uid, username, email, level, role, avatar_url, created_at FROM user_profiles WHERE supabase_uid = ?'
     ).bind(supabaseUid).first()
@@ -61,13 +82,22 @@ export const authMiddleware = async (c: Context<AppType>, next: any) => {
 }
 
 // ==========================================
-// Require Admin Middleware
+// Require Admin Middleware (admin + master)
 // ==========================================
 
 export const requireAdmin = async (c: Context<AppType>, next: any) => {
   const user = c.get('user')
-  if (!user || user.role !== 'admin') {
+  if (!user || (user.role !== 'admin' && user.role !== 'master')) {
     return c.json({ code: 403, message: '需要管理员权限' }, 403)
+  }
+  await next()
+}
+
+// Require master only
+export const requireMaster = async (c: Context<AppType>, next: any) => {
+  const user = c.get('user')
+  if (!user || user.role !== 'master') {
+    return c.json({ code: 403, message: '需要最高管理员权限' }, 403)
   }
   await next()
 }
@@ -78,39 +108,185 @@ export const requireAdmin = async (c: Context<AppType>, next: any) => {
 
 export function registerAuthRoutes(app: Hono<AppType>) {
 
-  // POST /api/user/register — 注册
-  app.post('/api/user/register', async (c) => {
+  // ========================================
+  // 1. GET /api/roster — 查询座位表（公开）
+  // ========================================
+  //
+  // 返回全部名录条目，包含认领状态。不暴露安全问题答案。
+  app.get('/api/roster', async (c) => {
     try {
-      const { username, password } = await c.req.json() as { username?: string; password?: string }
+      const { results } = await c.env.DB.prepare(
+        `SELECT id, real_name, year_code, seat_code, is_claimed, status
+         FROM student_roster
+         ORDER BY seat_code ASC`
+      ).all()
 
-      // 验证输入
-      if (!username || !password) {
-        return c.json({ code: 400, message: '用户名和密码不能为空' }, 400)
-      }
-      if (username.length < 3 || username.length > 20) {
-        return c.json({ code: 400, message: '用户名长度需在 3-20 个字符之间' }, 400)
-      }
-      if (!/^[a-zA-Z0-9_\u4e00-\u9fff]+$/.test(username)) {
-        return c.json({ code: 400, message: '用户名只能包含字母、数字、下划线和中文' }, 400)
-      }
-      if (password.length < 6) {
-        return c.json({ code: 400, message: '密码长度至少 6 个字符' }, 400)
+      // 同时返回三道安全问题（仅问题文本，不含答案）
+      const { results: questions } = await c.env.DB.prepare(
+        'SELECT id, question FROM security_questions ORDER BY id ASC'
+      ).all()
+
+      return c.json({
+        code: 200,
+        message: 'success',
+        roster: results,
+        security_questions: questions,
+      })
+    } catch (error: any) {
+      return c.json({ code: 500, message: error.message }, 500)
+    }
+  })
+
+  // ========================================
+  // 2. POST /api/user/claim/verify — 校验安全问题
+  // ========================================
+  //
+  // Body: { roster_id: number, answers: string[] }
+  // 移动端需要对用户输入做 trim + toLowerCase 再上传（或直接上传原文，由后端处理）
+  // 返回: { claim_token: string } (10分钟有效)
+  app.post('/api/user/claim/verify', async (c) => {
+    try {
+      const { roster_id, answers } = await c.req.json() as {
+        roster_id?: number
+        answers?: string[]
       }
 
+      if (!roster_id || !Array.isArray(answers) || answers.length !== 3) {
+        return c.json({ code: 400, message: '参数不正确，需要 roster_id 和三个答案' }, 400)
+      }
+
+      // 检查名录是否存在且未被认领
+      const roster = await c.env.DB.prepare(
+        'SELECT id, real_name, year_code, seat_code, is_claimed FROM student_roster WHERE id = ?'
+      ).bind(roster_id).first() as any
+
+      if (!roster) {
+        return c.json({ code: 404, message: '名录不存在' }, 404)
+      }
+
+      if (roster.is_claimed === 1) {
+        return c.json({ code: 409, message: '该同学已被认领，如有问题请联系班长' }, 409)
+      }
+
+      // 校验三道安全问题
+      const { results: questions } = await c.env.DB.prepare(
+        'SELECT id, answer_hash FROM security_questions ORDER BY id ASC'
+      ).all() as { results: Array<{ id: number; answer_hash: string }> }
+
+      if (questions.length !== 3) {
+        return c.json({ code: 500, message: '安全问题配置错误，请联系管理员' }, 500)
+      }
+
+      for (let i = 0; i < 3; i++) {
+        const inputHash = await sha256(answers[i] || '')
+        if (inputHash !== questions[i].answer_hash) {
+          return c.json({ code: 401, message: `第 ${i + 1} 道问题答案不正确` }, 401)
+        }
+      }
+
+      // 生成临时 claim_token（10分钟有效）
+      const token = generateToken()
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString()
+
+      await c.env.DB.prepare(
+        'INSERT INTO claim_tokens (token, roster_id, expires_at) VALUES (?, ?, ?)'
+      ).bind(token, roster_id, expiresAt).run()
+
+      return c.json({
+        code: 200,
+        message: '验证通过，请在10分钟内完成注册',
+        claim_token: token,
+        roster: {
+          id: roster.id,
+          real_name: roster.real_name,
+          year_code: roster.year_code,
+          seat_code: roster.seat_code,
+        },
+      })
+    } catch (error: any) {
+      return c.json({ code: 500, message: error.message }, 500)
+    }
+  })
+
+  // ========================================
+  // 3. POST /api/user/claim/finalize — 完成认领注册
+  // ========================================
+  //
+  // Body: { claim_token: string, password_hash: string, email?: string }
+  // password_hash: 移动端对原始密码 SHA-256 后的字符串（小写 hex）
+  // 用户名将自动生成为: ${year_code}.${seat_code}${real_name}
+  app.post('/api/user/claim/finalize', async (c) => {
+    try {
+      const { claim_token, password_hash, email } = await c.req.json() as {
+        claim_token?: string
+        password_hash?: string
+        email?: string
+      }
+
+      if (!claim_token || !password_hash) {
+        return c.json({ code: 400, message: '缺少 claim_token 或 password_hash' }, 400)
+      }
+
+      if (password_hash.length !== 64) {
+        return c.json({ code: 400, message: 'password_hash 格式错误（需为 SHA-256 hex，64字符）' }, 400)
+      }
+
+      // 1. 验证 claim_token
+      const claimRecord = await c.env.DB.prepare(
+        'SELECT token, roster_id, expires_at, used FROM claim_tokens WHERE token = ?'
+      ).bind(claim_token).first() as any
+
+      if (!claimRecord) {
+        return c.json({ code: 401, message: 'claim_token 无效' }, 401)
+      }
+
+      if (claimRecord.used === 1) {
+        return c.json({ code: 401, message: 'claim_token 已被使用' }, 401)
+      }
+
+      if (new Date(claimRecord.expires_at) < new Date()) {
+        return c.json({ code: 401, message: 'claim_token 已过期，请重新验证' }, 401)
+      }
+
+      // 2. 获取名录信息
+      const roster = await c.env.DB.prepare(
+        'SELECT id, real_name, year_code, seat_code, is_claimed FROM student_roster WHERE id = ?'
+      ).bind(claimRecord.roster_id).first() as any
+
+      if (!roster) {
+        return c.json({ code: 404, message: '名录不存在' }, 404)
+      }
+
+      if (roster.is_claimed === 1) {
+        return c.json({ code: 409, message: '该名录已被他人认领' }, 409)
+      }
+
+      // 3. 生成唯一用户名
+      const baseUsername = `${roster.year_code}.${roster.seat_code}${roster.real_name}`
+      let username = baseUsername
+      let suffix = 1
+
+      while (true) {
+        const existing = await c.env.DB.prepare(
+          'SELECT id FROM user_profiles WHERE username = ?'
+        ).bind(username).first()
+
+        if (!existing) break
+        suffix++
+        username = `${baseUsername}_${suffix}`
+      }
+
+      const fakeEmail = `${username}@moody.internal`
+
+      // 4. 在 Supabase 创建账户
       const supabase = getSupabase(c.env)
-      const fakeEmail = `${username}@moody.app`
-
-      // 调用 Supabase 注册
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: fakeEmail,
-        password,
+        password: password_hash,  // 使用哈希值作为密码
       })
 
       if (signUpError) {
         console.error('Supabase signUp error:', signUpError.message)
-        if (signUpError.message.includes('already registered') || signUpError.message.includes('already been registered')) {
-          return c.json({ code: 409, message: '用户名已被注册' }, 409)
-        }
         return c.json({ code: 500, message: `注册失败: ${signUpError.message}` }, 500)
       }
 
@@ -119,49 +295,84 @@ export function registerAuthRoutes(app: Hono<AppType>) {
         return c.json({ code: 500, message: '注册失败：未获取到用户 ID' }, 500)
       }
 
-      // 写入 D1 user_profiles
+      // 5. 写入 D1 user_profiles
       await c.env.DB.prepare(
         'INSERT INTO user_profiles (supabase_uid, username, email, level, role) VALUES (?, ?, ?, 1, ?)'
-      ).bind(supabaseUid, username, fakeEmail, 'user').run()
+      ).bind(supabaseUid, username, email || fakeEmail, 'user').run()
 
-      // 获取插入后的完整 profile
       const profile = await c.env.DB.prepare(
         'SELECT id, supabase_uid, username, email, level, role, avatar_url, created_at FROM user_profiles WHERE supabase_uid = ?'
-      ).bind(supabaseUid).first()
+      ).bind(supabaseUid).first() as any
+
+      // 6. 更新名录：标记为已认领
+      await c.env.DB.prepare(
+        'UPDATE student_roster SET is_claimed = 1, profile_id = ?, bound_email = ? WHERE id = ?'
+      ).bind(profile.id, email || null, roster.id).run()
+
+      // 7. 标记 claim_token 为已使用
+      await c.env.DB.prepare(
+        'UPDATE claim_tokens SET used = 1 WHERE token = ?'
+      ).bind(claim_token).run()
 
       return c.json({
         code: 200,
-        message: '注册成功',
+        message: `认领成功！欢迎 ${roster.real_name}`,
         user: profile,
         token: signUpData.session?.access_token,
         refresh_token: signUpData.session?.refresh_token,
       })
     } catch (error: any) {
-      console.error('Register error:', error)
+      console.error('Claim finalize error:', error)
       return c.json({ code: 500, message: error.message }, 500)
     }
   })
 
-  // POST /api/user/login — 登录
+  // ========================================
+  // 4. POST /api/user/login — 登录（保持不变）
+  // ========================================
   app.post('/api/user/login', async (c) => {
     try {
-      const { username, password } = await c.req.json() as { username?: string; password?: string }
+      const { username, password_hash } = await c.req.json() as {
+        username?: string
+        password_hash?: string
+      }
 
-      if (!username || !password) {
+      if (!username || !password_hash) {
         return c.json({ code: 400, message: '用户名和密码不能为空' }, 400)
       }
 
       const supabase = getSupabase(c.env)
-      const fakeEmail = `${username}@moody.app`
+      const fakeEmail = `${username}@moody.internal`
 
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: fakeEmail,
-        password,
+        password: password_hash,
       })
 
       if (signInError) {
-        console.error('Supabase signIn error:', signInError.message)
-        return c.json({ code: 401, message: '用户名或密码错误' }, 401)
+        // 兼容旧邮箱格式 @moody.app
+        const legacyEmail = `${username}@moody.app`
+        const { data: legacyData, error: legacyError } = await supabase.auth.signInWithPassword({
+          email: legacyEmail,
+          password: password_hash,
+        })
+
+        if (legacyError) {
+          return c.json({ code: 401, message: '用户名或密码错误' }, 401)
+        }
+
+        const supabaseUid = legacyData.user?.id!
+        let profile = await c.env.DB.prepare(
+          'SELECT id, supabase_uid, username, email, level, role, avatar_url, created_at FROM user_profiles WHERE supabase_uid = ?'
+        ).bind(supabaseUid).first()
+
+        return c.json({
+          code: 200,
+          message: '登录成功',
+          user: profile,
+          token: legacyData.session?.access_token,
+          refresh_token: legacyData.session?.refresh_token,
+        })
       }
 
       const supabaseUid = signInData.user?.id
@@ -172,21 +383,14 @@ export function registerAuthRoutes(app: Hono<AppType>) {
         return c.json({ code: 500, message: '登录失败：未获取到会话信息' }, 500)
       }
 
-      // 查 D1，若无记录则自动创建
-      let profile = await c.env.DB.prepare(
+      const profile = await c.env.DB.prepare(
         'SELECT id, supabase_uid, username, email, level, role, avatar_url, created_at FROM user_profiles WHERE supabase_uid = ?'
       ).bind(supabaseUid).first()
 
-      if (!profile) {
-        // 自动补建（防止 D1 和 Supabase 不同步）
-        await c.env.DB.prepare(
-          'INSERT INTO user_profiles (supabase_uid, username, email, level, role) VALUES (?, ?, ?, 1, ?)'
-        ).bind(supabaseUid, username, fakeEmail, 'user').run()
-
-        profile = await c.env.DB.prepare(
-          'SELECT id, supabase_uid, username, email, level, role, avatar_url, created_at FROM user_profiles WHERE supabase_uid = ?'
-        ).bind(supabaseUid).first()
-      }
+      // 检查是否 reset_pending
+      const rosterRecord = await c.env.DB.prepare(
+        'SELECT status FROM student_roster WHERE profile_id = ?'
+      ).bind((profile as any)?.id).first() as any
 
       return c.json({
         code: 200,
@@ -194,14 +398,16 @@ export function registerAuthRoutes(app: Hono<AppType>) {
         user: profile,
         token: accessToken,
         refresh_token: refreshToken,
+        reset_pending: rosterRecord?.status === 'reset_pending',
       })
     } catch (error: any) {
-      console.error('Login error:', error)
       return c.json({ code: 500, message: error.message }, 500)
     }
   })
 
-  // POST /api/user/refresh — 刷新 Token
+  // ========================================
+  // 5. POST /api/user/refresh — 刷新 Token
+  // ========================================
   app.post('/api/user/refresh', async (c) => {
     try {
       const { refresh_token } = await c.req.json() as { refresh_token?: string }
@@ -228,22 +434,32 @@ export function registerAuthRoutes(app: Hono<AppType>) {
     }
   })
 
-  // GET /api/user/me — 当前用户信息（需 auth）
+  // ========================================
+  // 6. GET /api/user/me — 当前用户信息（需 auth）
+  // ========================================
   app.get('/api/user/me', authMiddleware, async (c) => {
-    const user = c.get('user')
+    const user = c.get('user') as any
+    // 附带名录状态
+    const roster = await c.env.DB.prepare(
+      'SELECT id, real_name, seat_code, status FROM student_roster WHERE profile_id = ?'
+    ).bind(user.id).first()
+
     return c.json({
       code: 200,
       message: 'success',
       user,
+      roster,
     })
   })
 
-  // PUT /api/user/profile — 更新资料（需 auth）
+  // ========================================
+  // 7. PUT /api/user/profile — 更新资料（需 auth）
+  // ========================================
   app.put('/api/user/profile', authMiddleware, async (c) => {
     try {
       const user = c.get('user') as any
       const body = await c.req.json()
-      const allowedFields = ['avatar_url', 'username']
+      const allowedFields = ['avatar_url']
 
       const updates = Object.keys(body)
         .filter(k => allowedFields.includes(k))
@@ -253,7 +469,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
         .map(k => body[k])
 
       if (updates.length === 0) {
-        return c.json({ code: 400, message: 'No valid fields' }, 400)
+        return c.json({ code: 400, message: '无有效更新字段（用户名不可更改）' }, 400)
       }
 
       params.push(user.id)
@@ -261,7 +477,6 @@ export function registerAuthRoutes(app: Hono<AppType>) {
         `UPDATE user_profiles SET ${updates.join(', ')} WHERE id = ?`
       ).bind(...params).run()
 
-      // 返回更新后的 profile
       const profile = await c.env.DB.prepare(
         'SELECT id, supabase_uid, username, email, level, role, avatar_url, created_at FROM user_profiles WHERE id = ?'
       ).bind(user.id).first()
@@ -272,21 +487,26 @@ export function registerAuthRoutes(app: Hono<AppType>) {
     }
   })
 
-  // POST /api/user/bind-email — 绑定邮箱（需 auth）
+  // ========================================
+  // 8. POST /api/user/bind-email — 绑定邮箱（需 auth）
+  // ========================================
   app.post('/api/user/bind-email', authMiddleware, async (c) => {
     try {
       const user = c.get('user') as any
       const { email } = await c.req.json() as { email?: string }
 
-      if (!email) {
-        return c.json({ code: 400, message: '邮箱不能为空' }, 400)
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return c.json({ code: 400, message: '邮箱格式不正确' }, 400)
       }
 
-      // 更新 Supabase 邮箱
-      const supabase = getSupabase(c.env)
-      // 用 admin 方式更新不太方便，这里先更新 D1 记录
+      // 更新 D1 user_profiles
       await c.env.DB.prepare(
         'UPDATE user_profiles SET email = ? WHERE id = ?'
+      ).bind(email, user.id).run()
+
+      // 同步更新名录的 bound_email
+      await c.env.DB.prepare(
+        'UPDATE student_roster SET bound_email = ? WHERE profile_id = ?'
       ).bind(email, user.id).run()
 
       return c.json({ code: 200, message: '邮箱绑定成功' })
@@ -295,7 +515,178 @@ export function registerAuthRoutes(app: Hono<AppType>) {
     }
   })
 
-  // GET /api/user/settings — 获取设置（需 auth）
+  // ========================================
+  // 9. POST /api/user/reset/request — 申请密码重置（邮箱验证码）
+  // 需要 auth（用于有 Token 但想改密码的场景）
+  // 或 Body 携带 username（忘记密码场景）
+  // ========================================
+  app.post('/api/user/reset/request', async (c) => {
+    try {
+      const { username } = await c.req.json() as { username?: string }
+
+      if (!username) {
+        return c.json({ code: 400, message: '请提供用户名' }, 400)
+      }
+
+      // 查找用户
+      const profile = await c.env.DB.prepare(
+        'SELECT id, email FROM user_profiles WHERE username = ?'
+      ).bind(username).first() as any
+
+      if (!profile) {
+        return c.json({ code: 404, message: '用户不存在' }, 404)
+      }
+
+      // 查是否绑定了真实邮箱
+      const roster = await c.env.DB.prepare(
+        'SELECT bound_email FROM student_roster WHERE profile_id = ?'
+      ).bind(profile.id).first() as any
+
+      const realEmail = roster?.bound_email
+      if (!realEmail || realEmail.endsWith('@moody.internal') || realEmail.endsWith('@moody.app')) {
+        return c.json({
+          code: 403,
+          message: '该账号未绑定邮箱，请联系班长（管理员）重置密码'
+        }, 403)
+      }
+
+      // 生成 6 位验证码，写入 claim_tokens 复用逻辑
+      const code = Math.floor(100000 + Math.random() * 900000).toString()
+      const token = `reset_${code}_${generateToken(8)}`
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString()
+
+      // 用 roster_id = profile.id 临时借用字段存重置令牌
+      await c.env.DB.prepare(
+        'INSERT INTO claim_tokens (token, roster_id, expires_at) VALUES (?, ?, ?)'
+      ).bind(token, profile.id, expiresAt).run()
+
+      // TODO: 对接邮件发送服务（如 Resend.com）发送验证码
+      // 当前返回 token 供调试（生产环境不应返回）
+      console.log(`Reset code for ${username}: ${code}, token: ${token}`)
+
+      return c.json({
+        code: 200,
+        message: `验证码已发送至 ${realEmail.replace(/(.{2}).*@/, '$1***@')}，15分钟内有效`,
+        // debug_token: token,  // 上线后移除此行
+      })
+    } catch (error: any) {
+      return c.json({ code: 500, message: error.message }, 500)
+    }
+  })
+
+  // ========================================
+  // 10. POST /api/user/reset/confirm — 确认重置密码
+  // ========================================
+  app.post('/api/user/reset/confirm', async (c) => {
+    try {
+      const { username, code, new_password_hash } = await c.req.json() as {
+        username?: string
+        code?: string
+        new_password_hash?: string
+      }
+
+      if (!username || !code || !new_password_hash) {
+        return c.json({ code: 400, message: '参数缺失' }, 400)
+      }
+
+      if (new_password_hash.length !== 64) {
+        return c.json({ code: 400, message: 'new_password_hash 格式错误' }, 400)
+      }
+
+      const profile = await c.env.DB.prepare(
+        'SELECT id, supabase_uid FROM user_profiles WHERE username = ?'
+      ).bind(username).first() as any
+
+      if (!profile) {
+        return c.json({ code: 404, message: '用户不存在' }, 404)
+      }
+
+      // 查找有效的重置令牌
+      const { results: tokens } = await c.env.DB.prepare(
+        `SELECT token, expires_at FROM claim_tokens
+         WHERE roster_id = ? AND used = 0 AND token LIKE 'reset_%'
+         ORDER BY expires_at DESC LIMIT 1`
+      ).bind(profile.id).all() as { results: Array<{ token: string; expires_at: string }> }
+
+      if (!tokens || tokens.length === 0) {
+        return c.json({ code: 401, message: '未找到有效的重置请求，请重新申请' }, 401)
+      }
+
+      const tokenRecord = tokens[0]
+      if (new Date(tokenRecord.expires_at) < new Date()) {
+        return c.json({ code: 401, message: '验证码已过期，请重新申请' }, 401)
+      }
+
+      // 验证 code 是否匹配
+      const expectedCode = tokenRecord.token.split('_')[1]
+      if (code !== expectedCode) {
+        return c.json({ code: 401, message: '验证码不正确' }, 401)
+      }
+
+      // 调用 Supabase Admin API 强制更新密码
+      const supabaseAdmin = getSupabaseAdmin(c.env)
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+        profile.supabase_uid,
+        { password: new_password_hash }
+      )
+
+      if (updateError) {
+        console.error('Supabase admin updateUser error:', updateError.message)
+        return c.json({ code: 500, message: '密码重置失败，请稍后重试' }, 500)
+      }
+
+      // 标记 token 已使用
+      await c.env.DB.prepare(
+        'UPDATE claim_tokens SET used = 1 WHERE token = ?'
+      ).bind(tokenRecord.token).run()
+
+      // 清除 reset_pending 状态
+      await c.env.DB.prepare(
+        "UPDATE student_roster SET status = 'normal' WHERE profile_id = ?"
+      ).bind(profile.id).run()
+
+      return c.json({ code: 200, message: '密码重置成功，请使用新密码登录' })
+    } catch (error: any) {
+      return c.json({ code: 500, message: error.message }, 500)
+    }
+  })
+
+  // ========================================
+  // 11. POST /api/user/reset/set-new — 管理员重置后用户自助设置新密码
+  // 用于登录后检测到 reset_pending，在 App 内直接设置
+  // ========================================
+  app.post('/api/user/reset/set-new', authMiddleware, async (c) => {
+    try {
+      const user = c.get('user') as any
+      const { new_password_hash } = await c.req.json() as { new_password_hash?: string }
+
+      if (!new_password_hash || new_password_hash.length !== 64) {
+        return c.json({ code: 400, message: 'new_password_hash 格式错误' }, 400)
+      }
+
+      const supabaseAdmin = getSupabaseAdmin(c.env)
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(
+        user.supabase_uid,
+        { password: new_password_hash }
+      )
+
+      if (error) {
+        return c.json({ code: 500, message: '密码设置失败' }, 500)
+      }
+
+      await c.env.DB.prepare(
+        "UPDATE student_roster SET status = 'normal' WHERE profile_id = ?"
+      ).bind(user.id).run()
+
+      return c.json({ code: 200, message: '新密码设置成功' })
+    } catch (error: any) {
+      return c.json({ code: 500, message: error.message }, 500)
+    }
+  })
+
+  // ========================================
+  // 12. GET /api/user/settings — 获取设置
+  // ========================================
   app.get('/api/user/settings', authMiddleware, async (c) => {
     try {
       const user = c.get('user') as any
@@ -304,7 +695,6 @@ export function registerAuthRoutes(app: Hono<AppType>) {
         'SELECT last_volume, theme_mode, auto_play FROM user_settings WHERE user_id = ?'
       ).bind(user.id).first()
 
-      // 如果没有设置记录，自动创建默认
       if (!settings) {
         await c.env.DB.prepare(
           'INSERT INTO user_settings (user_id, last_volume, theme_mode, auto_play) VALUES (?, 0.5, ?, 1)'
@@ -319,7 +709,9 @@ export function registerAuthRoutes(app: Hono<AppType>) {
     }
   })
 
-  // PUT /api/user/settings — 更新设置（需 auth）
+  // ========================================
+  // 13. PUT /api/user/settings — 更新设置
+  // ========================================
   app.put('/api/user/settings', authMiddleware, async (c) => {
     try {
       const user = c.get('user') as any
@@ -337,7 +729,6 @@ export function registerAuthRoutes(app: Hono<AppType>) {
         return c.json({ code: 400, message: 'No valid fields' }, 400)
       }
 
-      // 确保 user_settings 记录存在
       const existing = await c.env.DB.prepare(
         'SELECT user_id FROM user_settings WHERE user_id = ?'
       ).bind(user.id).first()
@@ -354,6 +745,172 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       }
 
       return c.json({ code: 200, message: '设置已更新' })
+    } catch (error: any) {
+      return c.json({ code: 500, message: error.message }, 500)
+    }
+  })
+
+  // ============================================================
+  // === 管理员接口 (需要 admin 或 master 权限) ==================
+  // ============================================================
+
+  // 14. GET /api/admin/roster — 查看全部名录（含敏感信息）
+  app.get('/api/admin/roster', authMiddleware, requireAdmin, async (c) => {
+    try {
+      const { results } = await c.env.DB.prepare(
+        `SELECT r.*, p.username, p.email as profile_email
+         FROM student_roster r
+         LEFT JOIN user_profiles p ON r.profile_id = p.id
+         ORDER BY r.seat_code ASC`
+      ).all()
+
+      return c.json({ code: 200, message: 'success', roster: results })
+    } catch (error: any) {
+      return c.json({ code: 500, message: error.message }, 500)
+    }
+  })
+
+  // 15. POST /api/admin/roster/add — 新增名录条目
+  app.post('/api/admin/roster/add', authMiddleware, requireAdmin, async (c) => {
+    try {
+      const { real_name, year_code, seat_code } = await c.req.json() as {
+        real_name?: string
+        year_code?: string
+        seat_code?: string
+      }
+
+      if (!real_name || !year_code || !seat_code) {
+        return c.json({ code: 400, message: '缺少必要字段' }, 400)
+      }
+
+      await c.env.DB.prepare(
+        'INSERT INTO student_roster (real_name, year_code, seat_code) VALUES (?, ?, ?)'
+      ).bind(real_name, year_code, seat_code).run()
+
+      return c.json({ code: 200, message: '名录添加成功' })
+    } catch (error: any) {
+      if (error.message.includes('UNIQUE')) {
+        return c.json({ code: 409, message: '该名录已存在' }, 409)
+      }
+      return c.json({ code: 500, message: error.message }, 500)
+    }
+  })
+
+  // 16. POST /api/admin/roster/reset — 重置某人认领状态（管理员删除密码）
+  app.post('/api/admin/roster/reset', authMiddleware, requireAdmin, async (c) => {
+    try {
+      const { roster_id } = await c.req.json() as { roster_id?: number }
+
+      if (!roster_id) {
+        return c.json({ code: 400, message: '缺少 roster_id' }, 400)
+      }
+
+      const roster = await c.env.DB.prepare(
+        'SELECT id, profile_id, is_claimed FROM student_roster WHERE id = ?'
+      ).bind(roster_id).first() as any
+
+      if (!roster) {
+        return c.json({ code: 404, message: '名录不存在' }, 404)
+      }
+
+      if (!roster.is_claimed) {
+        return c.json({ code: 400, message: '该名录尚未被认领' }, 400)
+      }
+
+      // 将 status 置为 reset_pending，用户下次登录会被提示重置密码
+      await c.env.DB.prepare(
+        "UPDATE student_roster SET status = 'reset_pending' WHERE id = ?"
+      ).bind(roster_id).run()
+
+      return c.json({
+        code: 200,
+        message: '已标记为需要重置密码，该用户下次登录时将被要求设置新密码'
+      })
+    } catch (error: any) {
+      return c.json({ code: 500, message: error.message }, 500)
+    }
+  })
+
+  // 17. POST /api/admin/roster/unclaim — 完全撤销认领（谨慎操作）
+  app.post('/api/admin/roster/unclaim', authMiddleware, requireMaster, async (c) => {
+    try {
+      const { roster_id } = await c.req.json() as { roster_id?: number }
+
+      if (!roster_id) {
+        return c.json({ code: 400, message: '缺少 roster_id' }, 400)
+      }
+
+      const roster = await c.env.DB.prepare(
+        'SELECT id, profile_id FROM student_roster WHERE id = ?'
+      ).bind(roster_id).first() as any
+
+      if (!roster || !roster.profile_id) {
+        return c.json({ code: 404, message: '名录不存在或未认领' }, 404)
+      }
+
+      // 撤销名录认领状态（不删除 Supabase 账户，只断开关联）
+      await c.env.DB.prepare(
+        "UPDATE student_roster SET is_claimed = 0, profile_id = NULL, bound_email = NULL, status = 'normal' WHERE id = ?"
+      ).bind(roster_id).run()
+
+      return c.json({ code: 200, message: '认领已撤销，该座位可重新认领（原账号不受影响）' })
+    } catch (error: any) {
+      return c.json({ code: 500, message: error.message }, 500)
+    }
+  })
+
+  // 18. PUT /api/admin/user/role — 修改用户权限（仅 master）
+  app.put('/api/admin/user/role', authMiddleware, requireMaster, async (c) => {
+    try {
+      const { username, role } = await c.req.json() as {
+        username?: string
+        role?: string
+      }
+
+      if (!username || !role) {
+        return c.json({ code: 400, message: '缺少 username 或 role' }, 400)
+      }
+
+      const validRoles = ['user', 'admin', 'master']
+      if (!validRoles.includes(role)) {
+        return c.json({ code: 400, message: `role 只能是: ${validRoles.join(', ')}` }, 400)
+      }
+
+      const targetUser = await c.env.DB.prepare(
+        'SELECT id FROM user_profiles WHERE username = ?'
+      ).bind(username).first()
+
+      if (!targetUser) {
+        return c.json({ code: 404, message: '用户不存在' }, 404)
+      }
+
+      await c.env.DB.prepare(
+        'UPDATE user_profiles SET role = ? WHERE username = ?'
+      ).bind(role, username).run()
+
+      return c.json({ code: 200, message: `${username} 的权限已更新为 ${role}` })
+    } catch (error: any) {
+      return c.json({ code: 500, message: error.message }, 500)
+    }
+  })
+
+  // 19. PUT /api/admin/questions — 更新安全问题答案（仅 master）
+  app.put('/api/admin/questions', authMiddleware, requireMaster, async (c) => {
+    try {
+      const { answers } = await c.req.json() as { answers?: string[] }
+
+      if (!Array.isArray(answers) || answers.length !== 3) {
+        return c.json({ code: 400, message: '需要提供三道题目的答案数组' }, 400)
+      }
+
+      for (let i = 0; i < 3; i++) {
+        const hash = await sha256(answers[i])
+        await c.env.DB.prepare(
+          'UPDATE security_questions SET answer_hash = ? WHERE id = ?'
+        ).bind(hash, i + 1).run()
+      }
+
+      return c.json({ code: 200, message: '安全问题答案已更新' })
     } catch (error: any) {
       return c.json({ code: 500, message: error.message }, 500)
     }
