@@ -1,4 +1,4 @@
-# MOODY 音乐库 API 文档 (v14.0)
+# MOODY 音乐库 API 文档 (v15.0)
 
 本文档描述了 MOODY 系统的所有对外接口，基于 **Cloudflare Worker + D1 + R2** 纯边缘计算架构。
 
@@ -10,7 +10,7 @@
 
 ## 📋 目录
 
-1. [用户认证系统](#用户认证系统) 🔐 **登录/注册**
+1. [用户认证系统](#用户认证系统) 🔐 **座位认领/登录**
 2. [系统状态与统计](#系统状态与统计)
 3. [数据查询接口](#数据查询接口)
 4. [存储服务](#存储服务)
@@ -24,104 +24,212 @@
 
 ## 关于认证
 
-> **所有接口均可匿名访问**，无需登录即可浏览音乐库、搜索歌曲、播放音乐等。
+> **音乐浏览接口均可匿名访问**，无需登录即可搜索歌曲、播放音乐。用户系统用于解锁个人功能：
+> - ❤️ 个人收藏 / 播放历史同步
+> - ⚙️ 个人设置（音量、主题）云端保存
 
-用户认证系统（注册/登录）目前为后续功能预留：
-- 📝 发帖 / 评论
-- ❤️ 个人收藏
-- 👤 关注歌手
-- ⚙️ 个人设置保存
-- 🎵 播放历史同步
+**注册方式**：本系统采用「**白名单座位认领**」，无开放注册，仅限名录内成员。
 
-Admin 管理接口当前**暂未启用权限验证**，后续按需开启。
+> 需要认证的接口均标注 🔒，调用时需在 Header 中携带：`Authorization: Bearer <token>`
 
 ---
 
 ## 用户认证系统
 
-> 基于 **Supabase Auth + JWT (ECC P-256)** 的用户认证系统。密码由 Supabase 托管，Worker 通过 JWKS 公钥验证 JWT，无需存储密钥。
+> 基于 **Supabase Auth + JWT** 的用户认证系统，采用「白名单座位认领」模式。
 
 ### 认证架构
 
 ```
-前端 → Worker (jose 验证 JWT) → Supabase Auth (签发 JWT)
-                            → D1 (存储用户资料、设置)
+移动端/前端 → Worker (验证 JWT) → Supabase Auth (签发 JWT)
+                               → D1 (名录、用户资料、设置)
 ```
 
-**Token 说明**:
-- 登录/注册成功后返回 `token`（access_token）和 `refresh_token`
-- 需要认证的接口需在 Header 中携带: `Authorization: Bearer <token>`
-- Token 过期后可用 `refresh_token` 刷新
+**Token 说明**：
+- 认领/登录成功后返回 `token`（access_token，约1小时有效）和 `refresh_token`
+- 🔒 接口需在 Header 中携带：`Authorization: Bearer <token>`
+- Token 过期后用 `refresh_token` 刷新，无需重新登录
+
+### ⚠️ 密码哈希规范（重要）
+
+所有密码相关接口均**不接受明文密码**，客户端必须先哈希再上传：
+
+```
+原始密码 → trim() → SHA-256 → 小写 hex 字符串（64位）→ 上传
+```
+
+**Android（Kotlin）示例**：
+```kotlin
+import java.security.MessageDigest
+fun hashPassword(raw: String): String {
+    val digest = MessageDigest.getInstance("SHA-256")
+    val bytes = digest.digest(raw.trim().toByteArray(Charsets.UTF_8))
+    return bytes.joinToString("") { "%02x".format(it) }
+}
+```
 
 ---
 
-### 🔐 用户注册
+### 🗒️ 获取座位表（注册第一步）
 
-注册新用户。内部使用 `{username}@moody.app` 伪邮箱（对用户透明）。
+获取全班名单及当前认领状态，以及三道安全问题文本。公开接口，无需登录。
 
-**接口**: `POST /api/user/register`
+**接口**: `GET /api/roster`
+
+**请求示例**:
+```bash
+curl "https://m-api.changgepd.top/api/roster"
+```
+
+**返回示例**:
+```json
+{
+  "code": 200,
+  "roster": [
+    {
+      "id": 1,
+      "real_name": "张伟",
+      "year_code": "2006",
+      "seat_code": "0301",
+      "is_claimed": 0,
+      "status": "normal"
+    },
+    {
+      "id": 2,
+      "real_name": "王芳",
+      "year_code": "2006",
+      "seat_code": "0302",
+      "is_claimed": 1,
+      "status": "normal"
+    }
+  ],
+  "security_questions": [
+    { "id": 1, "question": "我们的班主任叫什么名字？" },
+    { "id": 2, "question": "我们的数学老师叫什么名字？" },
+    { "id": 3, "question": "我们的班级在几楼？" }
+  ]
+}
+```
+
+**字段说明**:
+| 字段 | 说明 |
+|------|------|
+| `is_claimed` | `0` = 可认领；`1` = 已被他人认领（置灰） |
+| `status` | `normal` = 正常；`reset_pending` = 管理员已重置，等待设置新密码 |
+
+---
+
+### 🔐 校验安全问题（注册第二步）
+
+**接口**: `POST /api/user/claim/verify`
 
 **请求体**:
 ```json
 {
-  "username": "testuser",
-  "password": "123456"
+  "roster_id": 1,
+  "answers": ["班主任名字", "数学老师名字", "楼层"]
 }
 ```
 
 **字段说明**:
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| username | string | 是 | 用户名，3-20字符，仅支持字母、数字、下划线、中文 |
-| password | string | 是 | 密码，至少6个字符 |
+| roster_id | number | 是 | 从座位表中选择自己的 ID |
+| answers | string[] | 是 | 三道安全题的答案，顺序与 `security_questions` 一致 |
 
 **请求示例**:
 ```bash
-curl -X POST "https://m-api.changgepd.top/api/user/register" \
+curl -X POST "https://m-api.changgepd.top/api/user/claim/verify" \
   -H "Content-Type: application/json" \
-  -d '{"username": "testuser", "password": "123456"}'
+  -d '{"roster_id": 1, "answers": ["李老师", "王老师", "3"]}'
 ```
 
 **返回示例（成功）**:
 ```json
 {
   "code": 200,
-  "message": "注册成功",
-  "user": {
+  "message": "验证通过，请在10分钟内完成注册",
+  "claim_token": "a1b2c3d4e5f6...",
+  "roster": {
     "id": 1,
-    "supabase_uid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "username": "testuser",
-    "email": "testuser@moody.app",
-    "level": 1,
-    "role": "user",
-    "avatar_url": null,
-    "created_at": "2026-04-10T12:00:00Z"
-  },
-  "token": "eyJhbGciOiJFUzI1NiIs...",
-  "refresh_token": "v1.MrH4..."
+    "real_name": "张伟",
+    "year_code": "2006",
+    "seat_code": "0301"
+  }
 }
 ```
+
+> `claim_token` 有效期 **10 分钟**，仅能使用一次。
 
 **错误响应**:
 | HTTP 状态码 | code | 说明 |
 |------------|------|------|
-| 400 | 400 | 用户名或密码格式不符合要求 |
-| 409 | 409 | 用户名已被注册 |
-| 500 | 500 | 服务器错误 |
+| 400 | 400 | 参数缺失或 answers 数量不为 3 |
+| 401 | 401 | 第 N 道问题答案错误 |
+| 404 | 404 | roster_id 不存在 |
+| 409 | 409 | 该同学已被他人认领 |
+
+---
+
+### ✅ 完成认领注册（注册第三步）
+
+**接口**: `POST /api/user/claim/finalize`
+
+**请求体**:
+```json
+{
+  "claim_token": "a1b2c3d4e5f6...",
+  "password_hash": "e3b0c44298fc1c149afbf4c8996fb924...",
+  "email": "zhangwei@example.com"
+}
+```
+
+**字段说明**:
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| claim_token | string | 是 | 第二步返回的临时令牌 |
+| password_hash | string | 是 | SHA-256(原始密码)，64 位小写 hex |
+| email | string | 否 | 绑定邮箱，强烈建议填写，用于找回密码 |
+
+**请求示例**:
+```bash
+curl -X POST "https://m-api.changgepd.top/api/user/claim/finalize" \
+  -H "Content-Type: application/json" \
+  -d '{"claim_token": "a1b2...", "password_hash": "e3b0c4...", "email": "me@my.com"}'
+```
+
+**返回示例（成功）**:
+```json
+{
+  "code": 200,
+  "message": "认领成功！欢迎 张伟",
+  "user": {
+    "id": 1,
+    "username": "2006.0301张伟",
+    "email": "me@my.com",
+    "level": 1,
+    "role": "user",
+    "avatar_url": null,
+    "created_at": "2026-04-13T06:00:00.000Z"
+  },
+  "token": "eyJhbGci...",
+  "refresh_token": "v1.Xk9p..."
+}
+```
+
+> 注册即登录，直接存储 `token` 和 `refresh_token` 进入主界面。用户名由系统自动生成，格式为 `{年份}.{座位}{姓名}`。
 
 ---
 
 ### 🔑 用户登录
-
-用户名 + 密码登录，返回 JWT Token。
 
 **接口**: `POST /api/user/login`
 
 **请求体**:
 ```json
 {
-  "username": "testuser",
-  "password": "123456"
+  "username": "2006.0301张伟",
+  "password_hash": "e3b0c44298fc..."
 }
 ```
 
@@ -129,7 +237,7 @@ curl -X POST "https://m-api.changgepd.top/api/user/register" \
 ```bash
 curl -X POST "https://m-api.changgepd.top/api/user/login" \
   -H "Content-Type: application/json" \
-  -d '{"username": "testuser", "password": "123456"}'
+  -d '{"username": "2006.0301张伟", "password_hash": "e3b0c4..."}'
 ```
 
 **返回示例（成功）**:
@@ -139,30 +247,28 @@ curl -X POST "https://m-api.changgepd.top/api/user/login" \
   "message": "登录成功",
   "user": {
     "id": 1,
-    "supabase_uid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "username": "testuser",
-    "email": "testuser@moody.app",
+    "username": "2006.0301张伟",
     "level": 1,
     "role": "user",
-    "avatar_url": null,
-    "created_at": "2026-04-10T12:00:00Z"
+    "avatar_url": null
   },
-  "token": "eyJhbGciOiJFUzI1NiIs...",
-  "refresh_token": "v1.MrH4..."
+  "token": "eyJhbGci...",
+  "refresh_token": "v1.Xk9p...",
+  "reset_pending": false
 }
 ```
+
+> ⚠️ **`reset_pending: true` 时**：须强制跳转「设置新密码」页，调用 [管理员重置后设置新密码](#-管理员重置后设置新密码-🔒)，完成前不得进入主界面。
 
 **错误响应**:
 | HTTP 状态码 | code | 说明 |
 |------------|------|------|
-| 400 | 400 | 用户名或密码为空 |
+| 400 | 400 | 参数为空 |
 | 401 | 401 | 用户名或密码错误 |
 
 ---
 
 ### 🔄 刷新 Token
-
-当 access_token 过期时，使用 refresh_token 获取新的 token。
 
 **接口**: `POST /api/user/refresh`
 
@@ -185,44 +291,40 @@ curl -X POST "https://m-api.changgepd.top/api/user/refresh" \
 {
   "code": 200,
   "message": "刷新成功",
-  "token": "eyJhbGciOiJFUzI1NiIs...",
+  "token": "eyJhbGci...",
   "refresh_token": "v1.Xk9p..."
 }
 ```
 
 ---
 
-### 👤 获取当前用户信息
-
-获取当前登录用户的资料。需要 Bearer Token 认证。
+### 👤 获取当前用户信息 🔒
 
 **接口**: `GET /api/user/me`
-
-**请求头**:
-```
-Authorization: Bearer <token>
-```
 
 **请求示例**:
 ```bash
 curl "https://m-api.changgepd.top/api/user/me" \
-  -H "Authorization: Bearer eyJhbGciOiJFUzI1NiIs..."
+  -H "Authorization: Bearer eyJhbGci..."
 ```
 
 **返回示例**:
 ```json
 {
   "code": 200,
-  "message": "success",
   "user": {
     "id": 1,
-    "supabase_uid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "username": "testuser",
-    "email": "testuser@moody.app",
+    "username": "2006.0301张伟",
     "level": 1,
     "role": "user",
     "avatar_url": null,
-    "created_at": "2026-04-10T12:00:00Z"
+    "created_at": "2026-04-13T06:00:00.000Z"
+  },
+  "roster": {
+    "id": 1,
+    "real_name": "张伟",
+    "seat_code": "0301",
+    "status": "normal"
   }
 }
 ```
@@ -234,31 +336,25 @@ curl "https://m-api.changgepd.top/api/user/me" \
 
 ---
 
-### ✏️ 更新用户资料
+### ✏️ 更新用户头像 🔒
 
-更新当前用户的头像或用户名。需要 Bearer Token 认证。
+用户名由系统生成，不可修改；仅支持更新头像。
 
 **接口**: `PUT /api/user/profile`
-
-**请求头**:
-```
-Authorization: Bearer <token>
-```
 
 **请求体**:
 ```json
 {
-  "avatar_url": "https://example.com/avatar.jpg",
-  "username": "newname"
+  "avatar_url": "https://cdn.example.com/avatar/abc.jpg"
 }
 ```
 
 **请求示例**:
 ```bash
 curl -X PUT "https://m-api.changgepd.top/api/user/profile" \
-  -H "Authorization: Bearer eyJhbGciOiJFUzI1NiIs..." \
+  -H "Authorization: Bearer eyJhbGci..." \
   -H "Content-Type: application/json" \
-  -d '{"avatar_url": "https://example.com/avatar.jpg"}'
+  -d '{"avatar_url": "https://cdn.example.com/avatar/abc.jpg"}'
 ```
 
 **返回示例**:
@@ -266,31 +362,17 @@ curl -X PUT "https://m-api.changgepd.top/api/user/profile" \
 {
   "code": 200,
   "message": "更新成功",
-  "user": {
-    "id": 1,
-    "supabase_uid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "username": "testuser",
-    "email": "testuser@moody.app",
-    "level": 1,
-    "role": "user",
-    "avatar_url": "https://example.com/avatar.jpg",
-    "created_at": "2026-04-10T12:00:00Z"
-  }
+  "user": { "id": 1, "username": "2006.0301张伟", "avatar_url": "https://cdn.example.com/avatar/abc.jpg" }
 }
 ```
 
 ---
 
-### 📧 绑定邮箱
+### 📧 绑定邮箱 🔒
 
-为当前用户绑定真实邮箱地址。需要 Bearer Token 认证。
+注册时跳过邮箱的用户可在账户设置页补绑，用于支持邮件找回密码。
 
 **接口**: `POST /api/user/bind-email`
-
-**请求头**:
-```
-Authorization: Bearer <token>
-```
 
 **请求体**:
 ```json
@@ -302,7 +384,7 @@ Authorization: Bearer <token>
 **请求示例**:
 ```bash
 curl -X POST "https://m-api.changgepd.top/api/user/bind-email" \
-  -H "Authorization: Bearer eyJhbGciOiJFUzI1NiIs..." \
+  -H "Authorization: Bearer eyJhbGci..." \
   -H "Content-Type: application/json" \
   -d '{"email": "user@example.com"}'
 ```
@@ -317,48 +399,136 @@ curl -X POST "https://m-api.changgepd.top/api/user/bind-email" \
 
 ---
 
-### ⚙️ 获取用户设置
+### 📬 申请密码重置邮件
 
-获取当前用户的个性化设置（音量、主题、自动播放等）。需要 Bearer Token 认证。
+忘记密码时，向绑定邮箱发送验证码。
 
-**接口**: `GET /api/user/settings`
+**接口**: `POST /api/user/reset/request`
 
-**请求头**:
-```
-Authorization: Bearer <token>
+**请求体**:
+```json
+{
+  "username": "2006.0301张伟"
+}
 ```
 
 **请求示例**:
 ```bash
-curl "https://m-api.changgepd.top/api/user/settings" \
-  -H "Authorization: Bearer eyJhbGciOiJFUzI1NiIs..."
+curl -X POST "https://m-api.changgepd.top/api/user/reset/request" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "2006.0301张伟"}'
 ```
 
 **返回示例**:
 ```json
 {
   "code": 200,
-  "message": "success",
+  "message": "验证码已发送至 zh***@example.com，15分钟内有效"
+}
+```
+
+**错误响应**:
+| HTTP 状态码 | code | 说明 |
+|------------|------|------|
+| 403 | 403 | 未绑定邮箱，提示联系班长重置 |
+| 404 | 404 | 用户不存在 |
+
+---
+
+### 🔑 验证码确认重置密码
+
+**接口**: `POST /api/user/reset/confirm`
+
+**请求体**:
+```json
+{
+  "username": "2006.0301张伟",
+  "code": "123456",
+  "new_password_hash": "e3b0c44298fc..."
+}
+```
+
+**请求示例**:
+```bash
+curl -X POST "https://m-api.changgepd.top/api/user/reset/confirm" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "2006.0301张伟", "code": "123456", "new_password_hash": "e3b0c4..."}'
+```
+
+**返回示例**:
+```json
+{
+  "code": 200,
+  "message": "密码重置成功，请使用新密码登录"
+}
+```
+
+---
+
+### 🔐 管理员重置后设置新密码 🔒
+
+适用于登录时收到 `reset_pending: true` 的情况，必须强制完成此步骤才可进入主界面。
+
+**接口**: `POST /api/user/reset/set-new`
+
+**请求体**:
+```json
+{
+  "new_password_hash": "e3b0c44298fc..."
+}
+```
+
+**请求示例**:
+```bash
+curl -X POST "https://m-api.changgepd.top/api/user/reset/set-new" \
+  -H "Authorization: Bearer eyJhbGci..." \
+  -H "Content-Type: application/json" \
+  -d '{"new_password_hash": "e3b0c4..."}'
+```
+
+**返回示例**:
+```json
+{
+  "code": 200,
+  "message": "新密码设置成功"
+}
+```
+
+---
+
+### ⚙️ 获取用户设置 🔒
+
+**接口**: `GET /api/user/settings`
+
+**请求示例**:
+```bash
+curl "https://m-api.changgepd.top/api/user/settings" \
+  -H "Authorization: Bearer eyJhbGci..."
+```
+
+**返回示例**:
+```json
+{
+  "code": 200,
   "last_volume": 0.7,
   "theme_mode": "dark",
   "auto_play": 1
 }
 ```
 
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| last_volume | number | 音量，0.0 ~ 1.0 |
+| theme_mode | string | `"dark"` \| `"light"` |
+| auto_play | number | `1` = 开启，`0` = 关闭 |
+
 ---
 
-### ⚙️ 更新用户设置
-
-更新当前用户的个性化设置。需要 Bearer Token 认证。
+### ⚙️ 更新用户设置 🔒
 
 **接口**: `PUT /api/user/settings`
 
-**请求头**:
-```
-Authorization: Bearer <token>
-```
-
-**请求体**:
+**请求体（字段均可选）**:
 ```json
 {
   "last_volume": 0.8,
@@ -367,17 +537,10 @@ Authorization: Bearer <token>
 }
 ```
 
-**字段说明**:
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| last_volume | number | 否 | 音量 (0-1) |
-| theme_mode | string | 否 | 主题模式 ("dark" / "light") |
-| auto_play | number | 否 | 自动播放 (1=开启, 0=关闭) |
-
 **请求示例**:
 ```bash
 curl -X PUT "https://m-api.changgepd.top/api/user/settings" \
-  -H "Authorization: Bearer eyJhbGciOiJFUzI1NiIs..." \
+  -H "Authorization: Bearer eyJhbGci..." \
   -H "Content-Type: application/json" \
   -d '{"last_volume": 0.8, "theme_mode": "dark"}'
 ```
@@ -387,6 +550,111 @@ curl -X PUT "https://m-api.changgepd.top/api/user/settings" \
 {
   "code": 200,
   "message": "设置已更新"
+}
+```
+
+---
+
+### 👥 管理员接口
+
+> 以下接口需要 `admin` 或 `master` 权限的 Token。
+
+**权限等级**:
+| role | 获取方式 | 额外能力 |
+|------|---------|--------|
+| `user` | 完成认领后自动授予 | — |
+| `admin` | master 授权 | 查看名录、新增条目、重置密码标记 |
+| `master` | 系统内置 | + 撤销认领、修改权限、更新安全题答案 |
+
+#### 查看全部名录 🔒（admin）
+
+**接口**: `GET /api/admin/roster`
+
+返回所有名录信息和认领状态。
+
+---
+
+#### 新增名录条目 🔒（admin）
+
+**接口**: `POST /api/admin/roster/add`
+
+**请求体**:
+```json
+{
+  "real_name": "补录同学",
+  "year_code": "2006",
+  "seat_code": "0341"
+}
+```
+
+---
+
+#### 重置某人密码 🔒（admin）
+
+执行后，该用户下次登录时 `reset_pending: true`，客户端须强制引导设置新密码。
+
+**接口**: `POST /api/admin/roster/reset`
+
+**请求体**:
+```json
+{ "roster_id": 1 }
+```
+
+---
+
+#### 完全撤销认领 🔒（master）
+
+仅断开名录与账户关联，不删除 Supabase 账户，座位重新开放认领。
+
+**接口**: `POST /api/admin/roster/unclaim`
+
+**请求体**:
+```json
+{ "roster_id": 1 }
+```
+
+---
+
+#### 修改用户权限 🔒（master）
+
+**接口**: `PUT /api/admin/user/role`
+
+**请求体**:
+```json
+{
+  "username": "2006.0302王芳",
+  "role": "admin"
+}
+```
+
+---
+
+#### 更新安全问题答案 🔒（master）
+
+> ⚠️ **首次部署后必须调用此接口**，否则任何人都无法完成认领注册。
+
+**接口**: `PUT /api/admin/questions`
+
+**请求体**:
+```json
+{
+  "answers": ["班主任真实姓名", "数学老师真实姓名", "楼层"]
+}
+```
+
+**请求示例**:
+```bash
+curl -X PUT "https://m-api.changgepd.top/api/admin/questions" \
+  -H "Authorization: Bearer <master_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"answers": ["李明", "王平", "3"]}'
+```
+
+**返回示例**:
+```json
+{
+  "code": 200,
+  "message": "安全问题答案已更新"
 }
 ```
 
@@ -1056,52 +1324,70 @@ curl -X POST "https://m-api.changgepd.top/api/admin/ops/songs/batch-update" \
 
 ## 用户系统 Postman 测试指南
 
-### 测试流程
+### 注册（认领）流程测试
 
-**1. 注册**:
+**1. 获取座位表**:
 ```
-POST https://m-api.changgepd.top/api/user/register
+GET https://m-api.changgepd.top/api/roster
+```
+> 记下目标同学的 `id`（`is_claimed` 为 0），以及三道安全题。
+
+**2. 校验安全问题**:
+```
+POST https://m-api.changgepd.top/api/user/claim/verify
 Content-Type: application/json
 
 Body (raw JSON):
 {
-  "username": "testuser",
-  "password": "123456"
+  "roster_id": 1,
+  "answers": ["李老师", "王老师", "3"]
 }
 ```
+> 返回 `claim_token`，10 分钟内有效。
 
-**2. 登录**:
+**3. 完成注册**:
+```
+POST https://m-api.changgepd.top/api/user/claim/finalize
+Content-Type: application/json
+
+Body (raw JSON):
+{
+  "claim_token": "<上一步返回的token>",
+  "password_hash": "<SHA-256(密码)的hex>",
+  "email": "me@example.com"
+}
+```
+> 返回 `token` 和 `refresh_token`，直接存储后进入主界面。
+
+### 登录流程测试
+
+**4. 登录**:
 ```
 POST https://m-api.changgepd.top/api/user/login
 Content-Type: application/json
 
 Body (raw JSON):
 {
-  "username": "testuser",
-  "password": "123456"
+  "username": "2006.0301张伟",
+  "password_hash": "<SHA-256(密码)的hex>"
 }
 ```
-> 复制返回的 `token` 值，后续请求需要用到。
+> 检查 `reset_pending` 字段，若为 `true` 需强制调用 `/api/user/reset/set-new`。
 
-**3. 获取用户信息**:
+**5. 获取用户信息**:
 ```
 GET https://m-api.changgepd.top/api/user/me
-Authorization: Bearer <粘贴上一步的token>
-```
-
-**4. 获取用户设置**:
-```
-GET https://m-api.changgepd.top/api/user/settings
 Authorization: Bearer <token>
 ```
 
-**5. 更新用户设置**:
+**6. 获取 / 更新用户设置**:
 ```
-PUT https://m-api.changgepd.top/api/user/settings
+GET  https://m-api.changgepd.top/api/user/settings
+PUT  https://m-api.changgepd.top/api/user/settings
 Authorization: Bearer <token>
 Content-Type: application/json
 
-Body:
+Body (PUT):
 {
   "last_volume": 0.8,
   "theme_mode": "dark"
@@ -1128,6 +1414,6 @@ Body:
 
 ---
 
-**最后更新**: 2026-04-10
+**最后更新**: 2026-04-13
 **维护者**: zhangjing02
-**版本**: v14.0 (纯 Worker 架构 + 用户认证系统)
+**版本**: v15.0 (纯 Worker 架构 + 白名单座位认领系统)
