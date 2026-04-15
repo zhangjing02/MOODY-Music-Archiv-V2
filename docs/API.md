@@ -135,13 +135,15 @@ curl "https://m-api.changgepd.top/api/roster"
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | roster_id | number | 是 | 从座位表中选择自己的 ID |
-| answers | string[] | 是 | 三道安全题的答案，顺序与 `security_questions` 一致 |
+| answers | string[] | 是 | 三道安全题的答案，顺序与 `security_questions` 一致；按明文提交 |
+
+> 校验采用**宽容匹配**：会处理大小写、空格、常见后缀（如“老师”），以及楼层等价表达（`3层/3楼/三层/三楼/第3层`）。
 
 **请求示例**:
 ```bash
 curl -X POST "https://m-api.changgepd.top/api/user/claim/verify" \
   -H "Content-Type: application/json" \
-  -d '{"roster_id": 1, "answers": ["李老师", "王老师", "3"]}'
+  -d '{"roster_id": 1, "answers": ["张明亮老师", "王燕老师", "三楼"]}'
 ```
 
 **返回示例（成功）**:
@@ -631,7 +633,7 @@ curl -X PUT "https://m-api.changgepd.top/api/user/settings" \
 
 #### 更新安全问题答案 🔒（master）
 
-> ⚠️ **首次部署后必须调用此接口**，否则任何人都无法完成认领注册。
+> 默认已内置一组可用答案；如需调整可调用此接口覆盖。答案按明文保存，便于维护。
 
 **接口**: `PUT /api/admin/questions`
 
@@ -1340,7 +1342,7 @@ Content-Type: application/json
 Body (raw JSON):
 {
   "roster_id": 1,
-  "answers": ["李老师", "王老师", "3"]
+  "answers": ["张明亮老师", "王燕老师", "三楼"]
 }
 ```
 > 返回 `claim_token`，10 分钟内有效。

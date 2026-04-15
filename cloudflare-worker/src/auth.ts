@@ -27,15 +27,132 @@ function getJWKS(env: Bindings) {
 }
 
 // ==========================================
-// Crypto Helpers
+// Security Answer Helpers
 // ==========================================
 
-async function sha256(text: string): Promise<string> {
-  const encoder = new TextEncoder()
-  const data = encoder.encode(text.trim().toLowerCase())
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+function normalizeAnswerText(text: string): string {
+  return text
+    .normalize('NFKC')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s\u3000]+/g, ' ')
+}
+
+function compactAnswerText(text: string): string {
+  return normalizeAnswerText(text).replace(
+    /[\s`~!@#$%^&*()_\-+=[\]{}|\\;:'",.<>/?·~！@#￥%……&*（）——+={}|【】、；：'"“”《》，。？]/g,
+    ''
+  )
+}
+
+function chineseToNumber(raw: string): number | null {
+  const text = raw.trim()
+  if (!text) return null
+  if (/^\d+$/.test(text)) return parseInt(text, 10)
+
+  const map: Record<string, number> = {
+    '零': 0,
+    '〇': 0,
+    '一': 1,
+    '二': 2,
+    '两': 2,
+    '三': 3,
+    '四': 4,
+    '五': 5,
+    '六': 6,
+    '七': 7,
+    '八': 8,
+    '九': 9,
+  }
+
+  if (text === '十') return 10
+  if (text.startsWith('十')) {
+    const ones = map[text.slice(1)]
+    return ones === undefined ? null : 10 + ones
+  }
+
+  const tenIndex = text.indexOf('十')
+  if (tenIndex > 0) {
+    const tensRaw = text.slice(0, tenIndex)
+    const onesRaw = text.slice(tenIndex + 1)
+    const tens = map[tensRaw]
+    if (tens === undefined) return null
+    if (!onesRaw) return tens * 10
+    const ones = map[onesRaw]
+    if (ones === undefined) return null
+    return tens * 10 + ones
+  }
+
+  const direct = map[text]
+  return direct === undefined ? null : direct
+}
+
+function toChineseNumber(n: number): string {
+  const units = ['', '十']
+  const digits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九']
+
+  if (n < 10) return digits[n]
+  if (n < 20) return `${units[1]}${digits[n % 10] === '零' ? '' : digits[n % 10]}`
+
+  const tens = Math.floor(n / 10)
+  const ones = n % 10
+  return `${digits[tens]}${units[1]}${ones === 0 ? '' : digits[ones]}`
+}
+
+function parseFloorLevel(text: string): number | null {
+  const compact = compactAnswerText(text)
+  if (!compact) return null
+
+  const cleaned = compact
+    .replace(/^第/, '')
+    .replace(/(层|樓|楼|floor|fl|f)$/g, '')
+
+  if (!cleaned) return null
+  return chineseToNumber(cleaned)
+}
+
+function buildAnswerVariants(raw: string, questionId: number): string[] {
+  const variants = new Set<string>()
+  const normalized = normalizeAnswerText(raw)
+  const compact = compactAnswerText(raw)
+
+  if (normalized) variants.add(normalized)
+  if (compact) variants.add(compact)
+
+  if (questionId === 1 || questionId === 2) {
+    const stripped = normalized.replace(/(老师|班主任|主任|teacher)$/g, '').trim()
+    const strippedCompact = compact.replace(/(老师|班主任|主任|teacher)/g, '')
+
+    if (stripped) variants.add(stripped)
+    if (stripped) variants.add(compactAnswerText(stripped))
+    if (strippedCompact) variants.add(strippedCompact)
+  }
+
+  if (questionId === 3) {
+    const floor = parseFloorLevel(raw)
+    if (floor !== null) {
+      const cn = floor <= 99 ? toChineseNumber(floor) : String(floor)
+      variants.add(String(floor))
+      variants.add(`${floor}层`)
+      variants.add(`${floor}楼`)
+      variants.add(`第${floor}层`)
+      variants.add(`第${floor}楼`)
+      variants.add(cn)
+      variants.add(`${cn}层`)
+      variants.add(`${cn}楼`)
+      variants.add(`第${cn}层`)
+      variants.add(`第${cn}楼`)
+    }
+  }
+
+  return [...variants].filter(Boolean)
+}
+
+function isSecurityAnswerMatched(input: string, expected: string, questionId: number): boolean {
+  const inputVariants = buildAnswerVariants(input, questionId)
+  const expectedVariants = buildAnswerVariants(expected, questionId)
+  const expectedSet = new Set(expectedVariants)
+  return inputVariants.some(v => expectedSet.has(v))
 }
 
 function generateToken(length = 32): string {
@@ -168,18 +285,21 @@ export function registerAuthRoutes(app: Hono<AppType>) {
         return c.json({ code: 409, message: '该同学已被认领，如有问题请联系班长' }, 409)
       }
 
-      // 校验三道安全问题
+      // 校验三道安全问题（明文答案 + 宽容匹配）
       const { results: questions } = await c.env.DB.prepare(
-        'SELECT id, answer_hash FROM security_questions ORDER BY id ASC'
-      ).all() as { results: Array<{ id: number; answer_hash: string }> }
+        'SELECT id, answer_text FROM security_questions ORDER BY id ASC'
+      ).all() as { results: Array<{ id: number; answer_text: string }> }
 
       if (questions.length !== 3) {
         return c.json({ code: 500, message: '安全问题配置错误，请联系管理员' }, 500)
       }
 
       for (let i = 0; i < 3; i++) {
-        const inputHash = await sha256(answers[i] || '')
-        if (inputHash !== questions[i].answer_hash) {
+        const questionId = questions[i].id
+        const expectedAnswer = questions[i].answer_text || ''
+        const inputAnswer = answers[i] || ''
+
+        if (!isSecurityAnswerMatched(inputAnswer, expectedAnswer, questionId)) {
           return c.json({ code: 401, message: `第 ${i + 1} 道问题答案不正确` }, 401)
         }
       }
@@ -894,7 +1014,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
     }
   })
 
-  // 19. PUT /api/admin/questions — 更新安全问题答案（仅 master）
+  // 19. PUT /api/admin/questions — 更新安全问题答案（仅 master，明文存储）
   app.put('/api/admin/questions', authMiddleware, requireMaster, async (c) => {
     try {
       const { answers } = await c.req.json() as { answers?: string[] }
@@ -904,10 +1024,10 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       }
 
       for (let i = 0; i < 3; i++) {
-        const hash = await sha256(answers[i])
+        const answer = (answers[i] || '').trim()
         await c.env.DB.prepare(
-          'UPDATE security_questions SET answer_hash = ? WHERE id = ?'
-        ).bind(hash, i + 1).run()
+          'UPDATE security_questions SET answer_text = ? WHERE id = ?'
+        ).bind(answer, i + 1).run()
       }
 
       return c.json({ code: 200, message: '安全问题答案已更新' })

@@ -83,13 +83,12 @@ INSERT OR IGNORE INTO student_roster (real_name, year_code, seat_code) VALUES
 CREATE TABLE IF NOT EXISTS security_questions (
   id        INTEGER PRIMARY KEY AUTOINCREMENT,
   question  TEXT NOT NULL,                -- 问题文本
-  answer_hash TEXT NOT NULL,             -- SHA-256 of 答案（全小写，去首尾空格）
+  answer_text TEXT NOT NULL,             -- 明文答案（便于维护）
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- 预填三道统一安全问题（答案需由管理员在 Dashboard 直接更新 answer_hash 字段）
--- 此处 answer_hash 为占位符，管理员需在部署后手动更新
-INSERT OR IGNORE INTO security_questions (id, question, answer_hash) VALUES
-  (1, '我们的班主任叫什么名字？',   'REPLACE_WITH_SHA256_OF_TEACHER_NAME'),
-  (2, '我们的数学老师叫什么名字？', 'REPLACE_WITH_SHA256_OF_MATH_TEACHER'),
-  (3, '我们的班级在几楼？',         'REPLACE_WITH_SHA256_OF_FLOOR_NUMBER');
+-- 预填三道统一安全问题（默认答案使用明文，便于维护）
+INSERT OR IGNORE INTO security_questions (id, question, answer_text) VALUES
+  (1, '我们的班主任叫什么名字？',   '张明亮'),
+  (2, '我们的数学老师叫什么名字？', '王燕'),
+  (3, '我们的班级在几楼？',         '3层');
