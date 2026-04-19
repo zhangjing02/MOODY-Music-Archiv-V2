@@ -2,6 +2,9 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { registerUploadRoutes } from './upload'
 import { registerAuthRoutes, authMiddleware, requireAdmin } from './auth'
+import { registerCommunityRoutes } from './community'
+import { registerPushRoutes } from './push'
+import { registerAlbumSocialRoutes } from './album_social'
 import type { Bindings } from './types'
 
 const app = new Hono<{ Bindings: Bindings; Variables: { user: any; token: string } }>()
@@ -97,6 +100,9 @@ app.get('/', (c) => c.text('MOODY API Edge Worker is running!'))
 // Auth Routes（用户认证系统）- 注册在 admin 路由之前
 // ==========================================
 registerAuthRoutes(app)
+registerCommunityRoutes(app, authMiddleware)
+registerPushRoutes(app)
+registerAlbumSocialRoutes(app, authMiddleware)
 
 // ==========================================
 // Admin 路由保护（暂时开放，后续按需开启）

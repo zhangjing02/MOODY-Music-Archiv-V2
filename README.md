@@ -16,7 +16,8 @@ Cloudflare Worker (m-api.changgepd.top)
    ├── Hono 框架路由
    ├── Cloudflare D1  ── 元数据（歌曲/专辑/用户名册）
    ├── Cloudflare R2  ── 音频 / 封面 / 歌词静态资源
-   └── Supabase Auth  ── 身份认证 / Token 颁发
+   ├── Supabase Auth  ── 身份认证 / Token 颁发
+   └── JPush Gateway  ── 实时信号下发（Social Sync）
 
 前端播放器 (Claw Cloud Docker)
    └── Nginx 托管 Vanilla JS 播放器
@@ -30,6 +31,8 @@ Cloudflare Worker (m-api.changgepd.top)
 | 关系数据库 | Cloudflare D1 (SQLite) | 歌曲/专辑/用户名册元数据 |
 | 对象存储 | Cloudflare R2 | 音频(.mp3) / 封面 / 歌词(.lrc) |
 | 身份认证 | Supabase Auth | JWT 颁发、Token 刷新、邮件重置 |
+| 消息推送 | 极光推送 (JPush) | **Social Sync 核心**：基于 Tag 的实时信号分发 |
+| 社交存储 | Neon (PostgreSQL) | Serverless 强一致性存储，承载评论树 |
 | 前端托管 | Claw Cloud Run (Docker) | Nginx 托管静态播放器 |
 | CI/CD | GitHub Actions | 构建推送 + Supabase 保活 |
 
@@ -165,7 +168,6 @@ suspend fun login(username: String, password: String): LoginResponse {
 
 4. **部署 Worker**：
    ```bash
-   cd cloudflare-worker
    npx wrangler deploy
    ```
 
