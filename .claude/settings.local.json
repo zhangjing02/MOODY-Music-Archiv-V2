@@ -45,7 +45,13 @@
       "Bash(git reset:*)",
       "Bash(docker build:*)",
       "Bash(grep:*)",
-      "mcp__zread__read_file"
+      "mcp__zread__read_file",
+      "mcp__zai-mcp-server__analyze_image",
+      "Bash(git pull:*)",
+      "mcp__zread__get_repo_structure",
+      "WebSearch",
+      "Bash(nslookup:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJFUzI1NiIsImtpZCI6IjY5M2I5OTMxLWRmODAtNDUyOS04NGI0LTZkNGNlNzU5MTg2MSIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3R2cm5mdGFjaWlyc3dtdnBzbmdwLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiI2MzA5NTYxZS04Y2QyLTQxNjItYTIyMC05ZjMxZjYwMDQ1MzUiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzc1ODI0MDU4LCJpYXQiOjE3NzU4MjA0NTgsImVtYWlsIjoibW9vZHlmYW4yQG1vb2R5LmFwcCIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YWRhdGEiOnsiZW1haWwiOiJtb29keWZhbjJAbW9vZHkuYXBwIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInBob25lX3ZlcmlmaWVkIjpmYWxzZSwic3ViIjoiNjMwOTU2MWUtOGNkMi00MTYyLWEyMjAtOWYzMWY2MDA0NTM1In0sInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiYWFsIjoiYWFsMSIsImFtciI6W3sibWV0aG9kIjoicGFzc3dvcmQiLCJ0aW1lc3RhbXAiOjE3NzU4MjA0NTh9XSwic2Vzc2lvbl9pZCI6IjY1M2E4OGExLWQ3NzUtNGRlYi04NTBlLTFkZmM2YTY5NGE3NiIsImlzX2Fub255bW91cyI6ZmFsc2V9.hXYuP8oPHLGMl85JUF8J64OLDiVc6_vdL4XOX5rOUz_wol_Uhe8JX4S1BFV-AsRzR17boY16N-QklKwSaRCkcA\")"
     ]
   }
 }

@@ -32,7 +32,6 @@ Cloudflare Worker (m-api.changgepd.top)
 | 对象存储 | Cloudflare R2 | 音频(.mp3) / 封面 / 歌词(.lrc) |
 | 身份认证 | Supabase Auth | JWT 颁发、Token 刷新、邮件重置 |
 | 消息推送 | 极光推送 (JPush) | **Social Sync 核心**：基于 Tag 的实时信号分发 |
-| 社交存储 | Neon (PostgreSQL) | Serverless 强一致性存储，承载评论树 |
 | 前端托管 | Claw Cloud Run (Docker) | Nginx 托管静态播放器 |
 | CI/CD | GitHub Actions | 构建推送 + Supabase 保活 |
 
