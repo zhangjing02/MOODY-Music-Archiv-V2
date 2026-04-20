@@ -6,6 +6,7 @@ import { registerCommunityRoutes } from './community'
 import { registerPushRoutes } from './push'
 import { registerAlbumSocialRoutes } from './album_social'
 import type { Bindings } from './types'
+import { fail, normalizeLegacyErrorResponse, serverError } from './error'
 
 const app = new Hono<{ Bindings: Bindings; Variables: { user: any; token: string } }>()
 
@@ -94,6 +95,11 @@ app.use('/*', cors({
   allowHeaders: ['Content-Type', 'Authorization'],
 }))
 
+app.use('/api/*', async (c, next) => {
+  await next()
+  c.res = await normalizeLegacyErrorResponse(c.res)
+})
+
 app.get('/', (c) => c.text('MOODY API Edge Worker is running!'))
 
 // ==========================================
@@ -121,7 +127,7 @@ app.get('/storage/*', async (c) => {
   const key = decodeURIComponent(c.req.path.slice(pathPrefix.length))
   
   if (!key) {
-    return c.json({ error: 'Missing object key' }, 400)
+    return fail(c, 'STORAGE_OBJECT_KEY_MISSING')
   }
 
   // Check cache first (Cloudflare CDN Cache)
@@ -137,7 +143,7 @@ app.get('/storage/*', async (c) => {
 
   const object = await c.env.BUCKET.get(key)
   if (object === null) {
-    return c.json({ error: 'Object not found' }, 404)
+    return fail(c, 'STORAGE_OBJECT_NOT_FOUND')
   }
 
   const headers = new Headers()
@@ -188,7 +194,7 @@ app.get('/api/welcome-images', async (c) => {
     })
   } catch (error: any) {
     console.error('Welcome images error:', error)
-    return c.json({ code: 500, message: error.message }, 500)
+    return serverError(c, error)
   }
 })
 
@@ -236,7 +242,7 @@ app.get('/api/skeleton', async (c) => {
       data: { artists }
     })
   } catch (error: any) {
-    return c.json({ code: 500, message: error.message }, 500)
+    return serverError(c, error)
   }
 })
 
@@ -350,7 +356,7 @@ app.get('/api/songs', async (c) => {
       data: library
     })
   } catch (error: any) {
-    return c.json({ code: 500, message: error.message }, 500)
+    return serverError(c, error)
   }
 })
 
@@ -362,7 +368,10 @@ app.get('/api/search', async (c) => {
   try {
     const q = c.req.query('q')
     if (!q) {
-      return c.json({ code: 400, message: "missing query parameter 'q'" }, 400)
+      return fail(c, 'QUERY_MISSING', {
+        message: "missing query parameter 'q'",
+        details: { required: ['q'] },
+      })
     }
     const likeQuery = `%${q}%`
 
@@ -408,7 +417,7 @@ app.get('/api/search', async (c) => {
       data: results
     })
   } catch (error: any) {
-    return c.json({ code: 500, message: error.message }, 500)
+    return serverError(c, error)
   }
 })
 

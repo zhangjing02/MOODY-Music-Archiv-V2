@@ -9,6 +9,7 @@
 
 import { Hono } from 'hono';
 import type { Bindings } from './types';
+import { errorBody, serverError } from './error';
 
 /**
  * NormalizeTitle 归一化标题（从 Go 代码移植）
@@ -225,18 +226,12 @@ export async function handleUpload(
     const titleOverride = formData.get('titleOverride') as string; // 新增：接收标题标签
 
     if (!files || files.length === 0) {
-      return Response.json({
-        code: 400,
-        message: '未检测到上传的文件',
-      });
+      return Response.json(errorBody('UPLOAD_NO_FILES'), { status: 400 });
     }
 
     const validFiles = files.filter((f) => f.size > 0);
     if (validFiles.length === 0) {
-      return Response.json({
-        code: 400,
-        message: '没有有效的文件',
-      });
+      return Response.json(errorBody('UPLOAD_EMPTY_FILES'), { status: 400 });
     }
 
     const artistName = artistOverride?.trim() || 'Unknown Artist';
@@ -363,10 +358,10 @@ export async function handleUpload(
     });
   } catch (error: any) {
     console.error('❌ 上传处理失败:', error);
-    return Response.json({
-      code: 500,
-      message: `上传失败: ${error.message}`,
-    });
+    return Response.json(
+      errorBody('UPLOAD_FAILED', { message: `上传失败: ${error.message}` }),
+      { status: 500 }
+    );
   }
 }
 
@@ -395,7 +390,7 @@ export function registerUploadRoutes(app: Hono<{ Bindings: Bindings; Variables: 
         },
       });
     } catch (error: any) {
-      return c.json({ code: 500, message: error.message }, 500);
+      return serverError(c, error);
     }
   });
 }

@@ -2,6 +2,7 @@ import { Hono, Context } from 'hono'
 import { createClient } from '@supabase/supabase-js'
 import { jwtVerify, createRemoteJWKSet } from 'jose'
 import type { Bindings } from './types'
+import { fail, serverError } from './error'
 
 type Variables = {
   user: any
@@ -161,6 +162,14 @@ function generateToken(length = 32): string {
   return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
+function buildInternalAuthEmail(roster: { id: number; year_code: string; seat_code: string }): string {
+  return `moody_${roster.year_code}_${roster.seat_code}_${roster.id}@moody.internal`
+}
+
+function uniqueStrings(values: Array<string | null | undefined>): string[] {
+  return [...new Set(values.filter((value): value is string => Boolean(value)))]
+}
+
 // ==========================================
 // Auth Middleware
 // ==========================================
@@ -168,7 +177,7 @@ function generateToken(length = 32): string {
 export const authMiddleware = async (c: Context<AppType>, next: any) => {
   const authHeader = c.req.header('Authorization')
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return c.json({ code: 401, message: '未登录，请先登录' }, 401)
+    return fail(c, 'UNAUTHENTICATED')
   }
 
   const token = authHeader.slice(7)
@@ -178,7 +187,7 @@ export const authMiddleware = async (c: Context<AppType>, next: any) => {
 
     const supabaseUid = payload.sub
     if (!supabaseUid) {
-      return c.json({ code: 401, message: 'Token 无效' }, 401)
+      return fail(c, 'TOKEN_INVALID')
     }
 
     const profile = await c.env.DB.prepare(
@@ -186,7 +195,7 @@ export const authMiddleware = async (c: Context<AppType>, next: any) => {
     ).bind(supabaseUid).first()
 
     if (!profile) {
-      return c.json({ code: 401, message: '用户不存在' }, 401)
+      return fail(c, 'TOKEN_INVALID', { message: '用户不存在' })
     }
 
     c.set('user', profile)
@@ -194,7 +203,7 @@ export const authMiddleware = async (c: Context<AppType>, next: any) => {
     await next()
   } catch (err: any) {
     console.error('JWT verify error:', err.message)
-    return c.json({ code: 401, message: 'Token 已过期或无效，请重新登录' }, 401)
+    return fail(c, 'TOKEN_EXPIRED_OR_INVALID')
   }
 }
 
@@ -205,7 +214,7 @@ export const authMiddleware = async (c: Context<AppType>, next: any) => {
 export const requireAdmin = async (c: Context<AppType>, next: any) => {
   const user = c.get('user')
   if (!user || (user.role !== 'admin' && user.role !== 'master')) {
-    return c.json({ code: 403, message: '需要管理员权限' }, 403)
+    return fail(c, 'ADMIN_FORBIDDEN')
   }
   await next()
 }
@@ -214,7 +223,7 @@ export const requireAdmin = async (c: Context<AppType>, next: any) => {
 export const requireMaster = async (c: Context<AppType>, next: any) => {
   const user = c.get('user')
   if (!user || user.role !== 'master') {
-    return c.json({ code: 403, message: '需要最高管理员权限' }, 403)
+    return fail(c, 'MASTER_FORBIDDEN')
   }
   await next()
 }
@@ -250,7 +259,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
         security_questions: questions,
       })
     } catch (error: any) {
-      return c.json({ code: 500, message: error.message }, 500)
+      return serverError(c, error)
     }
   })
 
@@ -269,7 +278,10 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       }
 
       if (!roster_id || !Array.isArray(answers) || answers.length !== 3) {
-        return c.json({ code: 400, message: '参数不正确，需要 roster_id 和三个答案' }, 400)
+        return fail(c, 'MISSING_PARAMETER', {
+          message: '参数不正确，需要 roster_id 和三个答案',
+          details: { required: ['roster_id', 'answers[3]'] },
+        })
       }
 
       // 检查名录是否存在且未被认领
@@ -278,11 +290,11 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       ).bind(roster_id).first() as any
 
       if (!roster) {
-        return c.json({ code: 404, message: '名录不存在' }, 404)
+        return fail(c, 'CLAIM_ROSTER_NOT_FOUND')
       }
 
       if (roster.is_claimed === 1) {
-        return c.json({ code: 409, message: '该同学已被认领，如有问题请联系班长' }, 409)
+        return fail(c, 'CLAIM_ROSTER_ALREADY_CLAIMED')
       }
 
       // 校验三道安全问题（明文答案 + 宽容匹配）
@@ -291,7 +303,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       ).all() as { results: Array<{ id: number; answer_text: string }> }
 
       if (questions.length !== 3) {
-        return c.json({ code: 500, message: '安全问题配置错误，请联系管理员' }, 500)
+        return fail(c, 'CLAIM_SECURITY_CONFIG_INVALID')
       }
 
       for (let i = 0; i < 3; i++) {
@@ -300,7 +312,13 @@ export function registerAuthRoutes(app: Hono<AppType>) {
         const inputAnswer = answers[i] || ''
 
         if (!isSecurityAnswerMatched(inputAnswer, expectedAnswer, questionId)) {
-          return c.json({ code: 401, message: `第 ${i + 1} 道问题答案不正确` }, 401)
+          return fail(c, 'CLAIM_SECURITY_ANSWER_MISMATCH', {
+            message: `第 ${i + 1} 道问题答案不正确`,
+            details: {
+              question_index: i + 1,
+              question_id: questionId,
+            },
+          })
         }
       }
 
@@ -312,9 +330,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
         'INSERT INTO claim_tokens (token, roster_id, expires_at) VALUES (?, ?, ?)'
       ).bind(token, roster_id, expiresAt).run()
 
-      return c.json({
-        code: 200,
-        message: '验证通过，请在10分钟内完成注册',
+      const responseData = {
         claim_token: token,
         roster: {
           id: roster.id,
@@ -322,9 +338,16 @@ export function registerAuthRoutes(app: Hono<AppType>) {
           year_code: roster.year_code,
           seat_code: roster.seat_code,
         },
+      }
+
+      return c.json({
+        code: 200,
+        message: '验证通过，请在10分钟内完成注册',
+        ...responseData,
+        data: responseData,
       })
     } catch (error: any) {
-      return c.json({ code: 500, message: error.message }, 500)
+      return serverError(c, error)
     }
   })
 
@@ -344,11 +367,17 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       }
 
       if (!claim_token || !password_hash) {
-        return c.json({ code: 400, message: '缺少 claim_token 或 password_hash' }, 400)
+        return fail(c, 'MISSING_PARAMETER', {
+          message: '缺少 claim_token 或 password_hash',
+          details: { required: ['claim_token', 'password_hash'] },
+        })
       }
 
       if (password_hash.length !== 64) {
-        return c.json({ code: 400, message: 'password_hash 格式错误（需为 SHA-256 hex，64字符）' }, 400)
+        return fail(c, 'PASSWORD_HASH_INVALID', {
+          message: 'password_hash 格式错误（需为 SHA-256 hex，64字符）',
+          details: { field: 'password_hash' },
+        })
       }
 
       // 1. 验证 claim_token
@@ -357,15 +386,15 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       ).bind(claim_token).first() as any
 
       if (!claimRecord) {
-        return c.json({ code: 401, message: 'claim_token 无效' }, 401)
+        return fail(c, 'CLAIM_TOKEN_INVALID')
       }
 
       if (claimRecord.used === 1) {
-        return c.json({ code: 401, message: 'claim_token 已被使用' }, 401)
+        return fail(c, 'CLAIM_TOKEN_USED')
       }
 
       if (new Date(claimRecord.expires_at) < new Date()) {
-        return c.json({ code: 401, message: 'claim_token 已过期，请重新验证' }, 401)
+        return fail(c, 'CLAIM_TOKEN_EXPIRED')
       }
 
       // 2. 获取名录信息
@@ -374,11 +403,11 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       ).bind(claimRecord.roster_id).first() as any
 
       if (!roster) {
-        return c.json({ code: 404, message: '名录不存在' }, 404)
+        return fail(c, 'CLAIM_ROSTER_NOT_FOUND')
       }
 
       if (roster.is_claimed === 1) {
-        return c.json({ code: 409, message: '该名录已被他人认领' }, 409)
+        return fail(c, 'CLAIM_ROSTER_ALREADY_CLAIMED', { message: '该名录已被他人认领' })
       }
 
       // 3. 生成唯一用户名
@@ -396,29 +425,29 @@ export function registerAuthRoutes(app: Hono<AppType>) {
         username = `${baseUsername}_${suffix}`
       }
 
-      const fakeEmail = `${username}@moody.internal`
+      const internalAuthEmail = buildInternalAuthEmail(roster)
 
       // 4. 在 Supabase 创建账户
       const supabase = getSupabase(c.env)
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: fakeEmail,
+        email: internalAuthEmail,
         password: password_hash,  // 使用哈希值作为密码
       })
 
       if (signUpError) {
         console.error('Supabase signUp error:', signUpError.message)
-        return c.json({ code: 500, message: `注册失败: ${signUpError.message}` }, 500)
+        return fail(c, 'CLAIM_FINALIZE_FAILED', { message: `注册失败: ${signUpError.message}` })
       }
 
       const supabaseUid = signUpData.user?.id
       if (!supabaseUid) {
-        return c.json({ code: 500, message: '注册失败：未获取到用户 ID' }, 500)
+        return fail(c, 'CLAIM_FINALIZE_FAILED', { message: '注册失败：未获取到用户 ID' })
       }
 
       // 5. 写入 D1 user_profiles
       await c.env.DB.prepare(
         'INSERT INTO user_profiles (supabase_uid, username, email, level, role) VALUES (?, ?, ?, 1, ?)'
-      ).bind(supabaseUid, username, email || fakeEmail, 'user').run()
+      ).bind(supabaseUid, username, email || null, 'user').run()
 
       const profile = await c.env.DB.prepare(
         'SELECT id, supabase_uid, username, email, level, role, avatar_url, created_at FROM user_profiles WHERE supabase_uid = ?'
@@ -434,16 +463,21 @@ export function registerAuthRoutes(app: Hono<AppType>) {
         'UPDATE claim_tokens SET used = 1 WHERE token = ?'
       ).bind(claim_token).run()
 
-      return c.json({
-        code: 200,
-        message: `认领成功！欢迎 ${roster.real_name}`,
+      const responseData = {
         user: profile,
         token: signUpData.session?.access_token,
         refresh_token: signUpData.session?.refresh_token,
+      }
+
+      return c.json({
+        code: 200,
+        message: `认领成功！欢迎 ${roster.real_name}`,
+        ...responseData,
+        data: responseData,
       })
     } catch (error: any) {
       console.error('Claim finalize error:', error)
-      return c.json({ code: 500, message: error.message }, 500)
+      return serverError(c, error, 'CLAIM_FINALIZE_FAILED')
     }
   })
 
@@ -458,41 +492,57 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       }
 
       if (!username || !password_hash) {
-        return c.json({ code: 400, message: '用户名和密码不能为空' }, 400)
+        return fail(c, 'MISSING_PARAMETER', {
+          message: '用户名和密码不能为空',
+          details: { required: ['username', 'password_hash'] },
+        })
       }
 
       const supabase = getSupabase(c.env)
-      const fakeEmail = `${username}@moody.internal`
+      const profileLookup = await c.env.DB.prepare(
+        `SELECT p.id, p.email, r.id AS roster_id, r.year_code, r.seat_code
+         FROM user_profiles p
+         LEFT JOIN student_roster r ON r.profile_id = p.id
+         WHERE p.username = ?`
+      ).bind(username).first() as any
 
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: fakeEmail,
-        password: password_hash,
-      })
+      const emailCandidates = uniqueStrings([
+        profileLookup?.roster_id
+          ? buildInternalAuthEmail({
+              id: profileLookup.roster_id,
+              year_code: profileLookup.year_code,
+              seat_code: profileLookup.seat_code,
+            })
+          : null,
+        profileLookup?.email?.endsWith('@moody.internal') ? profileLookup.email : null,
+        profileLookup?.email?.endsWith('@moody.app') ? profileLookup.email : null,
+        `${username}@moody.internal`,
+        `${username}@moody.app`,
+        profileLookup?.email && !profileLookup.email.endsWith('@moody.internal') && !profileLookup.email.endsWith('@moody.app')
+          ? profileLookup.email
+          : null,
+      ])
 
-      if (signInError) {
-        // 兼容旧邮箱格式 @moody.app
-        const legacyEmail = `${username}@moody.app`
-        const { data: legacyData, error: legacyError } = await supabase.auth.signInWithPassword({
-          email: legacyEmail,
+      let signInData: any = null
+      let signInError: any = null
+
+      for (const candidateEmail of emailCandidates) {
+        const result = await supabase.auth.signInWithPassword({
+          email: candidateEmail,
           password: password_hash,
         })
 
-        if (legacyError) {
-          return c.json({ code: 401, message: '用户名或密码错误' }, 401)
+        if (!result.error) {
+          signInData = result.data
+          signInError = null
+          break
         }
 
-        const supabaseUid = legacyData.user?.id!
-        let profile = await c.env.DB.prepare(
-          'SELECT id, supabase_uid, username, email, level, role, avatar_url, created_at FROM user_profiles WHERE supabase_uid = ?'
-        ).bind(supabaseUid).first()
+        signInError = result.error
+      }
 
-        return c.json({
-          code: 200,
-          message: '登录成功',
-          user: profile,
-          token: legacyData.session?.access_token,
-          refresh_token: legacyData.session?.refresh_token,
-        })
+      if (signInError || !signInData) {
+        return fail(c, 'LOGIN_FAILED')
       }
 
       const supabaseUid = signInData.user?.id
@@ -500,7 +550,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       const refreshToken = signInData.session?.refresh_token
 
       if (!supabaseUid || !accessToken) {
-        return c.json({ code: 500, message: '登录失败：未获取到会话信息' }, 500)
+        return fail(c, 'SESSION_CREATE_FAILED')
       }
 
       const profile = await c.env.DB.prepare(
@@ -512,16 +562,21 @@ export function registerAuthRoutes(app: Hono<AppType>) {
         'SELECT status FROM student_roster WHERE profile_id = ?'
       ).bind((profile as any)?.id).first() as any
 
-      return c.json({
-        code: 200,
-        message: '登录成功',
+      const responseData = {
         user: profile,
         token: accessToken,
         refresh_token: refreshToken,
         reset_pending: rosterRecord?.status === 'reset_pending',
+      }
+
+      return c.json({
+        code: 200,
+        message: '登录成功',
+        ...responseData,
+        data: responseData,
       })
     } catch (error: any) {
-      return c.json({ code: 500, message: error.message }, 500)
+      return serverError(c, error)
     }
   })
 
@@ -533,24 +588,32 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       const { refresh_token } = await c.req.json() as { refresh_token?: string }
 
       if (!refresh_token) {
-        return c.json({ code: 400, message: '缺少 refresh_token' }, 400)
+        return fail(c, 'MISSING_PARAMETER', {
+          message: '缺少 refresh_token',
+          details: { required: ['refresh_token'] },
+        })
       }
 
       const supabase = getSupabase(c.env)
       const { data, error } = await supabase.auth.refreshSession({ refresh_token })
 
       if (error) {
-        return c.json({ code: 401, message: '刷新失败，请重新登录' }, 401)
+        return fail(c, 'REFRESH_TOKEN_INVALID')
+      }
+
+      const responseData = {
+        token: data.session?.access_token,
+        refresh_token: data.session?.refresh_token,
       }
 
       return c.json({
         code: 200,
         message: '刷新成功',
-        token: data.session?.access_token,
-        refresh_token: data.session?.refresh_token,
+        ...responseData,
+        data: responseData,
       })
     } catch (error: any) {
-      return c.json({ code: 500, message: error.message }, 500)
+      return serverError(c, error)
     }
   })
 
@@ -589,7 +652,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
         .map(k => body[k])
 
       if (updates.length === 0) {
-        return c.json({ code: 400, message: '无有效更新字段（用户名不可更改）' }, 400)
+        return fail(c, 'NO_VALID_FIELDS', { message: '无有效更新字段（用户名不可更改）' })
       }
 
       params.push(user.id)
@@ -603,7 +666,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
 
       return c.json({ code: 200, message: '更新成功', user: profile })
     } catch (error: any) {
-      return c.json({ code: 500, message: error.message }, 500)
+      return serverError(c, error)
     }
   })
 
@@ -616,7 +679,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       const { email } = await c.req.json() as { email?: string }
 
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        return c.json({ code: 400, message: '邮箱格式不正确' }, 400)
+        return fail(c, 'EMAIL_INVALID')
       }
 
       // 更新 D1 user_profiles
@@ -631,7 +694,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
 
       return c.json({ code: 200, message: '邮箱绑定成功' })
     } catch (error: any) {
-      return c.json({ code: 500, message: error.message }, 500)
+      return serverError(c, error)
     }
   })
 
@@ -645,7 +708,10 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       const { username } = await c.req.json() as { username?: string }
 
       if (!username) {
-        return c.json({ code: 400, message: '请提供用户名' }, 400)
+        return fail(c, 'MISSING_PARAMETER', {
+          message: '请提供用户名',
+          details: { required: ['username'] },
+        })
       }
 
       // 查找用户
@@ -654,7 +720,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       ).bind(username).first() as any
 
       if (!profile) {
-        return c.json({ code: 404, message: '用户不存在' }, 404)
+        return fail(c, 'USER_NOT_FOUND')
       }
 
       // 查是否绑定了真实邮箱
@@ -664,10 +730,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
 
       const realEmail = roster?.bound_email
       if (!realEmail || realEmail.endsWith('@moody.internal') || realEmail.endsWith('@moody.app')) {
-        return c.json({
-          code: 403,
-          message: '该账号未绑定邮箱，请联系班长（管理员）重置密码'
-        }, 403)
+        return fail(c, 'RESET_EMAIL_NOT_BOUND')
       }
 
       // 生成 6 位验证码，写入 claim_tokens 复用逻辑
@@ -690,7 +753,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
         // debug_token: token,  // 上线后移除此行
       })
     } catch (error: any) {
-      return c.json({ code: 500, message: error.message }, 500)
+      return serverError(c, error)
     }
   })
 
@@ -706,11 +769,17 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       }
 
       if (!username || !code || !new_password_hash) {
-        return c.json({ code: 400, message: '参数缺失' }, 400)
+        return fail(c, 'MISSING_PARAMETER', {
+          message: '参数缺失',
+          details: { required: ['username', 'code', 'new_password_hash'] },
+        })
       }
 
       if (new_password_hash.length !== 64) {
-        return c.json({ code: 400, message: 'new_password_hash 格式错误' }, 400)
+        return fail(c, 'PASSWORD_HASH_INVALID', {
+          message: 'new_password_hash 格式错误',
+          details: { field: 'new_password_hash' },
+        })
       }
 
       const profile = await c.env.DB.prepare(
@@ -718,7 +787,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       ).bind(username).first() as any
 
       if (!profile) {
-        return c.json({ code: 404, message: '用户不存在' }, 404)
+        return fail(c, 'USER_NOT_FOUND')
       }
 
       // 查找有效的重置令牌
@@ -729,18 +798,18 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       ).bind(profile.id).all() as { results: Array<{ token: string; expires_at: string }> }
 
       if (!tokens || tokens.length === 0) {
-        return c.json({ code: 401, message: '未找到有效的重置请求，请重新申请' }, 401)
+        return fail(c, 'RESET_REQUEST_NOT_FOUND')
       }
 
       const tokenRecord = tokens[0]
       if (new Date(tokenRecord.expires_at) < new Date()) {
-        return c.json({ code: 401, message: '验证码已过期，请重新申请' }, 401)
+        return fail(c, 'RESET_CODE_EXPIRED')
       }
 
       // 验证 code 是否匹配
       const expectedCode = tokenRecord.token.split('_')[1]
       if (code !== expectedCode) {
-        return c.json({ code: 401, message: '验证码不正确' }, 401)
+        return fail(c, 'RESET_CODE_MISMATCH')
       }
 
       // 调用 Supabase Admin API 强制更新密码
@@ -752,7 +821,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
 
       if (updateError) {
         console.error('Supabase admin updateUser error:', updateError.message)
-        return c.json({ code: 500, message: '密码重置失败，请稍后重试' }, 500)
+        return fail(c, 'PASSWORD_UPDATE_FAILED', { message: '密码重置失败，请稍后重试' })
       }
 
       // 标记 token 已使用
@@ -767,7 +836,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
 
       return c.json({ code: 200, message: '密码重置成功，请使用新密码登录' })
     } catch (error: any) {
-      return c.json({ code: 500, message: error.message }, 500)
+      return serverError(c, error)
     }
   })
 
@@ -781,7 +850,10 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       const { new_password_hash } = await c.req.json() as { new_password_hash?: string }
 
       if (!new_password_hash || new_password_hash.length !== 64) {
-        return c.json({ code: 400, message: 'new_password_hash 格式错误' }, 400)
+        return fail(c, 'PASSWORD_HASH_INVALID', {
+          message: 'new_password_hash 格式错误',
+          details: { field: 'new_password_hash' },
+        })
       }
 
       const supabaseAdmin = getSupabaseAdmin(c.env)
@@ -791,7 +863,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       )
 
       if (error) {
-        return c.json({ code: 500, message: '密码设置失败' }, 500)
+        return fail(c, 'PASSWORD_UPDATE_FAILED', { message: '密码设置失败' })
       }
 
       await c.env.DB.prepare(
@@ -800,7 +872,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
 
       return c.json({ code: 200, message: '新密码设置成功' })
     } catch (error: any) {
-      return c.json({ code: 500, message: error.message }, 500)
+      return serverError(c, error)
     }
   })
 
@@ -825,7 +897,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
 
       return c.json({ code: 200, message: 'success', ...settings })
     } catch (error: any) {
-      return c.json({ code: 500, message: error.message }, 500)
+      return serverError(c, error)
     }
   })
 
@@ -846,7 +918,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
         .map(k => body[k])
 
       if (updates.length === 0) {
-        return c.json({ code: 400, message: 'No valid fields' }, 400)
+        return fail(c, 'NO_VALID_FIELDS', { message: 'No valid fields' })
       }
 
       const existing = await c.env.DB.prepare(
@@ -866,7 +938,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
 
       return c.json({ code: 200, message: '设置已更新' })
     } catch (error: any) {
-      return c.json({ code: 500, message: error.message }, 500)
+      return serverError(c, error)
     }
   })
 
@@ -886,7 +958,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
 
       return c.json({ code: 200, message: 'success', roster: results })
     } catch (error: any) {
-      return c.json({ code: 500, message: error.message }, 500)
+      return serverError(c, error)
     }
   })
 
@@ -900,7 +972,10 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       }
 
       if (!real_name || !year_code || !seat_code) {
-        return c.json({ code: 400, message: '缺少必要字段' }, 400)
+        return fail(c, 'MISSING_PARAMETER', {
+          message: '缺少必要字段',
+          details: { required: ['real_name', 'year_code', 'seat_code'] },
+        })
       }
 
       await c.env.DB.prepare(
@@ -910,9 +985,9 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       return c.json({ code: 200, message: '名录添加成功' })
     } catch (error: any) {
       if (error.message.includes('UNIQUE')) {
-        return c.json({ code: 409, message: '该名录已存在' }, 409)
+        return fail(c, 'ROSTER_ALREADY_EXISTS')
       }
-      return c.json({ code: 500, message: error.message }, 500)
+      return serverError(c, error)
     }
   })
 
@@ -922,7 +997,10 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       const { roster_id } = await c.req.json() as { roster_id?: number }
 
       if (!roster_id) {
-        return c.json({ code: 400, message: '缺少 roster_id' }, 400)
+        return fail(c, 'MISSING_PARAMETER', {
+          message: '缺少 roster_id',
+          details: { required: ['roster_id'] },
+        })
       }
 
       const roster = await c.env.DB.prepare(
@@ -930,11 +1008,11 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       ).bind(roster_id).first() as any
 
       if (!roster) {
-        return c.json({ code: 404, message: '名录不存在' }, 404)
+        return fail(c, 'CLAIM_ROSTER_NOT_FOUND')
       }
 
       if (!roster.is_claimed) {
-        return c.json({ code: 400, message: '该名录尚未被认领' }, 400)
+        return fail(c, 'ROSTER_NOT_CLAIMED')
       }
 
       // 将 status 置为 reset_pending，用户下次登录会被提示重置密码
@@ -947,7 +1025,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
         message: '已标记为需要重置密码，该用户下次登录时将被要求设置新密码'
       })
     } catch (error: any) {
-      return c.json({ code: 500, message: error.message }, 500)
+      return serverError(c, error)
     }
   })
 
@@ -957,7 +1035,10 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       const { roster_id } = await c.req.json() as { roster_id?: number }
 
       if (!roster_id) {
-        return c.json({ code: 400, message: '缺少 roster_id' }, 400)
+        return fail(c, 'MISSING_PARAMETER', {
+          message: '缺少 roster_id',
+          details: { required: ['roster_id'] },
+        })
       }
 
       const roster = await c.env.DB.prepare(
@@ -965,7 +1046,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       ).bind(roster_id).first() as any
 
       if (!roster || !roster.profile_id) {
-        return c.json({ code: 404, message: '名录不存在或未认领' }, 404)
+        return fail(c, 'ROSTER_NOT_FOUND_OR_UNCLAIMED')
       }
 
       // 撤销名录认领状态（不删除 Supabase 账户，只断开关联）
@@ -975,7 +1056,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
 
       return c.json({ code: 200, message: '认领已撤销，该座位可重新认领（原账号不受影响）' })
     } catch (error: any) {
-      return c.json({ code: 500, message: error.message }, 500)
+      return serverError(c, error)
     }
   })
 
@@ -988,12 +1069,15 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       }
 
       if (!username || !role) {
-        return c.json({ code: 400, message: '缺少 username 或 role' }, 400)
+        return fail(c, 'MISSING_PARAMETER', {
+          message: '缺少 username 或 role',
+          details: { required: ['username', 'role'] },
+        })
       }
 
       const validRoles = ['user', 'admin', 'master']
       if (!validRoles.includes(role)) {
-        return c.json({ code: 400, message: `role 只能是: ${validRoles.join(', ')}` }, 400)
+        return fail(c, 'ROLE_INVALID', { message: `role 只能是: ${validRoles.join(', ')}` })
       }
 
       const targetUser = await c.env.DB.prepare(
@@ -1001,7 +1085,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       ).bind(username).first()
 
       if (!targetUser) {
-        return c.json({ code: 404, message: '用户不存在' }, 404)
+        return fail(c, 'USER_NOT_FOUND')
       }
 
       await c.env.DB.prepare(
@@ -1010,7 +1094,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
 
       return c.json({ code: 200, message: `${username} 的权限已更新为 ${role}` })
     } catch (error: any) {
-      return c.json({ code: 500, message: error.message }, 500)
+      return serverError(c, error)
     }
   })
 
@@ -1020,7 +1104,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       const { answers } = await c.req.json() as { answers?: string[] }
 
       if (!Array.isArray(answers) || answers.length !== 3) {
-        return c.json({ code: 400, message: '需要提供三道题目的答案数组' }, 400)
+        return fail(c, 'QUESTION_ANSWERS_INVALID')
       }
 
       for (let i = 0; i < 3; i++) {
@@ -1032,7 +1116,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
 
       return c.json({ code: 200, message: '安全问题答案已更新' })
     } catch (error: any) {
-      return c.json({ code: 500, message: error.message }, 500)
+      return serverError(c, error)
     }
   })
 }
