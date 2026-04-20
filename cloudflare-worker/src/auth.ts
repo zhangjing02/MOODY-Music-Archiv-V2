@@ -191,11 +191,31 @@ export const authMiddleware = async (c: Context<AppType>, next: any) => {
     }
 
     const profile = await c.env.DB.prepare(
-      'SELECT id, supabase_uid, username, email, level, role, avatar_url, created_at FROM user_profiles WHERE supabase_uid = ?'
-    ).bind(supabaseUid).first()
+      'SELECT id, supabase_uid, username, email, level, role, avatar_url, created_at, last_android_device_id, last_android_session_at FROM user_profiles WHERE supabase_uid = ?'
+    ).bind(supabaseUid).first() as any
 
     if (!profile) {
       return fail(c, 'TOKEN_INVALID', { message: '用户不存在' })
+    }
+
+    // [Multi-Device Kick-out Logic]
+    // If the request comes from Android (detected via User-Agent or custom header), 
+    // check if the current token's issued time matches the last session time in DB.
+    const clientType = c.req.header('X-Client-Type') || ''
+    const deviceId = c.req.header('X-Device-Id') || ''
+
+    if (clientType === 'android') {
+      const iat = payload.iat // JWT issued-at time
+      const lastSessionAt = profile.last_android_session_at ? new Date(profile.last_android_session_at).getTime() / 1000 : 0
+      
+      // If there's a newer session in DB for Android, this old token is invalid
+      if (lastSessionAt > (iat || 0) + 1) { // 1s buffer for clock drift
+         return c.json({ 
+           code: 503, 
+           message: '您的账号已在其他安卓设备上登录，当前会话已失效',
+           error_key: 'SESSION_KICKED_OUT'
+         }, 503)
+      }
     }
 
     c.set('user', profile)
@@ -554,8 +574,42 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       }
 
       const profile = await c.env.DB.prepare(
-        'SELECT id, supabase_uid, username, email, level, role, avatar_url, created_at FROM user_profiles WHERE supabase_uid = ?'
-      ).bind(supabaseUid).first()
+        'SELECT id, supabase_uid, username, email, level, role, avatar_url, created_at, last_android_device_id FROM user_profiles WHERE supabase_uid = ?'
+      ).bind(supabaseUid).first() as any
+
+      // [Kick-out Implementation]
+      const clientType = c.req.header('X-Client-Type') || ''
+      const deviceId = c.req.header('X-Device-Id') || ''
+      
+      if (clientType === 'android' && deviceId) {
+        // 1. If there was a previous device, send JPush kick-out notification
+        if (profile.last_android_device_id && profile.last_android_device_id !== deviceId) {
+          if (c.env.JPUSH_APP_KEY && c.env.JPUSH_MASTER_SECRET) {
+            c.executionCtx.waitUntil(
+              fetch('https://api.jpush.cn/v3/push', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Basic ${btoa(`${c.env.JPUSH_APP_KEY}:${c.env.JPUSH_MASTER_SECRET}`)}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  platform: 'android',
+                  audience: { registration_id: [profile.last_android_device_id] }, // Assuming device_id is registration_id for simplicity or use tag
+                  message: {
+                    msg_content: 'Your account has been logged in on another device.',
+                    extras: { action: 'KICK_OUT', reason: 'new_login' }
+                  }
+                })
+              }).catch(err => console.error('JPush kickout error:', err))
+            )
+          }
+        }
+
+        // 2. Update DB with new device info and session time
+        await c.env.DB.prepare(
+          'UPDATE user_profiles SET last_android_device_id = ?, last_android_session_at = CURRENT_TIMESTAMP WHERE id = ?'
+        ).bind(deviceId, profile.id).run()
+      }
 
       // 检查是否 reset_pending
       const rosterRecord = await c.env.DB.prepare(

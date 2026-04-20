@@ -71,6 +71,26 @@ Authorization: Bearer <access_token>
 
 `access_token` 来自登录/认领成功的响应，有效期约 **1 小时**。过期后用 `refresh_token` 续签，无需重新登录。
 
+### 设备标识与多端互踢 (Session Management)
+
+为了实现「安卓端单一登录」且「不影响网页端」的逻辑，移动端请求必须携带以下自定义 Header：
+
+| Header | 示例值 | 说明 |
+|------|------|------|
+| `X-Client-Type` | `android` | 客户端类型（`android` 或 `web`） |
+| `X-Device-Id` | `registration_id` | **极光推送 Registration ID** (必须唯一且用于推送) |
+
+**互踢逻辑说明**：
+1. **触发条件**：当一个新的安卓设备（不同的 `X-Device-Id`）调用登录接口时。
+2. **推送提示**：旧设备会收到一条 **JPush 透传消息**：
+   - `action`: `KICK_OUT`
+   - `reason`: `new_login`
+   - **移动端处理**：旧设备收到此消息后，应立即清除 Token 并弹窗提示「您的账号已在其他安卓设备上登录」。
+3. **接口封杀 (503)**：一旦发生互踢，旧 Token 在后续请求中会触发 **503 错误**。
+   - `code`: `503`
+   - `error_key`: `SESSION_KICKED_OUT`
+   - **网页端不受此限制**：Web 端登录不会踢掉手机端，且不受 503 校验影响。
+
 ---
 
 ## 一、座位认领（注册）
@@ -574,6 +594,7 @@ Content-Type: application/json
 | 404 | 404 | 资源不存在 |
 | 409 | 409 | 资源冲突（已认领、记录重复等） |
 | 500 | 500 | 服务器内部错误 |
+| 503 | 503 | 会话失效（账号在别处登录） |
 
 **所有错误统一格式**：
 ```json
