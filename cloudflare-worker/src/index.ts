@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import { registerUploadRoutes } from './upload'
 import { registerAuthRoutes, authMiddleware, requireAdmin } from './auth'
 import { registerPushRoutes } from './push'
+import { registerAlbumSocialRoutes } from './album_social'
 import type { Bindings } from './types'
 import { fail, normalizeLegacyErrorResponse, serverError } from './error'
 
@@ -105,6 +106,7 @@ app.get('/', (c) => c.text('MOODY API Edge Worker is running!'))
 // ==========================================
 registerAuthRoutes(app)
 registerPushRoutes(app)
+registerAlbumSocialRoutes(app, authMiddleware)
 
 // ==========================================
 // Admin 路由保护（暂时开放，后续按需开启）
