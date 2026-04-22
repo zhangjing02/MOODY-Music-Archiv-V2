@@ -170,6 +170,302 @@ function uniqueStrings(values: Array<string | null | undefined>): string[] {
   return [...new Set(values.filter((value): value is string => Boolean(value)))]
 }
 
+type SeatCodeKind = 'alpha' | 'legacy' | 'unknown'
+
+type ParsedSeatCode = {
+  kind: SeatCodeKind
+  rawNormalized: string
+  normalized: string
+  column: string | null
+  row: number | null
+  sortGroup: number
+  sortIndex: number
+  sortColumn: number
+  sortRow: number
+}
+
+const ROSTER_COLUMNS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] as const
+const ROSTER_ROW_COUNT = 8
+const TOTAL_STANDARD_SEATS = ROSTER_COLUMNS.length * ROSTER_ROW_COUNT
+
+function seatColumnToIndex(column: string): number {
+  let index = 0
+  for (const ch of column) {
+    const code = ch.charCodeAt(0)
+    if (code < 65 || code > 90) return Number.MAX_SAFE_INTEGER
+    index = index * 26 + (code - 64)
+  }
+  return index
+}
+
+function buildStandardSeatCode(column: string, row: number): string {
+  return `${column}${String(row).padStart(2, '0')}`
+}
+
+function parseAlphaSeatCode(compactCode: string): { column: string; row: number; normalized: string } | null {
+  const alphaMatch = compactCode.match(/^([A-Z]+)(\d{1,2})$/)
+  if (!alphaMatch) return null
+
+  const column = alphaMatch[1]
+  const row = parseInt(alphaMatch[2], 10)
+  if (row < 1 || row > 99) return null
+  return { column, row, normalized: buildStandardSeatCode(column, row) }
+}
+
+function parseLegacySeatCode(compactCode: string): { legacyClass: number; seatNo: number; normalized: string } | null {
+  const legacyMatch = compactCode.match(/^(\d{2})(\d{2})$/)
+  if (!legacyMatch) return null
+
+  const legacyClass = parseInt(legacyMatch[1], 10)
+  const seatNo = parseInt(legacyMatch[2], 10)
+  if (Number.isNaN(legacyClass) || Number.isNaN(seatNo) || seatNo <= 0) return null
+
+  return {
+    legacyClass,
+    seatNo,
+    normalized: `${legacyMatch[1]}${legacyMatch[2]}`,
+  }
+}
+
+function seatNoToStandardSeatCode(seatNo: number): string | null {
+  if (!Number.isInteger(seatNo) || seatNo <= 0 || seatNo > TOTAL_STANDARD_SEATS) return null
+
+  const zeroBased = seatNo - 1
+  const columnIndex = Math.floor(zeroBased / ROSTER_ROW_COUNT)
+  const row = (zeroBased % ROSTER_ROW_COUNT) + 1
+  const column = ROSTER_COLUMNS[columnIndex]
+  if (!column) return null
+
+  return buildStandardSeatCode(column, row)
+}
+
+function standardSeatCodeToSortIndex(standardSeatCode: string): number | null {
+  const alpha = parseAlphaSeatCode(standardSeatCode)
+  if (!alpha) return null
+
+  const columnIndex = ROSTER_COLUMNS.indexOf(alpha.column as (typeof ROSTER_COLUMNS)[number])
+  if (columnIndex < 0 || alpha.row > ROSTER_ROW_COUNT) return null
+
+  return columnIndex * ROSTER_ROW_COUNT + alpha.row
+}
+
+function toStandardSeatCode(rawValue: unknown): string | null {
+  const raw = String(rawValue ?? '').trim()
+  if (!raw) return null
+
+  const compact = raw.toUpperCase().replace(/\s+/g, '').replace(/[-_]/g, '')
+  const alpha = parseAlphaSeatCode(compact)
+  if (alpha) {
+    return standardSeatCodeToSortIndex(alpha.normalized) ? alpha.normalized : null
+  }
+
+  const legacy = parseLegacySeatCode(compact)
+  if (legacy) {
+    return seatNoToStandardSeatCode(legacy.seatNo)
+  }
+
+  return null
+}
+
+function parseSeatCode(rawValue: unknown): ParsedSeatCode {
+  const raw = String(rawValue ?? '').trim()
+  const compact = raw.toUpperCase().replace(/\s+/g, '').replace(/[-_]/g, '')
+
+  const standardSeatCode = toStandardSeatCode(rawValue)
+  if (standardSeatCode) {
+    const alpha = parseAlphaSeatCode(standardSeatCode)!
+    const sortIndex = standardSeatCodeToSortIndex(standardSeatCode)!
+    return {
+      kind: 'alpha',
+      rawNormalized: compact,
+      normalized: standardSeatCode,
+      column: alpha.column,
+      row: alpha.row,
+      sortGroup: 0,
+      sortIndex,
+      sortColumn: seatColumnToIndex(alpha.column),
+      sortRow: alpha.row,
+    }
+  }
+
+  const legacy = parseLegacySeatCode(compact)
+  if (legacy) {
+    return {
+      kind: 'legacy',
+      rawNormalized: compact,
+      normalized: legacy.normalized,
+      column: null,
+      row: null,
+      sortGroup: 1,
+      sortIndex: Number.MAX_SAFE_INTEGER,
+      sortColumn: legacy.legacyClass,
+      sortRow: legacy.seatNo,
+    }
+  }
+
+  const alpha = parseAlphaSeatCode(compact)
+  if (alpha) {
+    return {
+      kind: 'unknown',
+      rawNormalized: compact,
+      normalized: alpha.normalized,
+      column: alpha.column,
+      row: alpha.row,
+      sortGroup: 2,
+      sortIndex: Number.MAX_SAFE_INTEGER,
+      sortColumn: seatColumnToIndex(alpha.column),
+      sortRow: alpha.row,
+    }
+  }
+
+  return {
+    kind: 'unknown',
+    rawNormalized: compact,
+    normalized: compact,
+    column: null,
+    row: null,
+    sortGroup: 3,
+    sortIndex: Number.MAX_SAFE_INTEGER,
+    sortColumn: Number.MAX_SAFE_INTEGER,
+    sortRow: Number.MAX_SAFE_INTEGER,
+  }
+}
+
+function compareSeatCodeRows(a: any, b: any): number {
+  const left = parseSeatCode(a?.seat_code)
+  const right = parseSeatCode(b?.seat_code)
+
+  if (left.sortGroup !== right.sortGroup) return left.sortGroup - right.sortGroup
+  if (left.sortIndex !== right.sortIndex) return left.sortIndex - right.sortIndex
+  if (left.sortColumn !== right.sortColumn) return left.sortColumn - right.sortColumn
+  if (left.sortRow !== right.sortRow) return left.sortRow - right.sortRow
+  return left.normalized.localeCompare(right.normalized)
+}
+
+function withSeatCodeMeta<T extends Record<string, any>>(row: T): T & {
+  seat_code: string
+  seat_code_kind: SeatCodeKind
+  seat_column: string | null
+  seat_row: number | null
+  sort_index: number | null
+  seat_order: number | null
+  seat_code_raw?: string
+} {
+  const parsed = parseSeatCode(row.seat_code)
+  const normalizedSeatCode = parsed.normalized || String(row.seat_code ?? '')
+  return {
+    ...row,
+    seat_code_raw: row.seat_code,
+    seat_code: normalizedSeatCode,
+    seat_code_kind: parsed.kind,
+    seat_column: parsed.column,
+    seat_row: parsed.row,
+    sort_index: parsed.sortIndex === Number.MAX_SAFE_INTEGER ? null : parsed.sortIndex,
+    seat_order: parsed.sortIndex === Number.MAX_SAFE_INTEGER ? null : parsed.sortIndex,
+  }
+}
+
+function normalizeSeatCodeForInsert(rawValue: unknown): string | null {
+  const raw = String(rawValue ?? '').trim()
+  if (!raw) return null
+
+  const compact = raw.toUpperCase().replace(/\s+/g, '').replace(/[-_]/g, '')
+  const alpha = parseAlphaSeatCode(compact)
+  if (!alpha) return null
+
+  return standardSeatCodeToSortIndex(alpha.normalized) ? alpha.normalized : null
+}
+
+function buildFullStandardRoster(rows: any[]): any[] {
+  const normalized = (rows || []).map((row) => withSeatCodeMeta(row))
+  const bySeatCode = new Map<string, any>()
+  const defaultYearCode =
+    normalized.find((row) => typeof row.year_code === 'string' && row.year_code.trim().length > 0)?.year_code || ''
+
+  for (const row of normalized) {
+    const standardSeatCode = toStandardSeatCode(row.seat_code)
+    if (!standardSeatCode) continue
+
+    const existing = bySeatCode.get(standardSeatCode)
+    if (!existing) {
+      bySeatCode.set(standardSeatCode, { ...row, seat_code: standardSeatCode })
+      continue
+    }
+
+    const existingClaimed = existing.is_claimed === 1
+    const currentClaimed = row.is_claimed === 1
+    if (!existingClaimed && currentClaimed) {
+      bySeatCode.set(standardSeatCode, { ...row, seat_code: standardSeatCode })
+      continue
+    }
+
+    if ((existing.id ?? Number.MAX_SAFE_INTEGER) > (row.id ?? Number.MAX_SAFE_INTEGER)) {
+      bySeatCode.set(standardSeatCode, { ...row, seat_code: standardSeatCode })
+    }
+  }
+
+  const fullRoster: any[] = []
+  let sortIndex = 1
+  for (const column of ROSTER_COLUMNS) {
+    for (let row = 1; row <= ROSTER_ROW_COUNT; row++) {
+      const seatCode = buildStandardSeatCode(column, row)
+      const entry = bySeatCode.get(seatCode)
+
+      if (entry) {
+        fullRoster.push({
+          ...entry,
+          seat_code: seatCode,
+          seat_code_kind: 'alpha',
+          seat_column: column,
+          seat_row: row,
+          sort_index: sortIndex,
+          seat_order: sortIndex,
+        })
+      } else {
+        fullRoster.push({
+          id: 0,
+          real_name: '',
+          year_code: defaultYearCode,
+          seat_code: seatCode,
+          is_claimed: 0,
+          status: 'empty',
+          seat_code_kind: 'alpha',
+          seat_column: column,
+          seat_row: row,
+          sort_index: sortIndex,
+          seat_order: sortIndex,
+          is_placeholder: 1,
+        })
+      }
+
+      sortIndex++
+    }
+  }
+
+  return fullRoster
+}
+
+function parseGeneratedUsername(username: string): { year_code: string; seat_code: string; real_name: string } | null {
+  const trimmed = username.trim()
+  const dotIndex = trimmed.indexOf('.')
+  if (dotIndex <= 0) return null
+
+  const year_code = trimmed.slice(0, dotIndex)
+  if (!/^\d{4}$/.test(year_code)) return null
+
+  const remain = trimmed.slice(dotIndex + 1)
+  const match = remain.match(/^([A-Za-z]+\d{1,2}|\d{4})(.+)$/)
+  if (!match) return null
+
+  const seat_code = toStandardSeatCode(match[1])
+  if (!seat_code) return null
+
+  const real_name = match[2].replace(/_\d+$/, '')
+  if (!real_name) return null
+
+  return { year_code, seat_code, real_name }
+}
+
 // ==========================================
 // Auth Middleware
 // ==========================================
@@ -263,9 +559,10 @@ export function registerAuthRoutes(app: Hono<AppType>) {
     try {
       const { results } = await c.env.DB.prepare(
         `SELECT id, real_name, year_code, seat_code, is_claimed, status
-         FROM student_roster
-         ORDER BY seat_code ASC`
-      ).all()
+         FROM student_roster`
+      ).all() as { results: any[] }
+
+      const roster = buildFullStandardRoster(results || [])
 
       // 同时返回三道安全问题（仅问题文本，不含答案）
       const { results: questions } = await c.env.DB.prepare(
@@ -275,7 +572,12 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       return c.json({
         code: 200,
         message: 'success',
-        roster: results,
+        roster,
+        roster_layout: {
+          columns: [...ROSTER_COLUMNS],
+          rows: ROSTER_ROW_COUNT,
+          total: TOTAL_STANDARD_SEATS,
+        },
         security_questions: questions,
       })
     } catch (error: any) {
@@ -356,7 +658,7 @@ export function registerAuthRoutes(app: Hono<AppType>) {
           id: roster.id,
           real_name: roster.real_name,
           year_code: roster.year_code,
-          seat_code: roster.seat_code,
+          seat_code: toStandardSeatCode(roster.seat_code) || String(roster.seat_code ?? '').toUpperCase(),
         },
       }
 
@@ -431,7 +733,15 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       }
 
       // 3. 生成唯一用户名
-      const baseUsername = `${roster.year_code}.${roster.seat_code}${roster.real_name}`
+      const normalizedSeatCode = toStandardSeatCode(roster.seat_code)
+      if (!normalizedSeatCode) {
+        return fail(c, 'CLAIM_FINALIZE_FAILED', {
+          message: '名录 seat_code 无法转换为标准格式，请联系管理员修正',
+          details: { roster_id: roster.id, seat_code: roster.seat_code },
+        })
+      }
+
+      const baseUsername = `${roster.year_code}.${normalizedSeatCode}${roster.real_name}`
       let username = baseUsername
       let suffix = 1
 
@@ -445,7 +755,10 @@ export function registerAuthRoutes(app: Hono<AppType>) {
         username = `${baseUsername}_${suffix}`
       }
 
-      const internalAuthEmail = buildInternalAuthEmail(roster)
+      const internalAuthEmail = buildInternalAuthEmail({
+        ...roster,
+        seat_code: normalizedSeatCode,
+      })
 
       // 4. 在 Supabase 创建账户
       const supabase = getSupabase(c.env)
@@ -475,8 +788,8 @@ export function registerAuthRoutes(app: Hono<AppType>) {
 
       // 6. 更新名录：标记为已认领
       await c.env.DB.prepare(
-        'UPDATE student_roster SET is_claimed = 1, profile_id = ?, bound_email = ? WHERE id = ?'
-      ).bind(profile.id, email || null, roster.id).run()
+        'UPDATE student_roster SET seat_code = ?, is_claimed = 1, profile_id = ?, bound_email = ? WHERE id = ?'
+      ).bind(normalizedSeatCode, profile.id, email || null, roster.id).run()
 
       // 7. 标记 claim_token 为已使用
       await c.env.DB.prepare(
@@ -519,12 +832,28 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       }
 
       const supabase = getSupabase(c.env)
-      const profileLookup = await c.env.DB.prepare(
-        `SELECT p.id, p.email, r.id AS roster_id, r.year_code, r.seat_code
+      let profileLookup = await c.env.DB.prepare(
+        `SELECT p.id, p.username, p.email, r.id AS roster_id, r.year_code, r.seat_code, r.real_name
          FROM user_profiles p
          LEFT JOIN student_roster r ON r.profile_id = p.id
          WHERE p.username = ?`
       ).bind(username).first() as any
+
+      if (!profileLookup) {
+        const parsedUsername = parseGeneratedUsername(username)
+        if (parsedUsername) {
+          const { results: fallbackRows } = await c.env.DB.prepare(
+            `SELECT p.id, p.username, p.email, r.id AS roster_id, r.year_code, r.seat_code, r.real_name
+             FROM user_profiles p
+             INNER JOIN student_roster r ON r.profile_id = p.id
+             WHERE r.year_code = ? AND r.real_name = ?`
+          ).bind(parsedUsername.year_code, parsedUsername.real_name).all() as { results: any[] }
+
+          profileLookup = (fallbackRows || []).find((row) => {
+            return toStandardSeatCode(row.seat_code) === parsedUsername.seat_code
+          }) || null
+        }
+      }
 
       const emailCandidates = uniqueStrings([
         profileLookup?.roster_id
@@ -576,6 +905,27 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       const profile = await c.env.DB.prepare(
         'SELECT id, supabase_uid, username, email, level, role, avatar_url, created_at, last_android_device_id FROM user_profiles WHERE supabase_uid = ?'
       ).bind(supabaseUid).first() as any
+
+      if (profileLookup && profileLookup.id === profile.id) {
+        const standardSeatCode = toStandardSeatCode(profileLookup.seat_code)
+        const canonicalUsername =
+          standardSeatCode && profileLookup.year_code && profileLookup.real_name
+            ? `${profileLookup.year_code}.${standardSeatCode}${profileLookup.real_name}`
+            : null
+
+        if (canonicalUsername && profile.username !== canonicalUsername) {
+          const existingCanonical = await c.env.DB.prepare(
+            'SELECT id FROM user_profiles WHERE username = ?'
+          ).bind(canonicalUsername).first() as any
+
+          if (!existingCanonical) {
+            await c.env.DB.prepare(
+              'UPDATE user_profiles SET username = ? WHERE id = ?'
+            ).bind(canonicalUsername, profile.id).run()
+            profile.username = canonicalUsername
+          }
+        }
+      }
 
       // [Kick-out Implementation]
       const clientType = c.req.header('X-Client-Type') || ''
@@ -677,9 +1027,10 @@ export function registerAuthRoutes(app: Hono<AppType>) {
   app.get('/api/user/me', authMiddleware, async (c) => {
     const user = c.get('user') as any
     // 附带名录状态
-    const roster = await c.env.DB.prepare(
+    const rosterRaw = await c.env.DB.prepare(
       'SELECT id, real_name, seat_code, status FROM student_roster WHERE profile_id = ?'
     ).bind(user.id).first()
+    const roster = rosterRaw ? withSeatCodeMeta(rosterRaw as any) : null
 
     return c.json({
       code: 200,
@@ -1006,11 +1357,14 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       const { results } = await c.env.DB.prepare(
         `SELECT r.*, p.username, p.email as profile_email
          FROM student_roster r
-         LEFT JOIN user_profiles p ON r.profile_id = p.id
-         ORDER BY r.seat_code ASC`
-      ).all()
+         LEFT JOIN user_profiles p ON r.profile_id = p.id`
+      ).all() as { results: any[] }
 
-      return c.json({ code: 200, message: 'success', roster: results })
+      const roster = (results || [])
+        .map((item) => withSeatCodeMeta(item))
+        .sort(compareSeatCodeRows)
+
+      return c.json({ code: 200, message: 'success', roster })
     } catch (error: any) {
       return serverError(c, error)
     }
@@ -1032,9 +1386,17 @@ export function registerAuthRoutes(app: Hono<AppType>) {
         })
       }
 
+      const normalizedSeatCode = normalizeSeatCodeForInsert(seat_code)
+      if (!normalizedSeatCode) {
+        return fail(c, 'INVALID_PARAMETER', {
+          message: 'seat_code 格式错误，请使用 A01/B02 这样的列号+两位行号格式',
+          details: { field: 'seat_code', expected_format: 'A01' },
+        })
+      }
+
       await c.env.DB.prepare(
         'INSERT INTO student_roster (real_name, year_code, seat_code) VALUES (?, ?, ?)'
-      ).bind(real_name, year_code, seat_code).run()
+      ).bind(real_name, year_code, normalizedSeatCode).run()
 
       return c.json({ code: 200, message: '名录添加成功' })
     } catch (error: any) {

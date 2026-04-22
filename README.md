@@ -4,6 +4,126 @@
 
 [![GitHub Actions](https://img.shields.io/github/actions/workflow/status/zhangjing02/MOODY-Music-Archiv-V2/keep-supabase-alive.yml?label=Supabase%20Keepalive&logo=supabase)](https://github.com/zhangjing02/MOODY-Music-Archiv-V2/actions)
 
+## Data Platform Plan (2026-04)
+
+### 1. Goals
+
+- Keep audio assets (songs / lyrics / covers) stable and cost-efficient.
+- Make business data easier to operate, query, and migrate in the future.
+- Preserve production stability during transition (no big-bang rewrite).
+- Keep mobile and frontend contracts stable (`code/message/data` + consistent seat code).
+
+### 2. Current Baseline
+
+- `Cloudflare R2`: audio/media files (large objects).
+- `Cloudflare D1`: core business metadata (artists, albums, songs, roster).
+- `Supabase Auth`: account identity, JWT/session lifecycle.
+- `Cloudflare Worker`: unified API gateway and business orchestration.
+
+This baseline remains valid and should not be disrupted in one shot.
+
+### 3. Data Placement Strategy
+
+#### 3.1 Keep In Cloudflare
+
+- Large files: songs (`.mp3`), lyrics (`.lrc`), covers.
+- Edge-hot metadata that serves playback path resolution.
+- Data requiring low-latency Worker-local reads.
+
+#### 3.2 Move/Build In Supabase
+
+- Social domain: posts, comments, likes, reports, moderation logs.
+- Optional non-playback business data needing richer SQL/admin tooling.
+- Continue using Supabase as identity source.
+
+#### 3.3 Hybrid Principle
+
+- R2 remains file source of truth.
+- Supabase is social/business source of truth (where suitable).
+- D1 can remain edge cache/read model for high-frequency APIs.
+- Worker remains the only public API boundary.
+
+### 4. Seat/Roster Standard (implemented on 2026-04-22)
+
+- Standard seat code format: `A01` ~ `H08` (64 seats).
+- `/api/roster` returns full 64-seat matrix with stable order and `sort_index`.
+- Account generation uses normalized seat code in username:
+  `${yearCode}.${seatCode}${realName}`.
+- Login includes compatibility lookup for legacy seat-code-era usernames.
+
+### 5. Social Feature Architecture (posts/comments)
+
+#### 5.1 Recommended Storage
+
+- Primary DB: **Supabase Postgres**.
+- Attachments/images: start with Supabase Storage for convenience; keep option to move hot/large assets to R2.
+- API access: through Worker only (avoid direct public DB writes initially).
+
+#### 5.2 Suggested Tables (V1)
+
+- `posts`: id, author_uid, title, content, created_at, updated_at, visibility, status.
+- `comments`: id, post_id, author_uid, content, parent_comment_id, created_at, status.
+- `post_likes`: post_id, user_uid, created_at (unique composite).
+- `comment_likes`: comment_id, user_uid, created_at (unique composite).
+- `reports`: target_type, target_id, reporter_uid, reason, status, created_at.
+- `moderation_actions`: admin_uid, target_type, target_id, action, note, created_at.
+
+#### 5.3 API Conventions
+
+- Keep response contract:
+  - success: `{ code: 200, message: "success", data: ... }`
+  - business failure: unique `code` + `error_key`.
+- Cursor-based pagination for posts/comments.
+- Soft delete + moderation status to reduce irreversible errors.
+
+### 6. Migration Roadmap
+
+#### Phase 0: Stabilize (done/in progress)
+
+- Seat code standardization and roster response stability.
+- Frontend consumes server `seat_code` and `sort_index` directly.
+
+#### Phase 1: Social Domain First
+
+- Launch posts/comments in Supabase from day one.
+- Worker handles auth verification and RBAC before writes.
+- Add moderation endpoints and audit logs.
+
+#### Phase 2: Optional Business Data Split
+
+- Identify non-playback tables that benefit from Supabase tooling.
+- Introduce short dual-write for selected domains.
+- Add consistency audits and gradual read cut-over.
+
+#### Phase 3: Edge Optimization
+
+- Keep hot read models in D1 where latency matters.
+- Periodic projection/sync from Supabase -> D1 for read-heavy endpoints.
+
+### 7. Operational Checklist
+
+- Observability:
+  - request-id tracing in Worker.
+  - error-code dashboards by endpoint.
+  - D1/Supabase consistency checks for dual-write phases.
+- Security:
+  - enforce auth in Worker.
+  - least-privilege service keys.
+  - rate limits for posting/commenting/reporting APIs.
+- Data safety:
+  - backups/export for Supabase social tables.
+  - versioned migration scripts.
+  - rollback playbooks per phase.
+
+### 8. Decision Summary
+
+- Do not migrate everything blindly to one side.
+- Keep **R2 for media**, keep **Worker as API boundary**.
+- Use **Supabase for social and management-heavy domains**.
+- Keep **D1 for edge-efficient playback metadata** and optional read projections.
+
+This gives a balanced result across performance, maintainability, and portability.
+
 ---
 
 ## 🏗️ 系统架构
