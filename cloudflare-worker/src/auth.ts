@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 import { jwtVerify, createRemoteJWKSet } from 'jose'
 import type { Bindings } from './types'
 import { fail, serverError } from './error'
+import { sendPushMessage } from './push'
+
 
 type Variables = {
   user: any
@@ -1323,6 +1325,31 @@ export function registerAuthRoutes(app: Hono<AppType>) {
       await c.env.DB.prepare(
         'UPDATE claim_tokens SET used = 1 WHERE token = ?'
       ).bind(claim_token).run()
+
+      // 8. 推送更新通知：通知该班级的所有用户（包括游客）刷新界面
+      try {
+        const classId = roster.class_id
+        if (classId) {
+          const pushPayload = {
+            platform: "android",
+            audience: {
+              tag: [`classroom_${classId}`]
+            },
+            message: {
+              msg_content: "ROSTER_UPDATE",
+              title: "数据更新",
+              extras: {
+                action: "ROSTER_UPDATE",
+                class_id: classId
+              }
+            }
+          }
+          // 不等待推送结果，异步执行（或者等待也没关系，JPush 响应很快）
+          sendPushMessage(c.env, pushPayload).catch(e => console.error('Push error:', e))
+        }
+      } catch (pushErr) {
+        console.error('Push notification failed:', pushErr)
+      }
 
       const responseData = {
         user: {
