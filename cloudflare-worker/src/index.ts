@@ -112,8 +112,8 @@ registerAlbumSocialRoutes(app, authMiddleware)
 // Admin 路由保护（暂时开放，后续按需开启）
 // Token 仅用于用户个人功能（评论、收藏、关注等）
 // ==========================================
-// app.use('/api/admin/*', authMiddleware)
-// app.use('/api/admin/*', requireAdmin)
+app.use('/api/admin/*', authMiddleware)
+app.use('/api/admin/*', requireAdmin)
 
 // ==========================================
 // 1. Storage Proxy (R2 Direct Access & CDN Cache)

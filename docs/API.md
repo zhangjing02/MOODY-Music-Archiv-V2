@@ -4,6 +4,9 @@
 
 **基础 URL**: `https://m-api.changgepd.top`
 
+> 班级认领系统接口分组文档（客户端 API / 管理后台 API）请优先查看：
+> `docs/CLASSROOM_API.md`
+
 > 旧域名 `https://moody-worker.changgepd.workers.dev` 仍可使用，但推荐使用自定义域名。
 
 ---
