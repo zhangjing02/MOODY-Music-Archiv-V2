@@ -71,12 +71,24 @@ function initAlbumManager() {
     function displayAlbumDetail(data) {
         const { album, artist, songs } = data;
 
-        // 显示专辑信息
+        // 显示专辑信息（包含封面图）
+        const coverUrl = album?.cover_url 
+            ? (album.cover_url.startsWith('http') ? album.cover_url : `${API_BASE}/storage/${album.cover_url}`)
+            : '/src/assets/images/vinyl_default.png';
+
         document.getElementById('am-album-info').innerHTML = `
-            <p><strong>艺人:</strong> ${artist?.name || '未知'}</p>
-            <p><strong>专辑:</strong> ${album?.title || '未知'}</p>
-            <p><strong>发行年份:</strong> ${album?.release_date || '未知'}</p>
-            <p><strong>专辑 ID:</strong> ${album?.id}</p>
+            <div style="display: flex; gap: 20px; align-items: flex-start; margin-bottom: 15px;">
+                <div style="width: 120px; height: 120px; border-radius: 8px; overflow: hidden; background: #000; flex-shrink: 0; border: 1px solid #444;">
+                    <img src="${coverUrl}" alt="Album Cover" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/src/assets/images/vinyl_default.png'">
+                </div>
+                <div style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
+                    <p><strong>艺人:</strong> ${artist?.name || '未知'}</p>
+                    <p><strong>专辑:</strong> ${album?.title || '未知'}</p>
+                    <p><strong>发行年份:</strong> ${album?.release_date || '未知'}</p>
+                    <p><strong>专辑 ID:</strong> ${album?.id}</p>
+                    <p style="font-size: 12px; color: #aaa;"><strong>封面路径:</strong> ${album?.cover_url || '（未设置）'}</p>
+                </div>
+            </div>
         `;
 
         // 保存当前歌曲列表
@@ -84,6 +96,40 @@ function initAlbumManager() {
 
         // 显示歌曲列表
         displaySongsList(songs);
+    }
+
+    // 绑定更换封面事件
+    const coverInput = document.getElementById('am-cover-input');
+    if (coverInput) {
+        coverInput.addEventListener('change', async () => {
+            if (!currentAlbumId || !coverInput.files || coverInput.files.length === 0) return;
+            const file = coverInput.files[0];
+            showToast('正在上传新封面到 Cloudflare R2...');
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('category', 'albums');
+            formData.append('album_id', currentAlbumId);
+
+            try {
+                const res = await fetch(`${API_BASE}/api/admin/assets/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (data.code === 200) {
+                    showToast('✅ 封面上传并更新成功！');
+                    loadAlbumDetail(currentAlbumId); // 刷新详情
+                } else {
+                    showToast(`上传失败: ${data.message}`, 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('网络错误，请稍后重试', 'error');
+            } finally {
+                coverInput.value = '';
+            }
+        });
     }
 
     // 显示歌曲列表

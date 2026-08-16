@@ -61,3 +61,7 @@ inject_test_data.py
 # 7. 内部文档 (不推送)
 需求*.txt
 *.local.json
+
+# 8. Cloudflare Wrangler 本地缓存与开发状态
+.wrangler/
+**/.wrangler/

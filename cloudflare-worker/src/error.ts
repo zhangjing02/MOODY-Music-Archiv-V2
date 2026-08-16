@@ -19,6 +19,8 @@ export const ERROR_DEFINITIONS = {
   TOKEN_EXPIRED_OR_INVALID: { code: 1103, httpStatus: 401, message: 'Token 已过期或无效，请重新登录' },
   ADMIN_FORBIDDEN: { code: 1104, httpStatus: 403, message: '需要管理员权限' },
   MASTER_FORBIDDEN: { code: 1105, httpStatus: 403, message: '需要最高管理员权限' },
+  FORBIDDEN: { code: 1106, httpStatus: 403, message: '权限不足' },
+  NOT_FOUND: { code: 1600, httpStatus: 404, message: '未找到请求的资源' },
 
   LOGIN_FAILED: { code: 1201, httpStatus: 401, message: '用户名或密码错误' },
   REFRESH_TOKEN_INVALID: { code: 1202, httpStatus: 401, message: '刷新失败，请重新登录' },

@@ -165,18 +165,53 @@ Music-Archiv-V2/
 │   ├── src/
 │   │   ├── index.ts            # 路由注册入口、音乐 API
 │   │   ├── auth.ts             # 用户认证系统（认领/登录/管理）
+│   │   ├── album_social.ts     # 社交模块（聚合接口、班级隔离、JPush 信号）
 │   │   ├── upload.ts           # 资产上传处理
 │   │   └── types.ts            # TypeScript 类型定义
 │   ├── migrations/             # D1 数据库迁移文件（按顺序执行）
 │   │   ├── 001_create_user_profiles.sql
 │   │   └── 002_create_roster_system.sql
-│   ├── api_auth_v2.md          # 📖 移动端接入文档（看这里！）
+│   ├── api_auth_v2.md          # 📖 移动端接入文档
 │   └── wrangler.toml           # Cloudflare Worker 配置
 ├── frontend/                   # 浏览器播放器
 ├── .github/workflows/
 │   ├── docker-build.yml        # 自动构建 Docker 镜像
 │   └── keep-supabase-alive.yml # Supabase 每日保活
 └── docs/                       # 技术文档
+```
+
+---
+
+## 💬 专辑社交 V2 (班级隔离)
+
+### 1. 设计核心
+
+- **班级隔离**：同一个专辑，不同班级的同学看到的讨论内容是完全独立的。
+- **访客限制**：未认领座位的访客无法查看或发表内容（返回 403）。
+- **实时同步**：基于 JPush 的 `album_{albumId}_class_{classId}` 标签进行精准推送。
+
+### 2. 核心接口
+
+| 接口 | 类型 | 说明 |
+|------|------|------|
+| `GET /api/albums/:id/social_content` | AUTH | 获取聚合内容（最早的一条为主贴，其余为回复） |
+| `POST /api/albums/:id/posts` | AUTH | 发起本班级在该专辑下的首条讨论 |
+| `POST /api/albums/posts/:postId/comments` | AUTH | 发表回复（自动继承班级 ID） |
+
+### 3. JPush 信号格式
+
+```json
+{
+  "audience": { "tag": ["album_123_class_2024.A"] },
+  "message": {
+    "msg_content": "refresh_comments",
+    "extras": { 
+      "album_id": "123", 
+      "class_id": "2024.A",
+      "action": "FETCH_NEW" 
+    }
+  }
+}
 ```
 
 ---

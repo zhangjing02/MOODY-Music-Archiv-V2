@@ -6,7 +6,6 @@
     "strict": true,
     "skipLibCheck": true,
     "lib": ["ES2022"],
-    "types": ["@cloudflare/workers-types"],
-    "skipLibCheck": true
+    "types": ["@cloudflare/workers-types"]
   }
 }

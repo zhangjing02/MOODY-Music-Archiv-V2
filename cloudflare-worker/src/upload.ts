@@ -369,7 +369,7 @@ export async function handleUpload(
  * 注册上传路由
  */
 export function registerUploadRoutes(app: Hono<{ Bindings: Bindings; Variables: { user: any; token: string } }>) {
-  // 文件上传 API (V2 - 智能匹配版本)
+  // 文件上传 API (V2 - 智能匹配版本，上传 MP3)
   app.post('/api/admin/upload', async (c) => {
     const response = await handleUpload(c.req.raw, c.env);
     return response;
@@ -387,6 +387,162 @@ export function registerUploadRoutes(app: Hono<{ Bindings: Bindings; Variables: 
         message: 'success',
         data: {
           total_songs: (results[0] as any)?.count || 0,
+        },
+      });
+    } catch (error: any) {
+      return serverError(c, error);
+    }
+  });
+
+  // 视觉与图片资产上传 API (新增：支持海报、专辑封面、歌手写真、随笔插图等)
+  app.post('/api/admin/assets/upload', async (c) => {
+    try {
+      const formData = await c.req.formData();
+      const rawEntries = formData.getAll('files');
+      const files: File[] = [];
+      for (const entry of rawEntries) {
+        if (typeof entry !== 'string') {
+          files.push(entry as File);
+        }
+      }
+      const singleFile = formData.get('file');
+      if (singleFile && typeof singleFile !== 'string') {
+        files.push(singleFile as File);
+      }
+
+      if (files.length === 0) {
+        return c.json({ code: 400, message: '请选择要上传的图片文件' }, 400);
+      }
+
+      const allFiles = files;
+
+      const category = (formData.get('category') as string) || 'albums';
+      const customFilename = (formData.get('filename') as string)?.trim();
+      const albumIdStr = formData.get('album_id') as string | null;
+      const artistIdStr = formData.get('artist_id') as string | null;
+
+      // 映射存储目录
+      let prefix = 'covers/albums';
+      if (category === 'hero') prefix = 'covers/hero';
+      else if (category === 'albums') prefix = 'covers/albums';
+      else if (category === 'artists') prefix = 'artists';
+      else if (category === 'articles') prefix = 'articles';
+      else if (category === 'welcome') prefix = 'welcome_covers';
+      else if (category === 'avatars') prefix = 'avatars';
+      else prefix = category;
+
+      const results = [];
+      const baseUrl = new URL(c.req.url).origin;
+
+      for (let i = 0; i < allFiles.length; i++) {
+        const file = allFiles[i];
+        let name = customFilename && allFiles.length === 1 ? customFilename : file.name;
+        // 确保带有扩展名
+        if (!name.includes('.')) {
+          name += '.jpg';
+        }
+
+        const r2Key = `${prefix}/${name}`;
+        const contentType = file.type || (name.endsWith('.png') ? 'image/png' : 'image/jpeg');
+
+        await c.env.BUCKET.put(r2Key, file.stream(), {
+          httpMetadata: {
+            contentType: contentType,
+            cacheControl: 'public, max-age=2592000',
+          },
+        });
+
+        const publicUrl = `${baseUrl}/storage/${r2Key}`;
+
+        // 若有关联 album_id，自动更新 D1
+        let dbUpdated = false;
+        if (albumIdStr && c.env.DB) {
+          const albumId = parseInt(albumIdStr);
+          if (!isNaN(albumId)) {
+            try {
+              await c.env.DB.prepare('UPDATE albums SET cover_url = ? WHERE id = ?')
+                .bind(r2Key, albumId)
+                .run();
+              dbUpdated = true;
+            } catch (dbErr: any) {
+              console.warn(`[AssetUpload] Failed to update album cover_url for album ${albumId}:`, dbErr.message);
+            }
+          }
+        }
+
+        // 若有关联 artist_id，自动更新 D1
+        if (artistIdStr && c.env.DB) {
+          const artistId = parseInt(artistIdStr);
+          if (!isNaN(artistId)) {
+            try {
+              await c.env.DB.prepare('UPDATE artists SET photo_url = ? WHERE id = ?')
+                .bind(r2Key, artistId)
+                .run();
+              dbUpdated = true;
+            } catch (dbErr: any) {
+              console.warn(`[AssetUpload] Failed to update artist photo_url for artist ${artistId}:`, dbErr.message);
+            }
+          }
+        }
+
+        results.push({
+          key: r2Key,
+          filename: name,
+          url: publicUrl,
+          category,
+          size: file.size,
+          dbUpdated
+        });
+      }
+
+      return c.json({
+        code: 200,
+        message: `成功上传 ${results.length} 个视觉资产`,
+        data: {
+          total: results.length,
+          files: results,
+        },
+      });
+    } catch (error: any) {
+      console.error('Asset upload error:', error);
+      return serverError(c, error);
+    }
+  });
+
+  // 获取视觉资产列表 API (用于后台资产库浏览)
+  app.get('/api/admin/assets/list', async (c) => {
+    try {
+      const category = c.req.query('category') || 'all';
+      let prefix = '';
+      if (category === 'hero') prefix = 'covers/hero/';
+      else if (category === 'albums') prefix = 'covers/albums/';
+      else if (category === 'artists') prefix = 'artists/';
+      else if (category === 'articles') prefix = 'articles/';
+      else if (category === 'welcome') prefix = 'welcome_covers/';
+      else if (category === 'avatars') prefix = 'avatars/';
+
+      const list = await c.env.BUCKET.list({
+        prefix: prefix,
+        limit: 100,
+      });
+
+      const baseUrl = new URL(c.req.url).origin;
+      const items = list.objects
+        .filter((obj) => obj.key.match(/\.(jpg|jpeg|png|webp|gif|svg)$/i))
+        .map((obj) => ({
+          key: obj.key,
+          filename: obj.key.split('/').pop() || '',
+          size: obj.size,
+          uploadedAt: obj.uploaded,
+          url: `${baseUrl}/storage/${obj.key}`,
+        }));
+
+      return c.json({
+        code: 200,
+        message: 'success',
+        data: {
+          total: items.length,
+          items,
         },
       });
     } catch (error: any) {

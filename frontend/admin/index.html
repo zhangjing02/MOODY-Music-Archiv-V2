@@ -29,6 +29,9 @@
                 <a href="#album-manager" class="nav-item" data-target="album-manager">
                     <span class="icon">💿</span> 专辑管理
                 </a>
+                <a href="#asset-manager" class="nav-item" data-target="asset-manager">
+                    <span class="icon">🖼️</span> 视觉资产
+                </a>
             </nav>
             <div class="sidebar-footer">
                 Port: 8082 🟢
@@ -186,10 +189,14 @@
                     <div class="album-info" id="am-album-info"></div>
 
                     <!-- 操作按钮 -->
-                    <div class="action-buttons" style="margin: 20px 0;">
+                    <div class="action-buttons" style="margin: 20px 0; display: flex; gap: 10px; flex-wrap: wrap;">
                         <button class="btn btn-warning" id="btn-am-clear-songs">清空所有歌曲</button>
                         <button class="btn btn-danger" id="btn-am-delete-album">删除专辑</button>
                         <button class="btn btn-primary" id="btn-am-batch-edit">批量编辑歌曲</button>
+                        <label class="btn btn-secondary" style="cursor: pointer; margin: 0; display: inline-flex; align-items: center;">
+                            🖼️ 更换封面图
+                            <input type="file" id="am-cover-input" accept=".jpg,.jpeg,.png,.webp" hidden>
+                        </label>
                     </div>
 
                     <!-- 歌曲列表 -->
@@ -221,6 +228,68 @@ Smile Again 玛莉亚,11"></textarea>
                     </div>
                 </div>
             </section>
+
+            <!-- 视觉资产管理 板块 (新增) -->
+            <section id="asset-manager" class="panel hidden">
+                <header>
+                    <h2>视觉资产管理 <small>Asset Studio</small></h2>
+                    <p class="subtitle">上传与管理首页精选大图、唱片封面、艺术家写真及随笔配图（直连 Cloudflare R2）。</p>
+                </header>
+
+                <div class="upload-container">
+                    <div class="upload-params">
+                        <div class="form-group">
+                            <label>资产分类 (Category)</label>
+                            <select id="asset-category" style="width: 100%; padding: 10px; border-radius: var(--radius); background: var(--bg-panel); color: var(--text-main); border: 1px solid var(--border);">
+                                <option value="hero">首页今日精选 / 巨幅海报 (covers/hero)</option>
+                                <option value="albums" selected>专辑唱片封面 (covers/albums)</option>
+                                <option value="artists">艺术家写真 / 肖像 (artists)</option>
+                                <option value="articles">杂志随笔插图 (articles)</option>
+                                <option value="welcome">欢迎页壁纸 (welcome_covers)</option>
+                                <option value="avatars">用户头像 (avatars)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>自定义文件名 (可选，留空使用原文件名)</label>
+                            <input type="text" id="asset-filename" placeholder="例：hero_acoustic_guitar.jpg">
+                        </div>
+                    </div>
+
+                    <div class="dropzone" id="asset-dropzone">
+                        <div class="dz-message">
+                            🖼️ 拖拽图片文件到此处，或点击选择 (JPG, PNG, WEBP)
+                        </div>
+                        <input type="file" id="asset-file-input" multiple accept=".jpg,.jpeg,.png,.webp,.gif,.svg" hidden>
+                    </div>
+
+                    <div class="file-list" id="asset-file-list"></div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button class="btn btn-primary" id="btn-trigger-asset-upload" disabled>🚀 上传至 Cloudflare R2</button>
+                        <button class="btn btn-secondary" id="btn-clear-asset-upload">🗑️ 清空</button>
+                        <button class="btn btn-secondary" id="btn-refresh-gallery" style="margin-left: auto;">🔄 刷新资产库</button>
+                    </div>
+                    <div class="progress-bar-container hidden" id="asset-upload-progress-container">
+                        <div class="progress-bar" id="asset-upload-progress"></div>
+                    </div>
+                </div>
+
+                <!-- 资产画廊 -->
+                <div class="form-card" style="margin-top: 30px;">
+                    <h3>🎨 已上传资产库 (R2 Cloud Storage)</h3>
+                    <div class="gallery-tabs" style="display: flex; gap: 8px; margin: 15px 0; border-bottom: 1px solid var(--border); padding-bottom: 10px; flex-wrap: wrap;">
+                        <button class="btn btn-secondary tab-active" data-cat="all">全部</button>
+                        <button class="btn btn-secondary" data-cat="hero">今日精选</button>
+                        <button class="btn btn-secondary" data-cat="albums">专辑封面</button>
+                        <button class="btn btn-secondary" data-cat="artists">艺术家写真</button>
+                        <button class="btn btn-secondary" data-cat="articles">随笔插图</button>
+                        <button class="btn btn-secondary" data-cat="welcome">欢迎壁纸</button>
+                    </div>
+                    <div class="asset-gallery-grid" id="asset-gallery-grid">
+                        <p class="hint">点击上方分类或刷新按钮加载资产...</p>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -229,6 +298,7 @@ Smile Again 玛莉亚,11"></textarea>
 
     <script src="admin.js"></script>
     <script src="album-manager.js"></script>
+    <script src="asset-manager.js"></script>
 </body>
 
 </html>

@@ -672,3 +672,163 @@ App 启动
               └─ 班长（admin）执行 POST /api/admin/roster/reset
                     └─ 用户下次登录时强制设置新密码
 ```
+
+---
+
+## 六、专辑社交互动接口 (Album Social) 🔒
+
+> 说明：本模块用于专辑详情页面的班级专属讨论区，具备**班级数据物理隔离**与 **JPush 实时透传信号分发**能力。
+
+### 6.1 获取专辑社交聚合内容 🔒
+
+```http
+GET /api/albums/:id/social_content
+Authorization: Bearer <access_token>
+```
+
+**响应示例 (200)**：
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "album_id": 12,
+    "class_id": "2006.03",
+    "has_post": true,
+    "main_post": {
+      "id": 101,
+      "author_uid": "user-uuid",
+      "author_name": "张伟",
+      "author_avatar": "https://m-api.changgepd.top/storage/avatars/user1.jpg",
+      "content": "这张专辑是我们当年的合唱回忆！",
+      "created_at": "2026-08-16T08:00:00.000Z",
+      "likes_count": 5,
+      "is_liked": true
+    },
+    "replies": [
+      {
+        "id": 201,
+        "author_uid": "user-uuid-2",
+        "author_name": "王芳",
+        "author_avatar": null,
+        "content": "对啊，当时排练好久",
+        "reply_to_name": null,
+        "created_at": "2026-08-16T08:15:00.000Z",
+        "likes_count": 2,
+        "is_liked": false
+      }
+    ]
+  }
+}
+```
+
+### 6.2 发起专辑主贴 🔒
+
+```http
+POST /api/albums/:id/posts
+Authorization: Bearer <access_token>
+Content-Type: application/json
+```
+
+**Body**：
+```json
+{
+  "content": "当年运动会上放这首歌大家都在欢呼！"
+}
+```
+
+### 6.3 回复主贴 / 同学 🔒
+
+```http
+POST /api/albums/posts/:postId/comments
+Authorization: Bearer <access_token>
+Content-Type: application/json
+```
+
+**Body**：
+```json
+{
+  "content": "我也记得！",
+  "reply_to_uid": "user-uuid-optional"
+}
+```
+
+### 6.4 点赞 / 取消点赞 🔒
+
+```http
+POST /api/albums/comments/:commentId/like
+Authorization: Bearer <access_token>
+```
+
+**响应示例 (200)**：
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "is_liked": true,
+    "likes_count": 6
+  }
+}
+```
+
+---
+
+## 七、视觉资产与多媒体上传接口 🔒 (admin)
+
+### 7.1 上传视觉资产（海报/封面/写真/插画） 🔒
+
+```http
+POST /api/admin/assets/upload
+Content-Type: multipart/form-data
+```
+
+**FormData 字段**：
+| 字段名 | 类型 | 说明 |
+|-------|------|------|
+| `files` / `file` | File | 图片文件（支持多文件批量上传） |
+| `category` | string | `hero` (海报) \| `albums` (专辑封面) \| `artists` (歌手写真) \| `articles` (随笔插图) \| `welcome` \| `avatars` |
+| `album_id` | number | 可选。若传递，自动将 R2 Key 绑定到 D1 `albums.cover_url` |
+| `artist_id` | number | 可选。若传递，自动将 R2 Key 绑定到 D1 `artists.photo_url` |
+| `filename` | string | 可选。自定义文件名 |
+
+**响应示例 (200)**：
+```json
+{
+  "code": 200,
+  "message": "成功上传 1 个视觉资产",
+  "data": {
+    "total": 1,
+    "files": [
+      {
+        "key": "covers/albums/lost_forest.jpg",
+        "filename": "lost_forest.jpg",
+        "url": "https://m-api.changgepd.top/storage/covers/albums/lost_forest.jpg",
+        "category": "albums",
+        "size": 482910,
+        "dbUpdated": true
+      }
+    ]
+  }
+}
+```
+
+### 7.2 查询视觉资产列表 🔒
+
+```http
+GET /api/admin/assets/list?category=albums
+```
+
+---
+
+## 八、高级运维与批量操作接口 🔒 (admin)
+
+| 接口 | 方法 | 描述 |
+|------|------|------|
+| `/api/admin/ops/songs/batch-update` | `POST` | 批量修正歌曲元数据（曲目名、音轨序号、时长） |
+| `/api/admin/ops/albums/rename` | `POST` | 专辑重命名与别名维护 |
+| `/api/admin/ops/artists/rename` | `POST` | 歌手姓名规范化与合并 |
+| `/api/admin/ops/albums/merge` | `POST` | 智能合并重复专辑记录与曲目迁移 |
+| `/api/admin/ops/albums/delete` | `POST` | 级联删除专辑及其下属关联记录 |
+| `/api/admin/ops/songs/batch-insert` | `POST` | 批量向指定专辑导入曲目元数据 |
+
