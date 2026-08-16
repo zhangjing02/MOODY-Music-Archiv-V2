@@ -29,6 +29,10 @@ MOODY 用户系统采用**「白名单座位认领」**模式，区别于传统�
 - [三、密码找回](#三密码找回)
 - [四、用户设置](#四用户设置)
 - [五、管理员接口](#五管理员接口)
+- [六、专辑社交讨论接口](#六专辑社交讨论接口)
+- [七、视觉资产与多媒体上传接口](#七视觉资产与多媒体上传接口--admin)
+- [八、高级运维与批量操作接口](#八高级运维与批量操作接口--admin)
+- [九、首页切片流动态配置接口（Home Feed Blocks）](#九首页切片流动态配置接口home-feed-blocks)
 - [错误码速查](#错误码速查)
 - [移动端集成流程图](#移动端集成流程图)
 
@@ -831,4 +835,314 @@ GET /api/admin/assets/list?category=albums
 | `/api/admin/ops/albums/merge` | `POST` | 智能合并重复专辑记录与曲目迁移 |
 | `/api/admin/ops/albums/delete` | `POST` | 级联删除专辑及其下属关联记录 |
 | `/api/admin/ops/songs/batch-insert` | `POST` | 批量向指定专辑导入曲目元数据 |
+
+---
+
+## 九、首页切片流动态配置接口（Home Feed Blocks）
+
+首页采用**模块化切片流（Server-Driven UI / Feed Blocks）**架构。客户端与移动端（Android）仅需通过单一接口获取已发布的切片流配置，并按顺序渲染对应组件，支持后台随时热更新首页布局、焦点轮播、推荐曲目、深度唱片故事与歌手网格。
+
+### 9.1 获取首页切片流（客户端 / 移动端公开接口）
+
+```http
+GET /api/home/feed
+```
+
+- **权限**：公开接口，无需登录与 Authorization Header。
+- **数据源回退机制**：
+  1. 优先读取 Cloudflare D1 数据库 `app_settings` 表（key: `home_feed`）；
+  2. 若 D1 无数据或读取异常，尝试读取 R2 存储桶文件 `config/home_feed.json`；
+  3. 若均未配置，自动返回一套**内置高质量默认切片数据**（包含 `hero_banner`、`category_tabs`、`section_title`、`artist_grid`、`essay_card`、`track_list`、`album_row`），确保任何情况下请求都不为空。
+- **资源 URL 自动补全**：服务端会自动将相对路径（如 `/storage/covers/...` 或 `music/...`）归一化为以当前 Worker 域名开头的完整可用绝对 URL。
+
+**响应示例 (200)**：
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "version": "1.0.0",
+    "updatedAt": "2026-08-16T16:00:00.000Z",
+    "items": [
+      {
+        "id": "block_hero_banner_main",
+        "type": "hero_banner",
+        "title": "今日焦点",
+        "subtitle": "精选专题与唱片故事",
+        "sortOrder": 1,
+        "visible": true,
+        "autoPlay": true,
+        "intervalMs": 5000,
+        "items": [
+          {
+            "id": "hero_1",
+            "title": "叶惠美 · 二十周年特别志",
+            "subtitle": "古典交响与嘻哈重塑千禧流行黄金时代",
+            "badge": "经典重温",
+            "coverUrl": "https://m-api.changgepd.top/storage/covers/jay_yehuimei.jpg",
+            "actionType": "album",
+            "actionTarget": "db_1",
+            "bgColor": "#1a1c23"
+          }
+        ]
+      },
+      {
+        "id": "block_category_tabs_main",
+        "type": "category_tabs",
+        "title": "分类导航",
+        "sortOrder": 2,
+        "visible": true,
+        "items": [
+          { "id": "tab_all", "label": "全部精选", "icon": "sparkles", "categoryKey": "all" },
+          { "id": "tab_mandopop", "label": "华语流行", "icon": "music_note", "categoryKey": "mandopop" },
+          { "id": "tab_nostalgia", "label": "千禧记忆", "icon": "history", "categoryKey": "nostalgia" }
+        ]
+      },
+      {
+        "id": "block_sec_artists_title",
+        "type": "section_title",
+        "title": "时光音乐人",
+        "subtitle": "跨越岁月的经典歌者与时代声音",
+        "actionText": "查看全部",
+        "actionType": "navigate",
+        "actionTarget": "/artists",
+        "sortOrder": 3,
+        "visible": true
+      },
+      {
+        "id": "block_artist_grid_main",
+        "type": "artist_grid",
+        "title": "推荐歌手",
+        "sortOrder": 4,
+        "visible": true,
+        "layout": "grid",
+        "items": [
+          {
+            "id": "db_1",
+            "name": "周杰伦",
+            "avatarUrl": "https://m-api.changgepd.top/src/assets/images/jay/avatar.jpg",
+            "countText": "14 张专辑 · 140+ 首曲目",
+            "tag": "华语天王",
+            "category": "华语"
+          }
+        ]
+      },
+      {
+        "id": "block_essay_card_fantasy",
+        "type": "essay_card",
+        "title": "唱片故事 · 《范特西》的黄金幻想",
+        "subtitle": "从《爱在西元前》到《安静》，一场划时代的音乐冒险",
+        "author": "MOODY 选乐志",
+        "publishDate": "2001-09-20",
+        "excerpt": "2001年的秋天，《范特西》横空出世，以无与伦比的天马行空重塑了华语流行音乐的黄金轮廓...",
+        "coverUrl": "https://m-api.changgepd.top/storage/covers/fantasy.jpg",
+        "albumId": "db_1",
+        "artistName": "周杰伦",
+        "tag": "深度品鉴",
+        "actionUrl": "/album/db_1",
+        "sortOrder": 5,
+        "visible": true
+      },
+      {
+        "id": "block_sec_tracks_title",
+        "type": "section_title",
+        "title": "今日私享单曲",
+        "subtitle": "岁月留声，一键开启静心聆听",
+        "actionText": "全部曲库",
+        "actionType": "navigate",
+        "actionTarget": "/songs",
+        "sortOrder": 6,
+        "visible": true
+      },
+      {
+        "id": "block_track_list_main",
+        "type": "track_list",
+        "title": "精选单曲推荐",
+        "sortOrder": 7,
+        "visible": true,
+        "items": [
+          {
+            "id": 1,
+            "title": "晴天",
+            "artistName": "周杰伦",
+            "albumTitle": "叶惠美",
+            "coverUrl": "https://m-api.changgepd.top/storage/covers/jay_yehuimei.jpg",
+            "filePath": "music/周杰伦/叶惠美/晴天.mp3",
+            "audioUrl": "https://m-api.changgepd.top/storage/music/周杰伦/叶惠美/晴天.mp3",
+            "duration": 269,
+            "badge": "精选"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 9.2 保存首页切片流（管理员控制台发布） 🔒
+
+```http
+POST /api/admin/home/feed
+# 或 PUT /api/admin/home/feed
+Content-Type: application/json
+```
+
+- **功能**：接收前端控制台提交的切片数组，进行格式校验后持久化存储至 Cloudflare D1 (`app_settings` 表)，并自动同步镜像至 Cloudflare R2 (`config/home_feed.json`) 双重备份。
+
+**请求体格式 (JSON)**：
+```json
+{
+  "version": "v1.2.0",
+  "items": [
+    {
+      "id": "block_hero_banner_main",
+      "type": "hero_banner",
+      "title": "今日焦点",
+      "sortOrder": 1,
+      "visible": true,
+      "items": [
+        {
+          "id": "hero_1",
+          "title": "叶惠美 · 二十周年特别志",
+          "subtitle": "古典交响与嘻哈重塑千禧流行黄金时代",
+          "coverUrl": "/storage/covers/jay_yehuimei.jpg",
+          "actionType": "album",
+          "actionTarget": "db_1"
+        }
+      ]
+    }
+  ]
+}
+```
+
+**响应示例 (200)**：
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "version": "v1.2.0",
+    "updatedAt": "2026-08-16T16:45:00.000Z",
+    "count": 1
+  }
+}
+```
+
+---
+
+### 9.3 重置首页切片流为默认配置 🔒
+
+```http
+POST /api/admin/home/feed/reset
+# 或 DELETE /api/admin/home/feed
+```
+
+- **功能**：清除 D1 与 R2 中的自定义配置，使首页恢复为内置的官方默认切片流。
+
+**响应示例 (200)**：
+```json
+{
+  "code": 200,
+  "message": "已成功重置首页切片为默认配置",
+  "data": {
+    "version": "1.0.0",
+    "items": []
+  }
+}
+```
+
+---
+
+### 9.4 首页切片 Block Schema 规范定义
+
+每个 Block 均包含通用基类字段，并根据其 `type` 携带对应的特有字段：
+
+#### 通用基础字段 (BaseHomeBlock)
+| 字段名 | 类型 | 必填 | 说明 |
+|-------|------|------|------|
+| `id` | string | 是 | 切片唯一标识，如 `block_hero_1` |
+| `type` | string | 是 | 切片类型（见下文枚举） |
+| `title` | string | 否 | 分区标题 |
+| `subtitle` | string | 否 | 分区副标题 / 描述语 |
+| `sortOrder` | number | 否 | 排序权重（从小到大排序） |
+| `visible` | boolean | 否 | 是否对客户端可见（默认 `true`） |
+| `style` | object | 否 | 样式扩展属性（背景色、边距、列数等） |
+
+#### 各切片类型定义
+
+##### 1. `hero_banner` (焦点大图 / 轮播图)
+- `autoPlay`: boolean (是否自动轮播)
+- `intervalMs`: number (轮播切换间隔毫秒，如 `5000`)
+- `items`: 数组，每个 item 包含：
+  - `id`: string (项标识)
+  - `title`: string (主标题)
+  - `subtitle`: string (副标题)
+  - `badge`: string (右上角标签，如 "经典重温")
+  - `coverUrl`: string (图片地址)
+  - `actionType`: `'album' | 'artist' | 'song' | 'playlist' | 'url' | 'none'` (点击动作)
+  - `actionTarget`: string (目标 ID 或跳转 URL)
+  - `bgColor`: string (卡片背景主色调，如 `"#1a1c23"`)
+
+##### 2. `category_tabs` (分类磁贴 / 标签导航)
+- `items`: 数组，每个 item 包含：
+  - `id`: string (标签标识)
+  - `label`: string (展示文字，如 "华语流行")
+  - `icon`: string (图标名称，如 "music_note")
+  - `categoryKey`: string (分类关键字)
+  - `filter`: object (可选的过滤参数)
+
+##### 3. `section_title` (分区标题栏)
+- `title`: string (主标题)
+- `subtitle`: string (副标题)
+- `actionText`: string (操作文案，如 "查看全部")
+- `actionType`: string (如 `"navigate"`)
+- `actionTarget`: string (路由路径，如 `"/artists"`)
+
+##### 4. `artist_grid` (推荐歌手网格)
+- `layout`: `'grid' | 'horizontal_scroll' | 'list'` (布局形态)
+- `items`: 数组，每个 item 包含：
+  - `id`: string (歌手 ID，如 `"db_1"`)
+  - `name`: string (歌手姓名)
+  - `avatarUrl`: string (头像地址)
+  - `countText`: string (作品统计文案)
+  - `tag`: string (标签，如 "华语天王")
+  - `category`: string (分类，如 "华语")
+
+##### 5. `essay_card` (深度乐评 / 唱片故事大卡片)
+- `title`: string (文章/故事主标题)
+- `subtitle`: string (副标题)
+- `author`: string (作者/选乐人)
+- `publishDate`: string (发布日期)
+- `excerpt`: string (导读摘录)
+- `content`: string (完整内容富文本/Markdown)
+- `coverUrl`: string (配图/唱片封面)
+- `albumId`: string | number (关联专辑 ID)
+- `artistName`: string (关联歌手名)
+- `tag`: string (标签，如 "深度品鉴")
+- `actionUrl`: string (跳转路径)
+
+##### 6. `track_list` (今日私享单曲 / 推荐曲目列表)
+- `items`: 数组，每个 item 包含：
+  - `id`: string | number (歌曲 ID)
+  - `title`: string (歌曲标题)
+  - `artistName`: string (歌手姓名)
+  - `albumTitle`: string (专辑名称)
+  - `coverUrl`: string (封面图 URL)
+  - `filePath`: string (音频相对存储路径)
+  - `audioUrl`: string (完整的音频播放 URL)
+  - `duration`: number (音频时长秒数)
+  - `badge`: string (角标)
+
+##### 7. `album_row` (横滑唱片流 / 经典专辑推荐)
+- `items`: 数组，每个 item 包含：
+  - `id`: string | number (专辑 ID)
+  - `title`: string (专辑名称)
+  - `artistName`: string (歌手姓名)
+  - `coverUrl`: string (专辑封面 URL)
+  - `releaseDate`: string (发行日期)
+  - `songCount`: number (歌曲数量)
+  - `tag`: string (标签)
+
 

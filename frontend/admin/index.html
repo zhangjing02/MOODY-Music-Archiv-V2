@@ -30,7 +30,7 @@
                     <span class="icon">💿</span> 专辑管理
                 </a>
                 <a href="#asset-manager" class="nav-item" data-target="asset-manager">
-                    <span class="icon">🖼️</span> 视觉资产
+                    <span class="icon">🎨</span> 切片排版工坊
                 </a>
             </nav>
             <div class="sidebar-footer">
@@ -229,64 +229,210 @@ Smile Again 玛莉亚,11"></textarea>
                 </div>
             </section>
 
-            <!-- 视觉资产管理 板块 (新增) -->
-            <section id="asset-manager" class="panel hidden">
-                <header>
-                    <h2>视觉资产管理 <small>Asset Studio</small></h2>
-                    <p class="subtitle">上传与管理首页精选大图、唱片封面、艺术家写真及随笔配图（直连 Cloudflare R2）。</p>
-                </header>
-
-                <div class="upload-container">
-                    <div class="upload-params">
-                        <div class="form-group">
-                            <label>资产分类 (Category)</label>
-                            <select id="asset-category" style="width: 100%; padding: 10px; border-radius: var(--radius); background: var(--bg-panel); color: var(--text-main); border: 1px solid var(--border);">
-                                <option value="hero">首页今日精选 / 巨幅海报 (covers/hero)</option>
-                                <option value="albums" selected>专辑唱片封面 (covers/albums)</option>
-                                <option value="artists">艺术家写真 / 肖像 (artists)</option>
-                                <option value="articles">杂志随笔插图 (articles)</option>
-                                <option value="welcome">欢迎页壁纸 (welcome_covers)</option>
-                                <option value="avatars">用户头像 (avatars)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>自定义文件名 (可选，留空使用原文件名)</label>
-                            <input type="text" id="asset-filename" placeholder="例：hero_acoustic_guitar.jpg">
-                        </div>
+            <!-- 动态切片化排版工坊 (Block Studio) -->
+            <section id="asset-manager" class="panel studio-panel hidden">
+                <div class="studio-header">
+                    <div class="studio-header-left">
+                        <h2>切片排版工坊 <small>Block Studio</small></h2>
+                        <p class="subtitle">可视化动态编排移动端首页 Feed 流，0 延迟实时真机渲染，一键发布到云端。</p>
                     </div>
-
-                    <div class="dropzone" id="asset-dropzone">
-                        <div class="dz-message">
-                            🖼️ 拖拽图片文件到此处，或点击选择 (JPG, PNG, WEBP)
-                        </div>
-                        <input type="file" id="asset-file-input" multiple accept=".jpg,.jpeg,.png,.webp,.gif,.svg" hidden>
-                    </div>
-
-                    <div class="file-list" id="asset-file-list"></div>
-
-                    <div style="display: flex; gap: 10px; margin-top: 15px;">
-                        <button class="btn btn-primary" id="btn-trigger-asset-upload" disabled>🚀 上传至 Cloudflare R2</button>
-                        <button class="btn btn-secondary" id="btn-clear-asset-upload">🗑️ 清空</button>
-                        <button class="btn btn-secondary" id="btn-refresh-gallery" style="margin-left: auto;">🔄 刷新资产库</button>
-                    </div>
-                    <div class="progress-bar-container hidden" id="asset-upload-progress-container">
-                        <div class="progress-bar" id="asset-upload-progress"></div>
+                    <div class="studio-header-actions">
+                        <button class="btn btn-secondary" id="btn-fetch-feed" title="从云端拉取最新线上数据">📥 拉取云端</button>
+                        <button class="btn btn-secondary" id="btn-export-feed" title="导出为 JSON 文件备份">💾 导出 JSON</button>
+                        <label class="btn btn-secondary" style="cursor: pointer; margin: 0; display: inline-flex; align-items: center;" title="从本地 JSON 导入">
+                            📂 导入 JSON
+                            <input type="file" id="input-import-feed" accept=".json" hidden>
+                        </label>
+                        <button class="btn btn-primary" id="btn-publish-feed" style="font-weight: 600; box-shadow: 0 4px 14px rgba(212, 175, 55, 0.4);">🚀 一键发布到移动端首页</button>
                     </div>
                 </div>
 
-                <!-- 资产画廊 -->
-                <div class="form-card" style="margin-top: 30px;">
-                    <h3>🎨 已上传资产库 (R2 Cloud Storage)</h3>
-                    <div class="gallery-tabs" style="display: flex; gap: 8px; margin: 15px 0; border-bottom: 1px solid var(--border); padding-bottom: 10px; flex-wrap: wrap;">
-                        <button class="btn btn-secondary tab-active" data-cat="all">全部</button>
-                        <button class="btn btn-secondary" data-cat="hero">今日精选</button>
-                        <button class="btn btn-secondary" data-cat="albums">专辑封面</button>
-                        <button class="btn btn-secondary" data-cat="artists">艺术家写真</button>
-                        <button class="btn btn-secondary" data-cat="articles">随笔插图</button>
-                        <button class="btn btn-secondary" data-cat="welcome">欢迎壁纸</button>
+                <!-- 预设模板与快捷工具条 -->
+                <div class="studio-toolbar">
+                    <div class="preset-group">
+                        <span class="toolbar-label">⚡ 预设模板：</span>
+                        <button class="btn-preset" data-preset="minimalist">极简纯净版</button>
+                        <button class="btn-preset active" data-preset="tri_column">三栏导流版</button>
+                        <button class="btn-preset" data-preset="songbook">现代歌本版</button>
                     </div>
-                    <div class="asset-gallery-grid" id="asset-gallery-grid">
-                        <p class="hint">点击上方分类或刷新按钮加载资产...</p>
+                    <div class="toolbar-right">
+                        <button class="btn-tool" id="btn-toggle-asset-gallery">🎨 R2 资产素材库 (<span id="r2-asset-count">--</span>)</button>
+                        <button class="btn-tool danger-tool" id="btn-clear-blocks">🗑️ 清空画布</button>
+                    </div>
+                </div>
+
+                <!-- 双栏工作台 -->
+                <div class="studio-workspace">
+                    <!-- 左侧：积木切片编辑器 (55% 宽度) -->
+                    <div class="studio-editor-col">
+                        <!-- 添加切片选择器 -->
+                        <div class="add-block-bar">
+                            <div class="add-bar-title">➕ 添加积木切片</div>
+                            <div class="add-block-grid">
+                                <button class="btn-add-block" data-type="hero_banner" title="大画幅主推海报">
+                                    <span class="block-icon">🖼️</span>
+                                    <span class="block-name">大画幅海报</span>
+                                    <span class="block-code">hero_banner</span>
+                                </button>
+                                <button class="btn-add-block" data-type="category_tabs" title="横向滑动分类胶囊">
+                                    <span class="block-icon">📑</span>
+                                    <span class="block-name">分类标签栏</span>
+                                    <span class="block-code">category_tabs</span>
+                                </button>
+                                <button class="btn-add-block" data-type="quick_actions" title="电台/最近/喜欢卡片">
+                                    <span class="block-icon">⚡</span>
+                                    <span class="block-name">快捷卡片</span>
+                                    <span class="block-code">quick_actions</span>
+                                </button>
+                                <button class="btn-add-block" data-type="section_title" title="排版栏目标题栏">
+                                    <span class="block-icon">🏷️</span>
+                                    <span class="block-name">栏目标题</span>
+                                    <span class="block-code">section_title</span>
+                                </button>
+                                <button class="btn-add-block" data-type="artist_grid" title="双列音乐人头像肖像">
+                                    <span class="block-icon">👥</span>
+                                    <span class="block-name">双列艺术家</span>
+                                    <span class="block-code">artist_grid</span>
+                                </button>
+                                <button class="btn-add-block" data-type="track_list" title="单曲试听与播放列表">
+                                    <span class="block-icon">🎵</span>
+                                    <span class="block-name">单曲试听列表</span>
+                                    <span class="block-code">track_list</span>
+                                </button>
+                                <button class="btn-add-block" data-type="essay_card" title="杂志风深度随笔">
+                                    <span class="block-icon">📖</span>
+                                    <span class="block-name">深度随笔</span>
+                                    <span class="block-code">essay_card</span>
+                                </button>
+                                <button class="btn-add-block" data-type="archive_card" title="80/90年代经典归档">
+                                    <span class="block-icon">🏛️</span>
+                                    <span class="block-name">年代归档</span>
+                                    <span class="block-code">archive_card</span>
+                                </button>
+                                <button class="btn-add-block" data-type="image_feature" title="纯视觉黑胶/大图转盘">
+                                    <span class="block-icon">💿</span>
+                                    <span class="block-name">视觉大图/黑胶</span>
+                                    <span class="block-code">image_feature</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 切片列表渲染容器 -->
+                        <div class="blocks-container" id="blocks-container">
+                            <!-- 由 asset-manager.js 动态渲染 -->
+                        </div>
+
+                        <!-- R2 资产素材库抽屉 / 折叠面板 -->
+                        <div class="r2-gallery-drawer hidden" id="r2-gallery-drawer">
+                            <div class="drawer-header">
+                                <h3>🎨 Cloudflare R2 资产素材库</h3>
+                                <button class="drawer-close" id="btn-close-gallery">✕</button>
+                            </div>
+                            <div class="upload-container" style="margin-bottom: 20px;">
+                                <div class="upload-params">
+                                    <div class="form-group">
+                                        <label>资产分类 (Category)</label>
+                                        <select id="asset-category" style="width: 100%; padding: 10px; border-radius: var(--radius); background: var(--bg-panel); color: var(--text-main); border: 1px solid var(--border);">
+                                            <option value="hero">首页今日精选 / 巨幅海报 (covers/hero)</option>
+                                            <option value="albums" selected>专辑唱片封面 (covers/albums)</option>
+                                            <option value="artists">艺术家写真 / 肖像 (artists)</option>
+                                            <option value="articles">杂志随笔插图 (articles)</option>
+                                            <option value="welcome">欢迎页壁纸 (welcome_covers)</option>
+                                            <option value="avatars">用户头像 (avatars)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>自定义文件名 (可选)</label>
+                                        <input type="text" id="asset-filename" placeholder="例：hero_retro.webp">
+                                    </div>
+                                </div>
+                                <div class="dropzone" id="asset-dropzone">
+                                    <div class="dz-message">🖼️ 拖拽图片到此处或点击上传至 R2 (JPG, PNG, WEBP)</div>
+                                    <input type="file" id="asset-file-input" multiple accept=".jpg,.jpeg,.png,.webp,.gif,.svg" hidden>
+                                </div>
+                                <div class="file-list" id="asset-file-list"></div>
+                                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                    <button class="btn btn-primary" id="btn-trigger-asset-upload" disabled>🚀 上传到 R2</button>
+                                    <button class="btn btn-secondary" id="btn-clear-asset-upload">🗑️ 清空</button>
+                                    <button class="btn btn-secondary" id="btn-refresh-gallery" style="margin-left: auto;">🔄 刷新画廊</button>
+                                </div>
+                                <div class="progress-bar-container hidden" id="asset-upload-progress-container">
+                                    <div class="progress-bar" id="asset-upload-progress"></div>
+                                </div>
+                            </div>
+                            <div class="gallery-tabs" style="display: flex; gap: 8px; margin: 15px 0; border-bottom: 1px solid var(--border); padding-bottom: 10px; flex-wrap: wrap;">
+                                <button class="btn btn-secondary tab-active" data-cat="all">全部</button>
+                                <button class="btn btn-secondary" data-cat="hero">今日精选</button>
+                                <button class="btn btn-secondary" data-cat="albums">专辑封面</button>
+                                <button class="btn btn-secondary" data-cat="artists">艺术家</button>
+                                <button class="btn btn-secondary" data-cat="articles">随笔配图</button>
+                                <button class="btn btn-secondary" data-cat="welcome">欢迎壁纸</button>
+                            </div>
+                            <div class="asset-gallery-grid" id="asset-gallery-grid">
+                                <p class="hint">点击刷新加载 R2 素材...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右侧：1:1 手机真机实时预览机壳 (45% 宽度，sticky 居中) -->
+                    <div class="studio-preview-col">
+                        <div class="phone-wrapper">
+                            <div class="phone-frame-label">
+                                <span class="pulse-dot"></span> 1:1 移动端真机实时渲染 · Warm Paper (#FBF8F2)
+                            </div>
+                            <!-- 手机外壳 -->
+                            <div class="phone-shell">
+                                <!-- 顶部灵动岛 -->
+                                <div class="phone-island">
+                                    <div class="island-camera"></div>
+                                </div>
+
+                                <!-- 状态栏 -->
+                                <div class="phone-status-bar">
+                                    <div class="status-time" id="preview-clock">09:41</div>
+                                    <div class="status-icons">
+                                        <span class="status-icon">5G</span>
+                                        <span class="status-icon">􀙇</span>
+                                        <span class="status-battery">
+                                            <span class="battery-level"></span>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- 屏幕视口 -->
+                                <div class="phone-screen" id="phone-screen">
+                                    <!-- 手机内部 Feed 内容流 -->
+                                    <div class="phone-feed" id="phone-feed">
+                                        <!-- 动态积木切片 0 延迟渲染 -->
+                                    </div>
+                                </div>
+
+                                <!-- 底部毛玻璃导航栏 -->
+                                <div class="phone-bottom-nav">
+                                    <div class="nav-tab active">
+                                        <div class="nav-tab-icon">📻</div>
+                                        <div class="nav-tab-label">今日</div>
+                                    </div>
+                                    <div class="nav-tab">
+                                        <div class="nav-tab-icon">🔍</div>
+                                        <div class="nav-tab-label">发现</div>
+                                    </div>
+                                    <div class="nav-tab">
+                                        <div class="nav-tab-icon">📚</div>
+                                        <div class="nav-tab-label">馆藏</div>
+                                    </div>
+                                    <div class="nav-tab">
+                                        <div class="nav-tab-icon">👤</div>
+                                        <div class="nav-tab-label">我的</div>
+                                    </div>
+                                </div>
+
+                                <!-- 底部 Home Indicator 触控条 -->
+                                <div class="phone-home-indicator">
+                                    <div class="home-bar"></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -298,7 +444,7 @@ Smile Again 玛莉亚,11"></textarea>
 
     <script src="admin.js?v=20260816_1615"></script>
     <script src="album-manager.js?v=20260816_1615"></script>
-    <script src="asset-manager.js?v=20260816_1615"></script>
+    <script src="asset-manager.js?v=20260816_1700"></script>
 </body>
 
 </html>
