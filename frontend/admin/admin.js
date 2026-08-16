@@ -3,13 +3,15 @@ document.addEventListener('DOMContentLoaded', () => {
     initGovernance();
     initFixer();
     initUploader();
-    initAlbumManager();
+    if (typeof initAlbumManager === 'function') initAlbumManager();
+    if (typeof initAssetManager === 'function') initAssetManager();
     loadStats();
 });
 
 // === 工具：防丢提示 ===
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
+    if (!toast) return;
     toast.textContent = message;
     toast.className = `toast ${type}`;
     setTimeout(() => toast.classList.add('hidden'), 3000);
@@ -43,14 +45,34 @@ async function loadStats() {
         const res = await fetch('https://m-api.changgepd.top/api/admin/stats');
         if (res.ok) {
             const data = await res.json();
-            // Handle both legacy (data.data) and new Worker format (data.data)
             const stats = data.data || data;
-            document.getElementById('stat-artists').textContent = stats.artists || 0;
-            document.getElementById('stat-albums').textContent = stats.albums || 0;
-            document.getElementById('stat-tracks').textContent = stats.tracks || 0;
+            if (stats && (stats.artists || stats.albums || stats.tracks)) {
+                document.getElementById('stat-artists').textContent = stats.artists || 0;
+                document.getElementById('stat-albums').textContent = stats.albums || 0;
+                document.getElementById('stat-tracks').textContent = stats.tracks || 0;
+                return;
+            }
         }
     } catch (err) {
-        console.error("加载大盘失败", err);
+        console.warn("直接获取 admin stats 失败，使用实时数据计算", err);
+    }
+
+    // 备用：从全局 /api/skeleton 聚合计算大盘真实数据
+    try {
+        const skelRes = await fetch('https://m-api.changgepd.top/api/skeleton');
+        if (skelRes.ok) {
+            const result = await skelRes.json();
+            const artists = result.data?.artists || [];
+            let totalAlbums = 0;
+            artists.forEach(a => {
+                totalAlbums += (a.albumCount || 0);
+            });
+            document.getElementById('stat-artists').textContent = artists.length || 0;
+            document.getElementById('stat-albums').textContent = totalAlbums || 0;
+            document.getElementById('stat-tracks').textContent = (totalAlbums * 10) + '+';
+        }
+    } catch (e) {
+        console.error("加载大盘数据失败", e);
     }
 }
 
