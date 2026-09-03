@@ -1,3 +1,5 @@
+const API_BASE = window.MOODY_CONFIG?.API_BASE || window.API_BASE || 'https://m-api.changgepd.ccwu.cc';
+
 document.addEventListener('DOMContentLoaded', () => {
     initNavigation();
     initGovernance();
@@ -42,7 +44,7 @@ function initNavigation() {
 // === 模块 2：运行大盘 ===
 async function loadStats() {
     try {
-        const res = await fetch('https://m-api.changgepd.top/api/admin/stats');
+        const res = await fetch(`${API_BASE}/api/admin/stats`);
         if (res.ok) {
             const data = await res.json();
             const stats = data.data || data;
@@ -59,7 +61,7 @@ async function loadStats() {
 
     // 备用：从全局 /api/skeleton 聚合计算大盘真实数据
     try {
-        const skelRes = await fetch('https://m-api.changgepd.top/api/skeleton');
+        const skelRes = await fetch(`${API_BASE}/api/skeleton`);
         if (skelRes.ok) {
             const result = await skelRes.json();
             const artists = result.data?.artists || [];
@@ -365,7 +367,7 @@ function initUploader() {
 
             const xhr = new XMLHttpRequest();
             // [CRITICAL CHANGE] 改为调用 Worker API
-            xhr.open('POST', 'https://m-api.changgepd.top/api/admin/upload', true);
+            xhr.open('POST', `${API_BASE}/api/admin/upload`, true);
 
             xhr.upload.onprogress = (e) => {
                 if (e.lengthComputable) {
@@ -489,7 +491,7 @@ function initFixer() {
         }
 
         try {
-            const res = await fetch('https://m-api.changgepd.top/api/admin/album/update', {
+            const res = await fetch(`${API_BASE}/api/admin/album/update`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -518,7 +520,7 @@ function initFixer() {
         }
 
         try {
-            const res = await fetch('https://m-api.changgepd.top/api/admin/album/update', {
+            const res = await fetch(`${API_BASE}/api/admin/album/update`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -544,7 +546,7 @@ function initGovernance() {
     const postGov = async (targets) => {
         try {
             showToast('正在执行任务...');
-            const res = await fetch('https://m-api.changgepd.top/api/admin/governance', {
+            const res = await fetch(`${API_BASE}/api/admin/governance`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ targets })
@@ -566,7 +568,7 @@ function initGovernance() {
         if (!confirm('确认清理冗余专辑？此操作将保留包含歌曲最多的版本并删除重复占位符。')) return;
         try {
             showToast('正在清理中...');
-            const res = await fetch('https://m-api.changgepd.top/api/admin/cleanup-duplicates', { method: 'POST' });
+            const res = await fetch(`${API_BASE}/api/admin/cleanup-duplicates`, { method: 'POST' });
             const data = await res.json();
             if (res.ok) {
                 showToast(data.message || '清理完成');
@@ -583,7 +585,7 @@ function initGovernance() {
         if (!confirm('确认执行路径自修复？此操作将自动补全所有缺失的 music/ 前缀。')) return;
         try {
             showToast('正在对齐路径，请稍候...');
-            const res = await fetch('https://m-api.changgepd.top/api/admin/scrub', { method: 'POST' });
+            const res = await fetch(`${API_BASE}/api/admin/scrub`, { method: 'POST' });
             const data = await res.json();
             if (res.ok) {
                 showToast(data.message || '修复完成！');

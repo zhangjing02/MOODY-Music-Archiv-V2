@@ -2,9 +2,7 @@ name = "moody-worker"
 main = "src/index.ts"
 compatibility_date = "2024-03-01"
 
-[[routes]]
-pattern = "m-api.changgepd.top"
-custom_domain = true
+
 
 [[d1_databases]]
 binding = "DB"

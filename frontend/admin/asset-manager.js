@@ -4,7 +4,7 @@
 // ========================================================
 
 (function () {
-    const API_BASE = 'https://m-api.changgepd.top';
+    const API_BASE = window.MOODY_CONFIG?.API_BASE || window.API_BASE || 'https://m-api.changgepd.ccwu.cc';
     const STORAGE_KEY = 'moody_studio_blocks_v2';
 
     // ----------------------------------------------------
@@ -1048,7 +1048,7 @@
                 <div class="img-upload-control">
                     <img src="${safeUrl || 'data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'44\' height=\'44\'><rect width=\'100%\' height=\'100%\' fill=\'%23222\'/></svg>'}" class="img-preview-thumb" id="thumb-${inputId}" alt="预览" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'44\' height=\'44\'><rect width=\'100%\' height=\'100%\' fill=\'%23222\'/></svg>'">
                     <div class="img-input-wrap">
-                        <input type="text" id="${inputId}" data-block-id="${blockId}" data-field="${fieldPath}" value="${safeUrl}" placeholder="https://m-api.changgepd.top/storage/..." style="padding-right: 30px;">
+                        <input type="text" id="${inputId}" data-block-id="${blockId}" data-field="${fieldPath}" value="${safeUrl}" placeholder="https://m-api.changgepd.ccwu.cc/storage/..." style="padding-right: 30px;">
                     </div>
                     <div class="img-upload-btn-wrap">
                         <label class="btn btn-secondary" style="font-size: 11px; padding: 10px 12px; cursor: pointer; margin: 0; display: inline-flex; align-items: center; white-space: nowrap;">

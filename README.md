@@ -128,19 +128,20 @@ This gives a balanced result across performance, maintainability, and portabilit
 
 ## 🏗️ 系统架构
 
-```
+```text
 移动端 / 浏览器
        │  HTTPS
        ▼
-Cloudflare Worker (m-api.changgepd.top)
+Cloudflare Worker (m-api.changgepd.ccwu.cc)
    ├── Hono 框架路由
+   ├── 动态首页 SDUI 流 (/api/home/feed)
    ├── Cloudflare D1  ── 元数据（歌曲/专辑/用户名册）
    ├── Cloudflare R2  ── 音频 / 封面 / 歌词静态资源
    ├── Supabase Auth  ── 身份认证 / Token 颁发
    └── JPush Gateway  ── 实时信号下发（Social Sync）
 
-前端播放器 (Claw Cloud Docker)
-   └── Nginx 托管 Vanilla JS 播放器
+前端播放器 & CMS 管理后台
+   └── 静态网页 (已支持单一数据源 config.js)
 ```
 
 ### 核心技术栈
@@ -253,11 +254,27 @@ Music-Archiv-V2/
 
 ---
 
+## 🌐 域名治理与单源配置 (Single Source of Truth)
+
+本项目现已全面接入**单一配置源机制**，彻底根除了过去修改域名需要搜索替换几十处代码的问题：
+
+- **网页端与管理后台单源配置**：
+  - 核心配置文件：[`frontend/src/js/config.js`](./frontend/src/js/config.js) 与 [`frontend/admin/config.js`](./frontend/admin/config.js)
+  - 统一注入 `window.MOODY_CONFIG`，自动区分本地开发（`localhost -> 8787`）与生产域名，所有业务代码（`app.js`、`admin.js`、`album-manager.js`、`asset-manager.js`）统一通过常量读取。
+- **全自动一键换域脚本**：
+  - 在根目录提供全自动运维脚本 [`scripts/switch-domain.js`](./scripts/switch-domain.js)：
+    ```bash
+    # 一键将 Cloudflare Worker、R2 存储桶、Android、Web 前端与 Admin 后台全链路切换至新域名：
+    node scripts/switch-domain.js <新域名> [Cloudflare_Token]
+    ```
+
+---
+
 ## 📖 移动端快速接入
 
 ➡️ **完整接口文档**：[`cloudflare-worker/api_auth_v2.md`](./cloudflare-worker/api_auth_v2.md)
 
-**Base URL**：`https://m-api.changgepd.top`
+**Base URL**：`https://m-api.changgepd.ccwu.cc`
 
 ### 最小集成示例（Kotlin）
 
@@ -271,12 +288,12 @@ fun hashPassword(raw: String): String {
 
 // 2. 获取座位表
 suspend fun getRoster(): RosterResponse {
-    return api.get("https://m-api.changgepd.top/api/roster")
+    return api.get("https://m-api.changgepd.ccwu.cc/api/roster")
 }
 
 // 3. 登录
 suspend fun login(username: String, password: String): LoginResponse {
-    return api.post("https://m-api.changgepd.top/api/user/login") {
+    return api.post("https://m-api.changgepd.ccwu.cc/api/user/login") {
         body = mapOf(
             "username" to username,
             "password_hash" to hashPassword(password)
@@ -328,7 +345,7 @@ suspend fun login(username: String, password: String): LoginResponse {
 5. **⚠️ 首次必做：设置安全题答案**（否则无人能注册）：
    ```bash
    # 用 master 账号调用
-   curl -X PUT https://m-api.changgepd.top/api/admin/questions \
+   curl -X PUT https://m-api.changgepd.ccwu.cc/api/admin/questions \
      -H "Authorization: Bearer <master_token>" \
      -H "Content-Type: application/json" \
      -d '{"answers": ["班主任名字", "数学老师名字", "楼层"]}'
