@@ -3,14 +3,12 @@
  * 由 scripts/switch-domain.js 自动生成与维护
  */
 (function() {
-    // 默认直连已部署的生产 Worker (https://m-api.changgepd.ccwu.cc)
-    // 若需要调试本地 8787 端口的 Worker，可在 URL 后添加 ?env=local
-    const urlParams = typeof window !== 'undefined' && window.location ? new URLSearchParams(window.location.search) : null;
-    const isExplicitLocal = urlParams && urlParams.get('env') === 'local';
-
-    window.MOODY_CONFIG = {
-        API_BASE: isExplicitLocal ? 'http://127.0.0.1:8787' : 'https://m-api.changgepd.ccwu.cc',
-        R2_BASE: 'https://r2.changgepd.ccwu.cc'
-    };
-    window.API_BASE = window.MOODY_CONFIG.API_BASE;
+    if (!window.MOODY_CONFIG) {
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        window.MOODY_CONFIG = {
+            API_BASE: isLocal ? 'http://127.0.0.1:8787' : 'https://m-api.changgepd.ccwu.cc',
+            R2_BASE: 'https://r2.changgepd.ccwu.cc'
+        };
+        window.API_BASE = window.MOODY_CONFIG.API_BASE;
+    }
 })();
