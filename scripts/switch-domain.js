@@ -32,10 +32,14 @@ const WORKSPACE_ROOT = fs.existsSync(path.resolve(REPO_DIR, 'MoodyMusicForAndroi
 const ANDROID_PROPERTIES = path.join(WORKSPACE_ROOT, 'MoodyMusicForAndroid', 'gradle.properties');
 const FRONTEND_CONFIG = fs.existsSync(path.join(REPO_DIR, 'frontend', 'src', 'js', 'config.js'))
     ? path.join(REPO_DIR, 'frontend', 'src', 'js', 'config.js')
-    : path.join(WORKSPACE_ROOT, 'backend-inspect', 'MOODY-Music-Archiv-V2', 'frontend', 'src', 'js', 'config.js');
+    : (fs.existsSync(path.join(WORKSPACE_ROOT, 'backend', 'frontend', 'src', 'js', 'config.js'))
+        ? path.join(WORKSPACE_ROOT, 'backend', 'frontend', 'src', 'js', 'config.js')
+        : path.join(WORKSPACE_ROOT, 'backend-inspect', 'MOODY-Music-Archiv-V2', 'frontend', 'src', 'js', 'config.js'));
 const ADMIN_CONFIG = fs.existsSync(path.join(REPO_DIR, 'frontend', 'admin', 'config.js'))
     ? path.join(REPO_DIR, 'frontend', 'admin', 'config.js')
-    : path.join(WORKSPACE_ROOT, 'backend-inspect', 'MOODY-Music-Archiv-V2', 'frontend', 'admin', 'config.js');
+    : (fs.existsSync(path.join(WORKSPACE_ROOT, 'backend', 'frontend', 'admin', 'config.js'))
+        ? path.join(WORKSPACE_ROOT, 'backend', 'frontend', 'admin', 'config.js')
+        : path.join(WORKSPACE_ROOT, 'backend-inspect', 'MOODY-Music-Archiv-V2', 'frontend', 'admin', 'config.js'));
 
 const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID || '0bd18c2b8609958f139bed5fdbe6b3f5';
 
