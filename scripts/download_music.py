@@ -231,7 +231,9 @@ def parse_duration_sec(dur_str: str) -> int:
     """解析时长字符串为秒数"""
     try:
         parts = dur_str.strip().split(':')
-        if len(parts) == 2:
+        if len(parts) == 1:
+            return int(parts[0])
+        elif len(parts) == 2:
             return int(parts[0]) * 60 + int(parts[1])
         elif len(parts) == 3:
             return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
