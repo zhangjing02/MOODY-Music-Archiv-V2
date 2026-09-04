@@ -125,12 +125,21 @@ def inspect_audio_quality(file_path: str):
         return {"error": str(e)}
 
 def fetch_and_save_lyrics(artist: str, album: str, song: str, output_dir: str = DEFAULT_DOWNLOAD_DIR):
-    """自动拉取 LRC 同步歌词并提取开头句与副歌作为对照依据"""
     try:
-        import syncedlyrics
-        lrc = syncedlyrics.search(f"{artist} {album} {song}")
-        if not lrc:
-            lrc = syncedlyrics.search(f"{artist} {song}")
+        safe_song = song.replace("/", "_").replace("\\", "_").replace(":", "_")
+        safe_artist = artist.replace("/", "_").replace("\\", "_").replace(":", "_")
+        safe_album = album.replace("/", "_").replace("\\", "_").replace(":", "_")
+        lrc_path = os.path.join(output_dir, f"{safe_song}-{safe_artist}-{safe_album}.lrc")
+        if os.path.exists(lrc_path) and os.path.getsize(lrc_path) > 10:
+            with open(lrc_path, 'r', encoding='utf-8', errors='ignore') as f:
+                lrc = f.read()
+        else:
+            import syncedlyrics
+            lrc = syncedlyrics.search(f"{artist} {song}", providers=['NetEase', 'Lrclib'])
+            if not lrc:
+                lrc = syncedlyrics.search(f"{song}", providers=['NetEase', 'Lrclib'])
+            if not lrc:
+                lrc = syncedlyrics.search(f"{artist} {album} {song}")
         
         if lrc:
             safe_song = song.replace("/", "_").replace("\\", "_").replace(":", "_")

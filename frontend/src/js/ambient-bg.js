@@ -25,9 +25,9 @@
         shinjuku: {
             id: 'shinjuku',
             name: '新宿雨夜',
-            desc: '窗外东京车流与温热咖啡',
+            desc: '新宿街头真实长镜头车水马龙 (5分钟不重复实录)',
             icon: '🌧️',
-            file: VIDEO_BASE + 'shinjuku.webm'
+            file: VIDEO_BASE + 'shinjuku.mp4'
         },
         cozy_rain: {
             id: 'cozy_rain',
@@ -490,7 +490,7 @@
         if (!dom.zenLyricsContainer) return;
         const lyricsSync = window.LyricsSync;
         if (!lyricsSync || !lyricsSync.currentLyrics || lyricsSync.currentLyrics.length === 0) {
-            dom.zenLyricsContainer.innerHTML = '<div class="zen-lyrics-empty">♪ 纯净音乐 · 静享流金时光 (晃动鼠标或按 Esc 退出) ♪</div>';
+            dom.zenLyricsContainer.innerHTML = '<div class="zen-lyrics-empty">♪ 纯净音乐 · 静享流金时光 ♪</div>';
             return;
         }
 
