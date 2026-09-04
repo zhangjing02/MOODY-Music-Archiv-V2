@@ -467,96 +467,75 @@ body.zen-active .zen-overlay {
     transform: scale(1.02);
 }
 
-/* --- 5. Zen Mode 核心视听舞台 (精简纯净居中大方布局) --- */
+/* --- 5. Zen Mode 核心视听舞台 (左上方雅致艺术布局) --- */
 .zen-stage {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    align-items: flex-start;
+    justify-content: flex-start;
     flex: 1;
-    max-width: 900px;
-    margin: 0 auto;
     width: 100%;
+    max-width: 1400px;
+    margin: 0;
+    padding: 30px 0 0 45px;
     position: relative;
     background: transparent !important;
 }
 
-/* 居中曲目信息与大歌词 */
+/* 左侧上方：艺术曲目信息与流动歌词 */
 .zen-info-column {
     width: 100%;
-    max-width: 820px;
+    max-width: 520px;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
+    align-items: flex-start;
+    justify-content: flex-start;
+    text-align: left;
     color: #ffffff;
     user-select: text;
     background: transparent !important;
 }
 
 .zen-track-header {
-    margin-bottom: 24px;
-    text-align: center;
-}
-
-.zen-meta-pill {
-    display: inline-block;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 2px;
-    color: var(--accent, #d4af37);
-    text-transform: uppercase;
-    margin-bottom: 10px;
-    opacity: 0.9;
-    padding: 4px 12px;
-    background: rgba(0, 0, 0, 0.35);
-    border-radius: 999px;
-    border: 1px solid rgba(212, 175, 55, 0.25);
-    backdrop-filter: blur(8px);
-}
-
-.zen-track-title {
-    font-family: var(--font-cn, "Noto Serif SC"), serif;
-    font-size: 38px;
-    font-weight: 700;
-    line-height: 1.25;
     margin-bottom: 8px;
-    background: linear-gradient(135deg, #ffffff 40%, #e2ba41 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    letter-spacing: -0.5px;
-    text-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+    text-align: left;
 }
 
-.zen-track-artist {
-    font-size: 17px;
+/* 艺术书法字体：马善政毛笔楷书 / 站酷小薇体 / 优雅楷体衬线 */
+.zen-track-title {
+    font-family: 'Ma Shan Zheng', 'ZCOOL XiaoWei', 'Noto Serif SC', 'STKaiti', 'KaiTi', cursive, serif;
+    font-size: 52px;
     font-weight: 400;
-    color: rgba(255, 255, 255, 0.75);
-    letter-spacing: 0.5px;
-    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+    line-height: 1.15;
+    margin: 0;
+    color: #fdfbf7;
+    letter-spacing: 2.5px;
+    text-shadow:
+        0 4px 20px rgba(0, 0, 0, 0.95),
+        0 1px 3px rgba(0, 0, 0, 0.9);
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.9));
 }
 
-/* 沉浸大歌词区域 */
+/* 沉浸低调流动歌词区 (不喧宾夺主，清晰可辨) */
 .zen-lyrics-wrapper {
     position: relative;
     width: 100%;
-    max-width: 780px;
-    height: 250px;
+    max-width: 480px;
+    height: 150px;
     overflow: hidden;
-    mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
     background: transparent !important;
+    margin-top: 14px;
 }
 
 .zen-lyrics-container {
     height: 100%;
     overflow-y: auto;
     scrollbar-width: none;
-    padding: 85px 0;
+    padding: 45px 0;
     scroll-behavior: smooth;
-    text-align: center;
+    text-align: left;
     background: transparent !important;
 }
 
@@ -564,39 +543,30 @@ body.zen-active .zen-overlay {
     display: none;
 }
 
-.zen-lyrics-empty {
-    color: rgba(255, 255, 255, 0.45);
-    font-size: 15px;
-    letter-spacing: 1.5px;
-    margin-top: 30px;
-    text-align: center;
-}
-
 .zen-lyric-line {
-    font-family: var(--font-cn, "Noto Serif SC"), serif;
-    font-size: 18px;
-    line-height: 2.1;
-    color: rgba(255, 255, 255, 0.35);
-    filter: blur(0.3px);
-    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    font-family: 'Noto Serif SC', 'STSong', 'SimSun', serif;
+    font-size: 15px;
+    line-height: 1.9;
+    color: rgba(255, 255, 255, 0.32);
+    transition: all 0.35s ease;
     cursor: pointer;
-    text-align: center;
+    text-align: left;
+    letter-spacing: 0.5px;
+    padding: 3px 0;
     background: transparent !important;
 }
 
 .zen-lyric-line:hover {
-    color: rgba(255, 255, 255, 0.7);
-    filter: blur(0);
+    color: rgba(255, 255, 255, 0.65);
 }
 
 .zen-lyric-line.active {
-    font-size: 26px;
-    font-weight: 600;
-    color: #ffffff;
-    filter: blur(0);
-    text-shadow: 0 0 20px rgba(212, 175, 55, 0.55), 0 0 35px rgba(255, 255, 255, 0.3);
-    transform: scale(1.03);
-    margin: 8px 0;
+    font-size: 17px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.88);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85);
+    letter-spacing: 0.8px;
+    margin: 4px 0;
 }
 
 /* --- 6. 底部极简悬浮微控岛 (Minimal Floating Dock) --- */

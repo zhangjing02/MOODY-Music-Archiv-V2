@@ -82,6 +82,8 @@ const LyricsSync = {
         this.currentIndex = -1;
     }
 };
+window.LyricsSync = LyricsSync;
+
 
 // ==================== 客户端遥测 (Client Telemetry) ====================
 async function reportClientError(type, songId, message) {

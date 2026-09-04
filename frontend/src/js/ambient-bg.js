@@ -174,9 +174,8 @@
         dom.zenVinylDisc = document.getElementById('zenVinylDisc');
         dom.zenVinylCover = document.getElementById('zenVinylCover');
         dom.zenTonearm = document.getElementById('zenTonearm');
-        dom.zenTrackAlbum = document.getElementById('zenTrackAlbum');
         dom.zenTrackTitle = document.getElementById('zenTrackTitle');
-        dom.zenTrackArtist = document.getElementById('zenTrackArtist');
+        dom.zenLyricsWrapper = document.querySelector('.zen-lyrics-wrapper');
         dom.zenLyricsContainer = document.getElementById('zenLyricsContainer');
         dom.zenCurrentTime = document.getElementById('zenCurrentTime');
         dom.zenProgressBar = document.getElementById('zenProgressBar');
@@ -434,7 +433,7 @@
         const vMeta = document.getElementById('vMeta');
         const pTitleOverlay = document.getElementById('pTitleOverlay');
 
-        let songTitle = 'MOODY · 沉浸空间';
+        let songTitle = 'MOODY';
         if (state.currentSong?.title) {
             songTitle = state.currentSong.title;
         } else if (pTitleOverlay && pTitleOverlay.textContent && pTitleOverlay.textContent !== 'No Track Playing') {
@@ -443,25 +442,14 @@
             songTitle = vTitle.textContent;
         }
 
-        let artistName = 'MOODY ARCHIVE';
-        if (state.currentSong?.artist) {
-            artistName = state.currentSong.artist;
-        } else if (state.currentArtist) {
-            artistName = state.currentArtist;
-        }
-
-        let albumName = 'RETRO VINYL';
-        if (state.currentSong?.album) {
-            albumName = state.currentSong.album;
-        } else if (state.currentAlbum) {
-            albumName = state.currentAlbum;
-        } else if (vMeta && vMeta.textContent && !vMeta.textContent.includes('Waiting')) {
-            albumName = vMeta.textContent;
+        // 仅显示歌名：剥离后缀 " - 歌手名" 以及可能携带的连字符
+        if (songTitle.includes(' - ')) {
+            songTitle = songTitle.split(' - ')[0].trim();
+        } else if (songTitle.includes(' — ')) {
+            songTitle = songTitle.split(' — ')[0].trim();
         }
 
         if (dom.zenTrackTitle) dom.zenTrackTitle.textContent = songTitle;
-        if (dom.zenTrackArtist) dom.zenTrackArtist.textContent = artistName;
-        if (dom.zenTrackAlbum) dom.zenTrackAlbum.textContent = albumName;
 
         // 5. 同步时间与进度条
         if (audio && audio.duration) {
@@ -490,9 +478,11 @@
         if (!dom.zenLyricsContainer) return;
         const lyricsSync = window.LyricsSync;
         if (!lyricsSync || !lyricsSync.currentLyrics || lyricsSync.currentLyrics.length === 0) {
-            dom.zenLyricsContainer.innerHTML = '<div class="zen-lyrics-empty">♪ 纯净音乐 · 静享流金时光 ♪</div>';
+            dom.zenLyricsContainer.innerHTML = '';
+            if (dom.zenLyricsWrapper) dom.zenLyricsWrapper.style.display = 'none';
             return;
         }
+        if (dom.zenLyricsWrapper) dom.zenLyricsWrapper.style.display = 'block';
 
         dom.zenLyricsContainer.innerHTML = lyricsSync.currentLyrics.map((line, idx) => `
             <div class="zen-lyric-line" data-index="${idx}" data-time="${line.time}">
