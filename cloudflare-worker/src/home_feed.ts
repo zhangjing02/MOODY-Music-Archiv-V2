@@ -339,7 +339,10 @@ export function normalizeHomeFeedUrls(feedData: HomeFeedData, baseUrl: string): 
 /**
  * 确保 D1 app_settings 表存在
  */
+let _appSettingsTableEnsured = false
 async function ensureAppSettingsTable(db: D1Database): Promise<void> {
+  if (_appSettingsTableEnsured) return
+  _appSettingsTableEnsured = true
   try {
     await db.prepare(`
       CREATE TABLE IF NOT EXISTS app_settings (

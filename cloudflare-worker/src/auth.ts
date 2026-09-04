@@ -477,7 +477,7 @@ export const authMiddleware = async (c: Context<AppType>, next: any) => {
 
   const token = authHeader.slice(7)
   try {
-    await ensureUserProfileSessionColumns(c.env.DB)
+    // [D1 Quota Fix] DDL 已从中间件移除 - schema 迁移应通过 wrangler d1 migrations apply 执行
 
     const JWKS = getJWKS(c.env)
     const { payload } = await jwtVerify(token, JWKS)
@@ -766,7 +766,10 @@ async function resolveScopedClassIdForAdmin(
 
   return classId
 }
+let _userProfileSessionColumnsEnsured = false
 async function ensureUserProfileSessionColumns(db: D1Database) {
+  if (_userProfileSessionColumnsEnsured) return
+  _userProfileSessionColumnsEnsured = true
   try {
     await db.prepare('ALTER TABLE user_profiles ADD COLUMN last_android_device_id TEXT').run()
   } catch (error: any) {
@@ -786,7 +789,10 @@ async function ensureUserProfileSessionColumns(db: D1Database) {
   }
 }
 
+let _classroomSchemaEnsured = false
 async function ensureClassroomSchema(db: D1Database) {
+  if (_classroomSchemaEnsured) return
+  _classroomSchemaEnsured = true
   await db.prepare(
     `CREATE TABLE IF NOT EXISTS class_groups (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

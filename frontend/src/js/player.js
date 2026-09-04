@@ -380,7 +380,7 @@ async function initPlayer() {
     }
 
     // 验证所有关键DOM元素
-    const elementsToCheck = ['audio', 'playPauseBtn', 'prevBtn', 'nextBtn', 'modeBtn', 'uploadInput', 'uploadedCount'];
+    const elementsToCheck = ['audio', 'playPauseBtn', 'prevBtn', 'nextBtn', 'modeBtn'];
     elementsToCheck.forEach(key => {
         if (!player[key]) {
             console.warn(`元素未找到: ${key}`);
@@ -1420,14 +1420,10 @@ function handleFileUpload(e) {
 }
 
 function updateUploadedCount(count) {
-    console.log('updateUploadedCount 被调用，参数:', count);
     if (player.uploadedCount) {
         const currentCount = parseInt(player.uploadedCount.textContent) || 0;
         const newCount = currentCount + count;
         player.uploadedCount.textContent = newCount;
-        console.log('上传计数更新:', currentCount, '+', count, '=', newCount);
-    } else {
-        console.error('uploadedCount 元素未找到!');
     }
 }
 
@@ -2635,7 +2631,7 @@ window.audioPlayer = {
                 if (songPath.startsWith('http')) {
                     targetAudioUrl = songPath;
                 } else {
-                    targetAudioUrl = `${window.API_BASE || ''}/storage/${songPath.split(/[\\/]/).map(segment => encodeURIComponent(segment)).join('/')}`;
+                    targetAudioUrl = `${window.API_BASE || ''}/storage/${songPath.split(/[\\/]/).map(segment => encodeURIComponent(segment)).join('/')}?t=${Date.now()}`;
                 }
             }
 
@@ -2686,7 +2682,7 @@ window.audioPlayer = {
                     audioUrl = songPath;
                 } else {
                     const encodedPath = songPath.split(/[\\/]/).map(segment => encodeURIComponent(segment)).join('/');
-                    audioUrl = `${window.API_BASE || ''}/storage/${encodedPath}`;
+                    audioUrl = `${window.API_BASE || ''}/storage/${encodedPath}?t=${Date.now()}`;
                 }
             }
 

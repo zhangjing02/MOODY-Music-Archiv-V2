@@ -209,8 +209,10 @@ app.get('/api/skeleton', async (c) => {
     const query = `
       SELECT 
         a.id, a.name, a.region, a.photo_url,
-        (SELECT COUNT(*) FROM albums WHERE artist_id = a.id) as album_count
+        COUNT(al.id) as album_count
       FROM artists a
+      LEFT JOIN albums al ON a.id = al.artist_id
+      GROUP BY a.id, a.name, a.region, a.photo_url
       ORDER BY a.name ASC
     `
     const { results } = await c.env.DB.prepare(query).all()
@@ -235,6 +237,8 @@ app.get('/api/skeleton', async (c) => {
     if (groupFilter) {
       artists = artists.filter(a => a.group.toLowerCase() === groupFilter.toLowerCase())
     }
+
+    c.header('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
 
     return c.json({
       code: 200,
@@ -278,8 +282,9 @@ app.get('/api/songs', async (c) => {
     }
 
     if (queryAlbum) {
-      // 专辑查询：不在 SQL 中过滤，因为需要繁简体模糊匹配
-      // 繁简体匹配在查询后进行
+      // 先在 SQL 中做粗过滤（大幅减少 D1 行扫描），再在 JS 中做精确繁简体匹配
+      sql += ` AND al.title LIKE ?`
+      params.push(`%${queryAlbum}%`)
     }
 
     sql += ` ORDER BY a.name ASC, al.release_date ASC, s.track_index ASC`
@@ -382,16 +387,19 @@ app.get('/api/search', async (c) => {
         (SELECT COUNT(*) FROM albums WHERE artist_id = artists.id) as album_count
       FROM artists 
       WHERE name LIKE ? OR REPLACE(REPLACE(REPLACE(REPLACE(name, '(', ''), ')', ''), '（', ''), '）', '') LIKE ?
+      LIMIT 30
     `).bind(likeQuery, `%${normalizedQ}%`)
     const stmtAlbums = c.env.DB.prepare(`
       SELECT id, title, artist_id as ArtistID, cover_url as CoverURL 
       FROM albums 
       WHERE title LIKE ? OR REPLACE(REPLACE(REPLACE(REPLACE(title, '(', ''), ')', ''), '（', ''), '）', '') LIKE ?
+      LIMIT 30
     `).bind(likeQuery, `%${normalizedQ}%`)
     const stmtSongs = c.env.DB.prepare(`
       SELECT id, title, artist_id as ArtistID, album_id as Album_ID, file_path as FilePath 
       FROM songs 
       WHERE title LIKE ? OR REPLACE(REPLACE(REPLACE(REPLACE(title, '(', ''), ')', ''), '（', ''), '）', '') LIKE ?
+      LIMIT 30
     `).bind(likeQuery, `%${normalizedQ}%`)
 
     // Run searches concurrently in D1

@@ -1,0 +1,135 @@
+[
+  {
+    "timestamp": "2026-09-04 01:34:55",
+    "artist": "林俊杰",
+    "album": "她说",
+    "reason": "处理异常崩溃: module 'download_music' has no attribute 'append_to_walkthrough'",
+    "details": {}
+  },
+  {
+    "timestamp": "2026-09-04 01:40:34",
+    "artist": "林俊杰",
+    "album": "学不会",
+    "reason": "处理异常崩溃: module 'download_music' has no attribute 'append_to_walkthrough'",
+    "details": {}
+  },
+  {
+    "timestamp": "2026-09-04 01:45:35",
+    "artist": "林俊杰",
+    "album": "因你而在",
+    "reason": "处理异常崩溃: module 'download_music' has no attribute 'append_to_walkthrough'",
+    "details": {}
+  },
+  {
+    "timestamp": "2026-09-04 01:50:10",
+    "artist": "林俊杰",
+    "album": "新地球",
+    "reason": "处理异常崩溃: module 'download_music' has no attribute 'append_to_walkthrough'",
+    "details": {}
+  },
+  {
+    "timestamp": "2026-09-04 01:55:29",
+    "artist": "林俊杰",
+    "album": "和自己对话",
+    "reason": "处理异常崩溃: module 'download_music' has no attribute 'append_to_walkthrough'",
+    "details": {}
+  },
+  {
+    "timestamp": "2026-09-04 02:00:30",
+    "artist": "林俊杰",
+    "album": "伟大的渺小",
+    "reason": "处理异常崩溃: module 'download_music' has no attribute 'append_to_walkthrough'",
+    "details": {}
+  },
+  {
+    "timestamp": "2026-09-04 02:05:49",
+    "artist": "林俊杰",
+    "album": "幸存者 • 如你",
+    "reason": "处理异常崩溃: module 'download_music' has no attribute 'append_to_walkthrough'",
+    "details": {}
+  },
+  {
+    "timestamp": "2026-09-04 02:10:28",
+    "artist": "林俊杰",
+    "album": "重拾·快乐",
+    "reason": "处理异常崩溃: module 'download_music' has no attribute 'append_to_walkthrough'",
+    "details": {}
+  },
+  {
+    "timestamp": "2026-09-04 02:15:50",
+    "artist": "陈奕迅",
+    "album": "Special Thanks To...",
+    "reason": "处理异常崩溃: module 'download_music' has no attribute 'append_to_walkthrough'",
+    "details": {}
+  },
+  {
+    "timestamp": "2026-09-04 02:19:39",
+    "artist": "陈奕迅",
+    "album": "黑白灰",
+    "reason": "处理异常崩溃: module 'download_music' has no attribute 'append_to_walkthrough'",
+    "details": {}
+  },
+  {
+    "timestamp": "2026-09-04 02:24:07",
+    "artist": "陈奕迅",
+    "album": "U87",
+    "reason": "处理异常崩溃: module 'download_music' has no attribute 'append_to_walkthrough'",
+    "details": {}
+  },
+  {
+    "timestamp": "2026-09-04 02:28:05",
+    "artist": "陈奕迅",
+    "album": "认了吧",
+    "reason": "处理异常崩溃: module 'download_music' has no attribute 'append_to_walkthrough'",
+    "details": {}
+  },
+  {
+    "timestamp": "2026-09-04 02:32:45",
+    "artist": "陈奕迅",
+    "album": "不想放手",
+    "reason": "处理异常崩溃: module 'download_music' has no attribute 'append_to_walkthrough'",
+    "details": {}
+  },
+  {
+    "timestamp": "2026-09-04 02:37:48",
+    "artist": "陈奕迅",
+    "album": "H³M",
+    "reason": "处理异常崩溃: module 'download_music' has no attribute 'append_to_walkthrough'",
+    "details": {}
+  },
+  {
+    "timestamp": "2026-09-04 02:42:18",
+    "artist": "陈奕迅",
+    "album": "上五樓的快活",
+    "reason": "处理异常崩溃: module 'download_music' has no attribute 'append_to_walkthrough'",
+    "details": {}
+  },
+  {
+    "timestamp": "2026-09-04 02:46:14",
+    "artist": "陈奕迅",
+    "album": "...3mm",
+    "reason": "处理异常崩溃: module 'download_music' has no attribute 'append_to_walkthrough'",
+    "details": {}
+  },
+  {
+    "timestamp": "2026-09-04 02:50:05",
+    "artist": "陈奕迅",
+    "album": "Rice & Shine",
+    "reason": "处理异常崩溃: module 'download_music' has no attribute 'append_to_walkthrough'",
+    "details": {}
+  },
+  {
+    "timestamp": "2026-09-04 02:56:47",
+    "artist": "陈奕迅",
+    "album": "Getting Ready",
+    "reason": "处理异常崩溃: module 'download_music' has no attribute 'append_to_walkthrough'",
+    "details": {}
+  },
+  {
+    "timestamp": "2026-09-04 02:59:48",
+    "artist": "陈奕迅",
+    "album": "CHIN UP!",
+    "reason": "处理异常崩溃: module 'download_music' has no attribute 'append_to_walkthrough'",
+    "details": {}
+  }
+]

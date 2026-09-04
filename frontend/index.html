@@ -10,12 +10,20 @@
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Serif+SC:wght@500;700&display=swap"
         rel="stylesheet">
     <!-- 引入 CSS -->
-    <link rel="stylesheet" href="src/css/style.css?v=12.52">
+    <link rel="stylesheet" href="src/css/style.css?v=20260904_1148">
     <link rel="stylesheet" href="src/css/user_system.css?v=12.52">
     <link rel="stylesheet" href="src/css/notion_compact.css?v=1.0">
+    <link rel="stylesheet" href="src/css/ambient_zen.css?v=20260904_1315">
 </head>
 
 <body>
+    <!-- 微动画环境氛围背景 (双态协同体系) -->
+    <div id="ambientBgContainer" class="ambient-bg-container">
+        <video id="ambientVideo" class="ambient-video" autoplay loop muted playsinline preload="auto">
+            <source src="src/assets/video/ocean.webm" type="video/webm">
+        </video>
+        <div class="ambient-vignette"></div>
+    </div>
 
     <div class="sidebar">
         <!-- 用户个人信息区域 -->
@@ -45,22 +53,35 @@
         <div class="list-container" id="artistList"></div>
         <div class="index-bar" id="indexBar"></div>
 
-        <!-- 本地上传按钮 -->
-        <div class="upload-section">
-            <input type="file" id="audioUpload" accept="audio/*" multiple style="display: none;">
-            <button class="upload-btn" onclick="document.getElementById('audioUpload').click()">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="17 8 12 3 7 8" />
-                    <line x1="12" y1="3" x2="12" y2="15" />
-                </svg>
-                上传本地音乐
+        <!-- 侧边栏底部微动背景切换 Dock (歌手最下方) -->
+        <div class="sidebar-ambient-dock" id="sidebarAmbientDock">
+            <button class="sidebar-ambient-btn" id="bgSwitchBtn" title="切换微动环境背景">
+                <span class="sb-amb-icon" id="sbAmbIcon">🌊</span>
+                <div class="sb-amb-info">
+                    <span class="sb-amb-title">微动环境背景</span>
+                    <span class="sb-amb-name" id="sbAmbCurrentName">深海荧光</span>
+                </div>
+                <span class="sb-amb-arrow">▲</span>
             </button>
-            <div class="uploaded-count" id="uploadedCount"></div>
+            <!-- 侧边栏浮动背景切换菜单 (向上弹出) -->
+            <div class="bg-switch-menu" id="bgSwitchMenu">
+                <div class="bg-menu-title">
+                    <span>微动画环境氛围</span>
+                    <span class="badge">双态协同</span>
+                </div>
+                <div class="bg-menu-items" id="bgMenuItems"></div>
+                <div class="bg-menu-divider"></div>
+                <div class="bg-menu-actions">
+                    <button class="bg-menu-zen-btn" id="zenModeQuickBtn" title="快捷键: Z">
+                        <span>✨ 立即进入屏保 (Z)</span>
+                    </button>
+                    <label class="bg-menu-zen-toggle" title="鼠标闲置18秒自动进入黑胶屏保">
+                        <input type="checkbox" id="autoZenCheckbox" checked>
+                        <span>闲置 18 秒进入屏保</span>
+                    </label>
+                </div>
+            </div>
         </div>
-
-        <!-- 设置按钮 已移除 -->
     </div>
 
     <div class="main-content">
@@ -241,14 +262,108 @@
         <audio id="audioPlayer" preload="auto"></audio>
     </div>
 
+    <!-- 黑胶沉浸屏保 / 禅意视听层 (Zen Screensaver) -->
+    <div id="zenOverlay" class="zen-overlay">
+        <!-- 顶部极简控制栏 -->
+        <header class="zen-top-bar">
+            <div class="zen-badge">
+                <span class="zen-dot"></span>
+                <span>MOODY · ZEN IMMERSION</span>
+            </div>
+            <!-- 场景快捷切换 Pills -->
+            <div class="zen-scene-pills" id="zenScenePills"></div>
+            <button class="zen-exit-btn" id="zenExitBtn" title="退出屏保 (Esc / Z)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+                <span>退出</span>
+            </button>
+        </header>
+
+        <!-- 中央视听主体 -->
+        <main class="zen-stage">
+            <!-- 左侧：精致旋转黑胶 -->
+            <div class="zen-vinyl-column">
+                <div class="zen-vinyl-assembly">
+                    <div class="zen-vinyl-disc" id="zenVinylDisc">
+                        <div class="zen-vinyl-grooves"></div>
+                        <div class="zen-vinyl-shine"></div>
+                        <div class="zen-vinyl-center">
+                            <img id="zenVinylCover" src="src/assets/images/vinyl/default-label.png" alt="Cover">
+                        </div>
+                        <div class="zen-vinyl-spindle"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：艺术曲目信息与流动大歌词 -->
+            <div class="zen-info-column">
+                <div class="zen-track-header">
+                    <div class="zen-meta-pill" id="zenTrackAlbum">MOODY ARCHIVE</div>
+                    <h1 class="zen-track-title" id="zenTrackTitle">Select a Track</h1>
+                    <h2 class="zen-track-artist" id="zenTrackArtist">Artist</h2>
+                </div>
+
+                <!-- 沉浸大歌词滚动区 -->
+                <div class="zen-lyrics-wrapper">
+                    <div class="zen-lyrics-container" id="zenLyricsContainer">
+                        <div class="zen-lyrics-empty">♪ 纯净音乐 · 静享流金时光 ♪</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 底部极简悬浮微控岛 (Minimal Floating Dock) -->
+        <footer class="zen-dock-container">
+            <div class="zen-floating-dock">
+                <!-- 进度条区 -->
+                <div class="zen-dock-progress">
+                    <span class="zen-time" id="zenCurrentTime">00:00</span>
+                    <div class="zen-progress-bar" id="zenProgressBar">
+                        <div class="zen-progress-fill" id="zenProgressFill"></div>
+                    </div>
+                    <span class="zen-time" id="zenDurationTime">00:00</span>
+                </div>
+
+                <div class="zen-dock-divider"></div>
+
+                <!-- 核心播放按钮群 -->
+                <div class="zen-dock-controls">
+                    <button class="zen-dock-btn" id="zenPrevBtn" title="上一首">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="19 20 9 12 19 4 19 20"></polygon>
+                            <line x1="5" y1="19" x2="5" y2="5"></line>
+                        </svg>
+                    </button>
+                    <button class="zen-dock-btn zen-dock-play" id="zenPlayPauseBtn" title="播放/暂停">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon id="zenPlayIcon" points="6 4 18 12 6 20 6 4"></polygon>
+                            <path id="zenPauseIcon" d="M6 4h4v16H6zm8 0h4v16h-4z" style="display:none;"></path>
+                        </svg>
+                    </button>
+                    <button class="zen-dock-btn" id="zenNextBtn" title="下一首">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="5 4 15 12 5 20 5 4"></polygon>
+                            <line x1="19" y1="5" x2="19" y2="19"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="zen-dock-hint">晃动鼠标随时互动 · 点击空白处或按 Esc 退出屏保</div>
+        </footer>
+    </div>
+
     <!-- 全局环境配置 (Single Source of Truth) -->
     <script src="src/js/config.js?v=1.0"></script>
     <script src="src/js/lyrics.js?v=12.58"></script>
     <script src="src/js/lazy-loader.js?v=12.58"></script>
     <script src="src/js/storage.js?v=12.58"></script>
     <script src="src/js/user_system.js?v=12.58"></script>
-    <script src="src/js/app.js?v=12.58"></script>
-    <script src="src/js/player.js?v=12.58"></script>
+    <script src="src/js/app.js?v=20260904_1340"></script>
+    <script src="src/js/player.js?v=20260904_1130"></script>
+    <!-- 微动画环境氛围与双态屏保模块 -->
+    <script src="src/js/ambient-bg.js?v=20260904_1315"></script>
     <!-- 引入雪花特效 (最后加载) -->
     <script src="src/js/snow.js"></script>
     <script>

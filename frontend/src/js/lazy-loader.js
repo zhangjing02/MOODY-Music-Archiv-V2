@@ -81,8 +81,13 @@ function loadImage(img) {
     }
 
     // [New] 增加对 API_BASE 的支持 (适配 MOODY V2 远程/离线模式)
-    if (!src.startsWith('http') && !src.startsWith('data:') && !src.startsWith('blob:') && typeof API_BASE !== 'undefined') {
-        src = src.startsWith('/') ? API_BASE + src : API_BASE + '/' + src;
+    if (!src.startsWith('http') && !src.startsWith('data:') && !src.startsWith('blob:')) {
+        if (src.startsWith('src/') || src.startsWith('/src/')) {
+            // 本地静态资源直接从当前站点的相对路径加载
+            src = src.startsWith('/') ? src : '/' + src;
+        } else if (typeof API_BASE !== 'undefined') {
+            src = src.startsWith('/') ? API_BASE + src : API_BASE + '/' + src;
+        }
     }
 
     // 添加加载中的样式

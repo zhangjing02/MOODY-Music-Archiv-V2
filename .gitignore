@@ -65,3 +65,9 @@ inject_test_data.py
 # 8. Cloudflare Wrangler 本地缓存与开发状态
 .wrangler/
 **/.wrangler/
+
+# 9. 本地下载缓存与大媒体文件 (防止推送数 GB 音视频资产)
+downloads/
+tmp/
+tools/downloaded_avatars/
+

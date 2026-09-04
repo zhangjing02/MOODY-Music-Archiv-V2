@@ -113,93 +113,107 @@ function extractSongTitle(filename: string): string {
   return name.trim();
 }
 
+interface MatchContext {
+  artistCache?: Map<string, number | null>;
+  albumCache?: Map<string, number | null>;
+  albumSongsCache?: Map<number, Array<{ id: number; title: string; file_path: string }>>;
+}
+
 /**
- * 智能匹配歌曲记录（使用 NormalizeTitle）
+ * 智能匹配歌曲记录（使用 NormalizeTitle 与内存上下文缓存）
  */
 async function findSongMatch(
   db: D1Database,
   artistName: string,
   albumTitle: string,
-  songTitle: string
+  songTitle: string,
+  ctx?: MatchContext
 ): Promise<{ song_id: number; title: string; file_path: string } | null> {
-  // 1. 查找艺人
-  const artistResult = await db
-    .prepare('SELECT id FROM artists WHERE name = ?')
-    .bind(artistName)
-    .first<{ id: number }>();
+  const artistCache = ctx?.artistCache;
+  const albumCache = ctx?.albumCache;
+  const albumSongsCache = ctx?.albumSongsCache;
 
-  if (!artistResult) {
+  // 1. 查找艺人 (优先查内存缓存，避免重复全表扫描)
+  let artistId: number | null | undefined = artistCache?.get(artistName);
+  if (artistId === undefined) {
+    const artistResult = await db
+      .prepare('SELECT id FROM artists WHERE name = ?')
+      .bind(artistName)
+      .first<{ id: number }>();
+    artistId = artistResult ? artistResult.id : null;
+    artistCache?.set(artistName, artistId);
+  }
+
+  if (!artistId) {
     return null; // 艺人不存在
   }
 
-  const artistId = artistResult.id;
+  // 2. 查找专辑（优先查内存缓存，支持繁简体模糊匹配）
+  const albumKey = `${artistId}_${albumTitle}`;
+  let albumId: number | null | undefined = albumCache?.get(albumKey);
 
-  // 2. 查找专辑（支持繁简体模糊匹配）
-  const albumTitleNorm = normalizeTitle(albumTitle);
+  if (albumId === undefined) {
+    const albumTitleNorm = normalizeTitle(albumTitle);
 
-  // 2.1 首先尝试精确匹配
-  let albumResult = await db
-    .prepare('SELECT id FROM albums WHERE artist_id = ? AND title = ?')
-    .bind(artistId, albumTitle)
-    .first<{ id: number }>();
+    // 2.1 首先尝试精确匹配
+    let albumResult = await db
+      .prepare('SELECT id FROM albums WHERE artist_id = ? AND title = ?')
+      .bind(artistId, albumTitle)
+      .first<{ id: number }>();
 
-  // 2.2 如果精确匹配失败，使用繁简体模糊匹配
-  if (!albumResult) {
-    const albums = await db
-      .prepare('SELECT id, title FROM albums WHERE artist_id = ?')
-      .bind(artistId)
-      .all<{ id: number; title: string }>();
+    // 2.2 如果精确匹配失败，使用繁简体模糊匹配
+    if (!albumResult) {
+      const albums = await db
+        .prepare('SELECT id, title FROM albums WHERE artist_id = ?')
+        .bind(artistId)
+        .all<{ id: number; title: string }>();
 
-    for (const album of albums.results) {
-      const dbTitleNorm = normalizeTitle(album.title);
-
-      // 完全相等或包含关系
-      if (dbTitleNorm === albumTitleNorm ||
-          dbTitleNorm.includes(albumTitleNorm) ||
-          albumTitleNorm.includes(dbTitleNorm)) {
-        albumResult = album;
-        break;
+      for (const album of albums.results) {
+        const dbTitleNorm = normalizeTitle(album.title);
+        if (dbTitleNorm === albumTitleNorm ||
+            dbTitleNorm.includes(albumTitleNorm) ||
+            albumTitleNorm.includes(dbTitleNorm)) {
+          albumResult = album;
+          break;
+        }
       }
     }
+
+    albumId = albumResult ? albumResult.id : null;
+    albumCache?.set(albumKey, albumId);
   }
 
-  if (!albumResult) {
+  if (!albumId) {
     return null; // 专辑不存在
   }
 
-  const albumId = albumResult.id;
-
-  // 3. 智能匹配歌曲
-  const songTitleNorm = normalizeTitle(songTitle);
-
-  // 3.1 首先尝试精确匹配
-  const exactMatch = await db
-    .prepare('SELECT id, title, file_path FROM songs WHERE album_id = ? AND title = ?')
-    .bind(albumId, songTitle)
-    .first<{ id: number; title: string; file_path: string }>();
-
-  if (exactMatch) {
-    return { song_id: exactMatch.id, title: exactMatch.title, file_path: exactMatch.file_path };
+  // 3. 智能匹配歌曲 (优先从专辑曲目缓存中比对，整专仅读一次歌曲列表)
+  let songsList = albumSongsCache?.get(albumId);
+  if (!songsList) {
+    const songsRes = await db
+      .prepare('SELECT id, title, file_path FROM songs WHERE album_id = ?')
+      .bind(albumId)
+      .all<{ id: number; title: string; file_path: string }>();
+    songsList = songsRes.results || [];
+    albumSongsCache?.set(albumId, songsList);
   }
 
-  // 3.2 模糊匹配：遍历专辑下所有歌曲，使用 NormalizeTitle 匹配
-  const songs = await db
-    .prepare('SELECT id, title, file_path FROM songs WHERE album_id = ?')
-    .bind(albumId)
-    .all<{ id: number; title: string; file_path: string }>();
+  const songTitleNorm = normalizeTitle(songTitle);
 
-  for (const song of songs.results) {
+  // 3.1 内存精确比对
+  for (const song of songsList) {
+    if (song.title === songTitle) {
+      return { song_id: song.id, title: song.title, file_path: song.file_path };
+    }
+  }
+
+  // 3.2 内存模糊比对（完全归一化或包含）
+  for (const song of songsList) {
     const dbTitleNorm = normalizeTitle(song.title);
-
-    // 匹配规则：
-    // 1. 完全相等
     if (dbTitleNorm === songTitleNorm) {
       return { song_id: song.id, title: song.title, file_path: song.file_path };
     }
-
-    // 2. 包含关系（文件名包含名录歌名，或名录歌名包含文件名）
     if (songTitleNorm.includes(dbTitleNorm) || dbTitleNorm.includes(songTitleNorm)) {
-      // 避免太短的匹配
       if (dbTitleNorm.length >= 2 && songTitleNorm.length >= 2) {
         return { song_id: song.id, title: song.title, file_path: song.file_path };
       }
@@ -252,6 +266,13 @@ export async function handleUpload(
     let unmatchedCount = 0;
 
     // 2. 逐个处理文件
+    // 初始化批量上传内存匹配缓存上下文
+    const matchCtx: MatchContext = {
+      artistCache: new Map(),
+      albumCache: new Map(),
+      albumSongsCache: new Map(),
+    };
+
     for (let i = 0; i < validFiles.length; i++) {
       const file = validFiles[i];
       const filename = file.name;
@@ -266,8 +287,8 @@ export async function handleUpload(
         console.log(`  [${i + 1}/${validFiles.length}] 处理: ${filename} -> 从文件名提取="${songTitle}"`);
       }
 
-      // 智能匹配歌曲记录
-      const match = await findSongMatch(env.DB, artistName, albumTitle, songTitle);
+      // 智能匹配歌曲记录（复用 matchCtx 内存缓存，避免重复全表扫描）
+      const match = await findSongMatch(env.DB, artistName, albumTitle, songTitle, matchCtx);
 
       if (!match) {
         // 调试：输出归一化后的结果

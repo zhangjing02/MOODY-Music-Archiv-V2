@@ -298,6 +298,7 @@ function initUploader() {
             if (fObj.status === 'waiting') statusHtml = '<span class="status-label status-waiting">等待中</span>';
             else if (fObj.status === 'uploading') statusHtml = `<span class="status-label status-uploading">上传中 ${fObj.progress || 0}%</span>`;
             else if (fObj.status === 'success') statusHtml = '<span class="status-label status-success">成功</span>';
+            else if (fObj.status === 'warning') statusHtml = `<span class="status-label" style="background:#e67e22;color:#fff;padding:2px 8px;border-radius:4px;font-size:12px;" title="${fObj.error || ''}">未匹配名录</span>`;
             else if (fObj.status === 'error') statusHtml = `<span class="status-label status-error">失败: ${fObj.error || ''}</span>`;
 
             el.innerHTML = `
@@ -310,6 +311,38 @@ function initUploader() {
             fileListEl.appendChild(el);
         });
         btnUpload.disabled = pendingFiles.length === 0 || pendingFiles.some(f => f.status === 'uploading');
+    }
+
+    // 从文件名智能解析 (兼容: 歌名-歌手-专辑、歌名 歌手 专辑、歌名-歌手 专辑等混合格式)
+    function parseSongFilename(filename) {
+        let name = filename.replace(/\.(mp3|flac|lrc)$/i, '').trim();
+        name = name.replace(/^\d+[\.\s\-_]*/, ''); // 移除开头的序号如 01.
+
+        // 1. 优先尝试按连字符 '-' 分割
+        let parts = name.split('-').map(p => p.trim()).filter(Boolean);
+
+        // 如果按 '-' 分割只有2段，检查第二段是否包含空格（例如: "牛仔很忙" - "周杰伦 我很忙"）
+        if (parts.length === 2) {
+            const subParts = parts[1].split(/\s+/).map(p => p.trim()).filter(Boolean);
+            if (subParts.length >= 2) {
+                return { title: parts[0], artist: subParts[0], album: subParts.slice(1).join(' ') };
+            }
+        }
+
+        // 如果连字符少于3段，尝试纯空格分割（例如: "彩虹 周杰伦 我很忙"）
+        if (parts.length < 3) {
+            const spaceParts = name.split(/\s+/).map(p => p.trim()).filter(Boolean);
+            if (spaceParts.length >= 3) {
+                parts = spaceParts;
+            }
+        }
+
+        if (parts.length >= 3) {
+            return { title: parts[0], artist: parts[1], album: parts.slice(2).join(' ') };
+        } else if (parts.length === 2) {
+            return { title: parts[0], artist: parts[1], album: '' };
+        }
+        return { title: name, artist: '', album: '' };
     }
 
     async function handleFiles(files) {
@@ -357,12 +390,24 @@ function initUploader() {
         return new Promise((resolve) => {
             const formData = new FormData();
             formData.append('files', fObj.file);
-            if (artist) formData.append('artistOverride', artist);
-            if (album) formData.append('albumOverride', album);
-            // 发送标题信息（优先级高于文件名）
-            if (fObj.title) {
-                formData.append('titleOverride', fObj.title);
-                console.log(`📤 使用标题标签: "${fObj.title}"`);
+
+            // 智能从文件名解析歌手、专辑（当顶部输入框留空时）
+            let targetArtist = artist;
+            let targetAlbum = album;
+            let targetTitle = fObj.title;
+
+            if (!targetArtist || !targetAlbum) {
+                const parsed = parseSongFilename(fObj.file.name);
+                if (!targetArtist && parsed.artist) targetArtist = parsed.artist;
+                if (!targetAlbum && parsed.album) targetAlbum = parsed.album;
+                if (!targetTitle && parsed.title) targetTitle = parsed.title;
+            }
+
+            if (targetArtist) formData.append('artistOverride', targetArtist);
+            if (targetAlbum) formData.append('albumOverride', targetAlbum);
+            if (targetTitle) {
+                formData.append('titleOverride', targetTitle);
+                console.log(`📤 上传使用参数: 标题="${targetTitle}", 歌手="${targetArtist}", 专辑="${targetAlbum}"`);
             }
 
             const xhr = new XMLHttpRequest();
@@ -381,7 +426,13 @@ function initUploader() {
                 try { data = JSON.parse(xhr.responseText); } catch(e) { data = { message: "非 JSON 响应" }; }
 
                 if (xhr.status >= 200 && xhr.status < 300 && data.code === 200) {
-                    fObj.status = 'success';
+                    const detail = data.data?.details?.[0];
+                    if (detail && detail.match === false) {
+                        fObj.status = 'warning';
+                        fObj.error = detail.message || '未匹配到名录歌曲';
+                    } else {
+                        fObj.status = 'success';
+                    }
                     // 显示详细的上传结果
                     if (data.data && data.data.details) {
                         console.log('上传详情:', data.data.details);

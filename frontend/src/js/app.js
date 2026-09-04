@@ -578,7 +578,7 @@ function renderLocalMusicView() {
                 <td colspan="3" style="text-align:center; padding:40px; color:#555;">
                     <div style="font-size:48px; margin-bottom:10px;">🎵</div>
                     <div>还没有本地音乐</div>
-                    <div style="font-size:0.85rem; margin-top:10px;">点击下方"上传本地音乐"按钮添加歌曲</div>
+                    <div style="font-size:0.85rem; margin-top:10px;">暂无本地音频文件</div>
                 </td>
             </tr>
         `;
@@ -946,18 +946,35 @@ async function initApp() {
         return; // 防止未清理完就执行后续逻辑
     }
 
-    // 1. 从后端加载轻量化骨架 (仅限艺人) - [V13.0 Speedup]
+    // 清理旧版可能遗留的临时缓存
     try {
-        const skeletonResponse = await fetch(`${API_BASE}/api/skeleton?light=true&t=${Date.now()}`);
-        if (skeletonResponse.ok) {
-            const res = await skeletonResponse.json();
-            allArtistsData = (res.data && res.data.artists) ? res.data.artists : (res.data || []);
+        Object.keys(sessionStorage).forEach(k => {
+            if (k.startsWith('moody_artist_')) sessionStorage.removeItem(k);
+        });
+    } catch (e) {}
 
-            if (allArtistsData.length === 0) {
-                console.warn('[MOODY] 数据库骨架为空。请确保已执行过初始扫描。');
-                dom.vMeta.innerHTML = '<span style="color:var(--accent)">无名录数据</span> - 请执行治理接口';
-            } else {
-                console.log(`[MOODY] 已快速载入 ${allArtistsData.length} 位艺人骨架`);
+    // 1. 从后端加载轻量化骨架 (仅限艺人) - [V13.0 Speedup + D1 Quota Fix]
+    try {
+        // [D1 Quota Fix] 优先使用 sessionStorage 缓存，同一会话内不重复拉取骨架数据
+        const cachedSkeleton = sessionStorage.getItem('moody_skeleton_cache');
+        if (cachedSkeleton) {
+            allArtistsData = JSON.parse(cachedSkeleton);
+            console.log(`[MOODY] 骨架数据命中会话缓存: ${allArtistsData.length} 位艺人 (节省 D1 读取)`);
+        } else {
+            // [D1 Quota Fix] 移除 &t=${Date.now()} 缓存击穿，允许 Cloudflare Edge 缓存
+            const skeletonResponse = await fetch(`${API_BASE}/api/skeleton?light=true`);
+            if (skeletonResponse.ok) {
+                const res = await skeletonResponse.json();
+                allArtistsData = (res.data && res.data.artists) ? res.data.artists : (res.data || []);
+
+                if (allArtistsData.length > 0) {
+                    // 存入 sessionStorage 供后续刷新复用
+                    try { sessionStorage.setItem('moody_skeleton_cache', JSON.stringify(allArtistsData)); } catch (e) {}
+                    console.log(`[MOODY] 已快速载入 ${allArtistsData.length} 位艺人骨架`);
+                } else {
+                    console.warn('[MOODY] 数据库骨架为空。请确保已执行过初始扫描。');
+                    dom.vMeta.innerHTML = '<span style="color:var(--accent)">无名录数据</span> - 请执行治理接口';
+                }
             }
         }
     } catch (error) {
@@ -1051,8 +1068,11 @@ async function initApp() {
     filterAndRender();
     preloadArtistImages();
 
-    // [V3.0] 实现防抖搜索与后端全局检索
+    // [V3.0 + D1 Quota Fix] 实现防抖搜索与后端全局检索（含缓存与最小长度保护）
     let searchTimeout = null;
+    const searchResultCache = new Map(); // [D1 Quota Fix] 搜索结果缓存 (key -> {data, ts})
+    const SEARCH_CACHE_TTL = 60000; // 60秒缓存有效期
+
     dom.search.addEventListener('input', (e) => {
         const query = e.target.value.trim();
         viewState.search = query.toLowerCase();
@@ -1070,20 +1090,41 @@ async function initApp() {
             return;
         }
 
-        // 2. 防抖处理
+        // [D1 Quota Fix] 最少输入 2 个字符才发起后端搜索，避免单字符触发全表扫描
+        if (query.length < 2) {
+            return;
+        }
+
+        // 2. 防抖处理 [D1 Quota Fix] 从 300ms 增加到 500ms
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(async () => {
             try {
+                // [D1 Quota Fix] 优先检查缓存
+                const cacheKey = query.toLowerCase();
+                const cached = searchResultCache.get(cacheKey);
+                if (cached && (Date.now() - cached.ts) < SEARCH_CACHE_TTL) {
+                    console.log(`[Search] 命中缓存: "${query}" (节省 D1 读取)`);
+                    renderSearchResults(cached.data);
+                    return;
+                }
+
                 const response = await fetch(`${API_BASE}/api/search?q=${encodeURIComponent(query)}`);
                 const res = await response.json();
 
                 if (response.ok && res.code === 200) {
+                    // 存入缓存
+                    searchResultCache.set(cacheKey, { data: res.data, ts: Date.now() });
+                    // 清理过期缓存项（最多保留 50 条）
+                    if (searchResultCache.size > 50) {
+                        const oldest = searchResultCache.keys().next().value;
+                        searchResultCache.delete(oldest);
+                    }
                     renderSearchResults(res.data);
                 }
             } catch (error) {
                 console.error('[Search] 后端检索失败:', error);
             }
-        }, 300);
+        }, 500);
     });
 
     /**
@@ -1436,20 +1477,23 @@ function renderSidebar(data) {
             dom.list.appendChild(groupHeader);
         }
 
-        item.onclick = () => {
-            viewState.viewMode = 'artist'; // 显式切换视图模式
-            showArtistView();
-            selectArtist(originalIdx);
-            // 移除焦点，防止出现光标
+        item.dataset.id = s.id || '';
+        item.dataset.name = s.name || '';
+
+        item.onclick = (e) => {
+            e.stopPropagation();
+            viewState.viewMode = 'artist';
+            selectArtist(s);
             item.blur();
             if (document.activeElement) {
                 document.activeElement.blur();
             }
         };
-        // [Modified] 智能头像系统：优先使用已验证图片或非默认图片，否则使用高质感字母头像
+        // [Modified] 智能头像系统：优先使用真实明星头像，否则优雅降级为高质感字母头像
         const hasCustomAvatar = s.avatar && !s.avatar.includes('default.png') && !s.avatar.includes('landing_cover.png');
         const isVariety = s.category === '音乐综艺';
-        const hasVerifiedAvatar = s.verifiedAvatar || s.name === '周杰伦' || hasCustomAvatar;
+        const rawArtistId = (s.id || '').toString().replace(/\D/g, '');
+        const localAvatar = rawArtistId ? `/src/assets/images/avatars/artists/artist_${rawArtistId}.jpg` : null;
 
         let avatarHtml;
         if (isVariety) {
@@ -1472,10 +1516,14 @@ function renderSidebar(data) {
                 avatarHtml = `<div class="a-img a-letter-avatar" style="background: ${vColor}">${getInitials(s.name)}</div>`;
             }
         }
-        else if (hasVerifiedAvatar && s.avatar) {
+        else if (hasCustomAvatar) {
             const avatarUrl = s.avatar.startsWith('http') ? s.avatar : (s.avatar.startsWith('/') ? API_BASE + s.avatar : API_BASE + '/' + s.avatar);
             avatarHtml = `<img data-src="${avatarUrl}" class="a-img" alt="${s.name}">`;
-        } else {
+        }
+        else if (localAvatar) {
+            avatarHtml = `<img data-src="${localAvatar}" class="a-img" alt="${s.name}">`;
+        }
+        else {
             avatarHtml = `<div class="a-img a-letter-avatar" style="background: ${getAvatarColor(s.name)}">${getInitials(s.name)}</div>`;
         }
 
@@ -1687,57 +1735,151 @@ const scrollToGroupAt = (clientX, clientY) => {
     }
 };
 
-async function selectArtist(idx) {
-    viewState.sIdx = idx;
+// ==================== 骨架屏高级流光渲染 ====================
+function renderTableSkeleton(count = 8) {
+    const widths = ['52%', '38%', '65%', '46%', '58%', '34%', '48%', '42%'];
+    let html = '';
+    for (let i = 0; i < count; i++) {
+        const w = widths[i % widths.length];
+        const numStr = String(i + 1).padStart(2, '0');
+        html += `
+            <tr class="st-row skeleton-row">
+                <td class="st-cell st-num">${numStr}</td>
+                <td class="st-cell st-title">
+                    <div class="skeleton-title-wrap">
+                        <div class="skeleton-shimmer skeleton-song-name" style="width: ${w};"></div>
+                        <div class="skeleton-shimmer skeleton-badge"></div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+    dom.vSongs.innerHTML = html;
+}
+
+function renderTabsSkeleton(count = 5) {
+    const widths = [90, 115, 75, 100, 125];
+    let html = '';
+    for (let i = 0; i < count; i++) {
+        html += `<div class="skeleton-tab-pill" style="width: ${widths[i % widths.length]}px;"></div>`;
+    }
+    dom.vTabs.innerHTML = html;
+}
+
+async function selectArtist(target) {
+    let artist = null;
+    let idx = -1;
+
+    if (typeof target === 'object' && target !== null) {
+        artist = target;
+        idx = allArtistsData.findIndex(a => a.id === artist.id || a.name === artist.name);
+    } else if (typeof target === 'number') {
+        idx = target;
+        artist = allArtistsData[idx];
+    }
+
+    if (!artist) {
+        console.warn('[MOODY] selectArtist 未找到对应艺人:', target);
+        return;
+    }
+
+    if (viewState.sIdx === idx && viewState.viewMode === 'artist') return;
+
+    viewState.sIdx = idx >= 0 ? idx : allArtistsData.indexOf(artist);
     viewState.aIdx = 0;
+    viewState.viewMode = 'artist';
 
-    const artist = allArtistsData[idx];
-    if (!artist) return;
-
-    // [V3.0] 移动端点击歌手后自动收起侧边栏
+    // 移动端点击歌手后自动收起侧边栏
     if (document.body.classList.contains('sidebar-open')) {
         document.body.classList.remove('sidebar-open');
     }
 
-    // [V13.0] 按需详情加载 (Lazy Detail Fetching)
+    // 1. 立即激活侧边栏高亮 (零延迟响应)
+    document.querySelectorAll('.artist-item').forEach(el => el.classList.remove('active'));
+    const matchedEl = dom.list.querySelector(`.artist-item[data-id="${artist.id}"]`) ||
+                      dom.list.querySelector(`.artist-item[data-name="${artist.name}"]`);
+    if (matchedEl) matchedEl.classList.add('active');
+
+    // 2. 立即退出欢迎界面，展示高级流光骨架屏
+    dom.vCover.style.display = 'block';
+    dom.vTitle.textContent = artist.name;
+    dom.vMeta.textContent = `${artist.name} · 正在读取专辑名录...`;
+    renderTabsSkeleton(5);
+    renderTableSkeleton(8);
+
+    // 3. 严格直连真实后台 API 拉取该艺人的实时专辑与歌曲数据
+    let lastErr = null;
     if (!artist.albums || artist.albums.length === 0) {
-        console.log(`[MOODY] 正在按需抓取 [${artist.name}] 的专辑名录...`);
-        try {
-            // [V14.0] 优先使用 ID 精确查询，防止重名导致数据错乱
-            const artistIdRaw = (artist.id || "").toString().replace(/\D/g, '');
-            // [V14.1] 本地开发环境代理修正
-            const res = await fetch(`${API_BASE}/api/songs?artistId=${artistIdRaw}&artist=${encodeURIComponent(artist.name)}`);
-            if (res.ok) {
-                const json = await res.json();
-                const detailData = json.data && json.data.length > 0 ? json.data[0] : null;
-                if (detailData && detailData.albums) {
-                    artist.albums = detailData.albums;
-                    console.log(`✓ [${artist.name}] 详情已补全，共 ${artist.albums.length} 张专辑`);
+        const artistIdRaw = (artist.id || "").toString().replace(/\D/g, '');
+        const targetUrl = `${API_BASE}/api/songs?artistId=${artistIdRaw}&artist=${encodeURIComponent(artist.name)}`;
+
+        // [D1 Quota Fix] 仅在网络错误/非200状态时重试，HTTP 200 返回空专辑是合法状态不重试
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+                const res = await fetch(targetUrl);
+                if (res.ok) {
+                    const json = await res.json();
+                    const detailData = json.data && json.data.length > 0 ? json.data[0] : null;
+                    if (detailData && detailData.albums && detailData.albums.length > 0) {
+                        artist.albums = detailData.albums;
+                        console.log(`✓ 真实后台实时名录已同步 [${artist.name}]: 共 ${artist.albums.length} 张专辑`);
+                    } else {
+                        console.log(`[MOODY] ${artist.name}: 后台返回空专辑列表 (该艺人可能暂无专辑数据)`);
+                    }
+                    lastErr = null;
+                    break; // [D1 Quota Fix] HTTP 200 无论数据是否为空都不重试
+                } else {
+                    const errData = await res.json().catch(() => null);
+                    lastErr = errData?.message || `后台服务返回 HTTP ${res.status}`;
                 }
+            } catch (e) {
+                lastErr = e.message || '网络连接异常';
             }
-        } catch (e) {
-            console.error('[MOODY] 详情抓取失败:', e);
+
+            if (attempt < 3 && lastErr) {
+                await new Promise(r => setTimeout(r, attempt * 300));
+            }
+        }
+
+        if (lastErr && (!artist.albums || artist.albums.length === 0)) {
+            console.warn(`[MOODY] 真实后台拉取失败: ${lastErr}`);
         }
     }
 
-    // 更新封面预览
-    if (artist.albums && artist.albums[0]) {
+    // 4. 数据就绪后，渲染专辑与曲目
+    if (artist.albums && artist.albums.length > 0) {
         const firstAlbum = artist.albums[0];
-        if (dom.vCover) {
+        if (dom.vCover && firstAlbum.cover) {
             dom.vCover.style.opacity = '1';
             dom.vCover.classList.remove('lazy-loading');
             dom.vCover.src = firstAlbum.cover.startsWith('http') ? firstAlbum.cover : (firstAlbum.cover.startsWith('/') ? encodeURI(firstAlbum.cover) : firstAlbum.cover);
         }
+
+        updateView();
+    } else {
+        dom.vMeta.textContent = `${artist.name} · 后台接口连接受阻`;
+        const isD1Limit = lastErr && lastErr.includes('daily row read limit');
+        const errDesc = isD1Limit
+            ? 'Cloudflare D1 每日免费读取额度已超限（500万次读取限制），请等待明日配额重置或升级计划。'
+            : (lastErr || '未能成功拉取数据');
+        dom.vSongs.innerHTML = `
+            <tr>
+                <td colspan="2" style="text-align:center; padding:60px 20px; color:#888">
+                    <div style="font-size:1.1rem; color:#f59e0b; margin-bottom:8px;">⚠️ 远端后台接口暂时受阻</div>
+                    <div style="font-size:0.85rem; color:#aaa; max-width:480px; margin:0 auto 16px auto; line-height:1.6;">
+                        ${errDesc}
+                    </div>
+                    <a href="javascript:void(0)" onclick="selectArtist(${viewState.sIdx})" style="display:inline-block; padding:6px 18px; background:rgba(212,175,55,0.15); border:1px solid rgba(212,175,55,0.3); border-radius:6px; color:var(--accent); text-decoration:none; font-size:0.85rem;">点击重新拉取</a>
+                </td>
+            </tr>
+        `;
     }
 
-    filterAndRender();
-    updateView();
-
-    // [V15.0] 自动滚动到侧边栏选中的艺人
+    // 自动滚动到侧边栏选中的艺人
     requestAnimationFrame(() => {
         const activeItem = dom.list.querySelector('.artist-item.active');
         if (activeItem) {
-            activeItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
     });
 
@@ -1790,7 +1932,7 @@ async function updateView() {
         dom.vCover.src = 'src/assets/images/vinyl_default.png';
         dom.vTitle.textContent = '暂无专辑';
         dom.vYear.textContent = '未知年份';
-        dom.vTracks.innerHTML = '<div class="empty-state">尚未收录该歌手的任何专辑或歌曲，请先上传资源。</div>';
+        dom.vTracks.innerHTML = '<div class="empty-state">尚未收录该歌手的任何专辑或歌曲。</div>';
         dom.albumTitle.textContent = '暂无专辑';
         dom.albumInfo.textContent = `${artist.name} · 0 Tracks`;
         return;
@@ -1844,23 +1986,35 @@ async function updateView() {
 
     dom.vTitle.textContent = album.title;
 
-    // [V12.56] 异步拉取该专辑下的最新歌曲清单 (数据源归一化)
-    dom.vSongs.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:40px; color:#666">正在获取曲目清单...</td></tr>';
+    // 优先使用内存中已拉取的歌曲清单（极速秒开且防止因网络抖动清空歌曲）
+    let currentSongs = (album.songs && album.songs.length > 0) ? [...album.songs] : [];
 
-    let currentSongs = [];
-    try {
-        const response = await fetch(`${API_BASE}/api/songs?artist=${encodeURIComponent(artist.name)}&album=${encodeURIComponent(album.title)}`);
-        const res = await response.json();
-        if (response.ok && res.code === 200 && res.data && res.data.length > 0) {
-            // 后端优化：如果只传了 album 参数，GetData 应该直接返回该专辑下的歌曲
-            // 我们的后端目前返回的是 []LibraryArtist，需要解包
-            const artistsRes = res.data;
-            if (artistsRes.length > 0 && artistsRes[0].albums.length > 0) {
-                currentSongs = artistsRes[0].albums[0].songs || [];
+    // [D1 Quota Fix] 仅在内存中无歌曲数据时才发起网络请求，避免冗余全表扫描
+    if (currentSongs.length === 0) {
+        renderTableSkeleton(6);
+        try {
+            // [D1 Quota Fix] 使用 artistId 参数确保后端走索引查询，而非 artist name 的 LIKE 全表扫描
+            const artistIdRaw = (artist.id || "").toString().replace(/\D/g, '');
+            const response = await fetch(`${API_BASE}/api/songs?artistId=${artistIdRaw}&album=${encodeURIComponent(album.title)}`);
+            if (response.ok) {
+                const res = await response.json();
+                if (res.code === 200 && res.data && res.data.length > 0) {
+                    const artistsRes = res.data;
+                    let foundAlbum = null;
+                    if (artistsRes.length > 0 && artistsRes[0].albums) {
+                        foundAlbum = artistsRes[0].albums.find(a => a.title === album.title) || artistsRes[0].albums[0];
+                    }
+                    if (foundAlbum && foundAlbum.songs && foundAlbum.songs.length > 0) {
+                        currentSongs = foundAlbum.songs;
+                        album.songs = currentSongs;
+                    }
+                }
             }
+        } catch (e) {
+            console.warn('[MOODY] 异步获取歌曲接口波动，保持已有歌曲列表:', e);
         }
-    } catch (e) {
-        console.error('[MOODY] 异步获取歌曲失败:', e);
+    } else {
+        console.log(`[MOODY] 专辑 "${album.title}" 歌曲命中内存缓存 (${currentSongs.length} 首，节省 D1 读取)`);
     }
 
     dom.vMeta.textContent = `${artist.name} · ${album.year} · ${currentSongs.length} Tracks`;
@@ -1870,7 +2024,7 @@ async function updateView() {
 
     dom.vSongs.innerHTML = '';
     if (currentSongs.length === 0) {
-        dom.vSongs.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:40px; color:#666">此专辑暂无名录数据</td></tr>';
+        dom.vSongs.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:40px; color:#666">此专辑暂无名录数据</td></tr>';
         return;
     }
 
@@ -1909,15 +2063,6 @@ async function updateView() {
                     ${songName}
                     <span class="song-source ${sourceClass}" title="${sourceTitle}">${sourceLabel}</span>
                 </span>
-            </td>
-            <td class="st-cell st-actions">
-                <button class="act-btn upload" onclick="uploadSongForTrack(event, '${songName.replace(/'/g, "\\'")}', '${artist.name.replace(/'/g, "\\'")}')" title="上传音频文件">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="17 8 12 3 7 8"/>
-                        <line x1="12" y1="3" x2="12" y2="15"/>
-                    </svg>
-                </button>
             </td>
         `;
 
