@@ -11,8 +11,11 @@
     'use strict';
 
     // ==================== 微动画素材配置 ====================
-    // 支持未来部署时自由切换 CDN / 远端对象存储 (如 'https://cdn.yourdomain.com/video/')
-    const VIDEO_BASE = window.AMBIENT_VIDEO_BASE_URL || 'src/assets/video/';
+    // 优先从生产环境云端服务器 / R2 存储加载动态屏保视频，离线或未就绪时自动平滑回退至本地 assets
+    const R2_AMBIENT_BASE = (typeof window !== 'undefined' && window.MOODY_CONFIG && window.MOODY_CONFIG.R2_BASE)
+        ? `${window.MOODY_CONFIG.R2_BASE}/ambient/`
+        : 'https://r2.changgepd.ccwu.cc/ambient/';
+    const VIDEO_BASE = (typeof window !== 'undefined' && window.AMBIENT_VIDEO_BASE_URL) || R2_AMBIENT_BASE;
 
     const AMBIENT_SCENES = {
         ocean: {
@@ -186,6 +189,23 @@
         dom.zenPlayIcon = document.getElementById('zenPlayIcon');
         dom.zenPauseIcon = document.getElementById('zenPauseIcon');
         dom.zenNextBtn = document.getElementById('zenNextBtn');
+
+        // 远端微动视频加载容错降级机制：若远端资源暂未上传或网络抖动，自动平滑回退至本地资源
+        if (dom.video) {
+            dom.video.addEventListener('error', function () {
+                const currentSrc = dom.video.src || '';
+                if (currentSrc.includes('r2.changgepd.ccwu.cc') || currentSrc.includes('storage/ambient')) {
+                    const filename = currentSrc.split('/').pop().split('?')[0];
+                    const localFallback = `src/assets/video/${filename}`;
+                    console.warn(`[Ambient] 远端微动素材加载受阻，平滑回退至本地资源: ${localFallback}`);
+                    dom.video.src = localFallback;
+                    dom.video.load();
+                    if (isZenMode) {
+                        dom.video.play().catch(() => {});
+                    }
+                }
+            });
+        }
     }
 
     /**
