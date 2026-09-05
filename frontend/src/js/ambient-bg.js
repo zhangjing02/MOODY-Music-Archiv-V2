@@ -53,10 +53,10 @@
             name: '日落暖阳',
             desc: '天台落日、温暖爵士光影与旋转黑胶唱机',
             icon: '🌅',
-            file: VIDEO_BASE + 'sunset_clean.webm',
-            localFile: 'src/assets/video/sunset_clean.webm',
-            fallbackFile: VIDEO_BASE + 'sunset_clean.mp4',
-            imageFallback: 'src/assets/images/sunset.jpg'
+            file: VIDEO_BASE + 'sunset_clean_v2.webm?v=20260905_2245',
+            localFile: 'src/assets/video/sunset_clean_v2.webm',
+            fallbackFile: VIDEO_BASE + 'sunset_clean_v2.mp4?v=20260905_2245',
+            imageFallback: 'src/assets/images/sunset_v2.jpg'
         },
         none: {
             id: 'none',
