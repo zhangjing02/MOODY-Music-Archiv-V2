@@ -432,21 +432,22 @@
                 source: audioEl,                // 直接传 <audio> 元素，库内部 createMediaElementSource
                 connectSpeakers: true,          // 同时接通扬声器
                 smoothing: 0.82,
-                mode: 2,                        // 1/6 八度频段，柱状图密度接近 YouTube
+                mode: 2,                        // 1/6 八度频段，柱状图密度与 YouTube 原版一致
                 minFreq: 30,
                 maxFreq: 11000,
-                barSpace: 0.35,
-                roundBars: true,                // 圆顶柱（库内部已正确处理，不会露小头）
-                fillAlpha: 0.8,
+                barSpace: 0.30,                 // 柱间距
+                roundBars: false,               // 关键：平齐柱身，落下时彻底归零，绝不漏出任何圆头或小点
+                showPeaks: false,               // 不显示浮动峰值帽
+                fillAlpha: 0.82,                // 半透明柔顺度
                 lineWidth: 0,
                 showScaleX: false,
                 showScaleY: false,
                 showBgColor: false,             // 背景透明
-                overlay: true,                  // 叠加在视频上
-                reflexRatio: 0,
+                overlay: true,                  // 叠加在视频画卷之上
+                reflexRatio: 0,                 // 无倒影
                 mirror: 0,
                 weightingFilter: 'D',           // D 加权，贴近人耳感知
-                gradient: 'moody-white',        // 稍后注册的自定义白色渐变
+                gradient: 'moody-white',        // 自定义纯白半透质感
             });
 
             // 注册自定义白色半透明渐变，匹配原版柔白质感
@@ -555,23 +556,17 @@
                 ? (target - _smoothedHeights[i]) * 0.4
                 : (target - _smoothedHeights[i]) * 0.15;
 
-            const bh = Math.max(2, _smoothedHeights[i]);
+            const bh = _smoothedHeights[i];
+            if (bh < 1.0) continue; // 关键：低于 1px 直接不绘制，彻底消除地面残留小点
             const x = i * (bw + SPACING);
             const y = H - bh;
-            const r = Math.min(bw / 2, bh / 2); // ← 关键修复：限制圆角不超过高度一半
 
             const grad = ctx.createLinearGradient(0, y, 0, H);
-            grad.addColorStop(0, playing ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.22)');
-            grad.addColorStop(0.6, playing ? 'rgba(255,255,255,0.40)' : 'rgba(255,255,255,0.12)');
-            grad.addColorStop(1, 'rgba(255,255,255,0.06)');
+            grad.addColorStop(0, playing ? 'rgba(255,255,255,0.80)' : 'rgba(255,255,255,0.22)');
+            grad.addColorStop(0.6, playing ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.12)');
+            grad.addColorStop(1, 'rgba(255,255,255,0.08)');
             ctx.fillStyle = grad;
-            ctx.beginPath();
-            if (ctx.roundRect) {
-                ctx.roundRect(x, y, bw, bh, [r, r, 0, 0]);
-            } else {
-                ctx.rect(x, y, bw, bh);
-            }
-            ctx.fill();
+            ctx.fillRect(x, y, bw, bh); // 平齐长方形柱体，与 YouTube 原版一致
         }
         ctx.restore();
     }
