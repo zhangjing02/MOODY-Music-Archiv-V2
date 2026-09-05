@@ -595,12 +595,12 @@ body.zen-active .zen-overlay {
 .zen-visualizer-container {
     position: fixed;
     left: 50%;
-    bottom: 85px;
+    bottom: 60px;
     transform: translateX(-50%);
-    width: 58vw;
-    max-width: 860px;
+    width: 44vw;
+    max-width: 780px;
     min-width: 280px;
-    height: 105px;
+    height: 110px;
     z-index: 35;
     pointer-events: none;
     display: flex;
@@ -615,13 +615,16 @@ body.zen-active .zen-overlay {
     display: block;
 }
 
-/* --- 6. 底部极简悬浮微控岛 (Minimal Floating Dock) --- */
+/* --- 6. 底部极简悬浮微控岛 (Minimal Floating Dock - 雅致左下对齐，彻底释放中央视听舞台) --- */
 .zen-dock-container {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
+    align-items: flex-start;
+    gap: 8px;
+    width: auto;
+    max-width: 540px;
+    padding-left: 45px;
+    padding-bottom: 10px;
     pointer-events: auto;
     z-index: 100;
     background: transparent !important;
@@ -776,9 +779,17 @@ body.zen-active .zen-overlay {
     .zen-overlay {
         padding: 20px;
     }
+    .zen-stage {
+        padding: 15px 0 0 0;
+    }
+    .zen-dock-container {
+        padding-left: 0;
+        align-items: center;
+        width: 100%;
+    }
     .zen-visualizer-container {
-        width: 84vw;
-        height: 75px;
-        bottom: 75px;
+        width: 90vw;
+        height: 70px;
+        bottom: 95px;
     }
 }

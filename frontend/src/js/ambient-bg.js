@@ -49,11 +49,12 @@
         sunset: {
             id: 'sunset',
             name: '日落暖阳',
-            desc: '天台晚霞与吉他慢调 (原版定制音频动效)',
+            desc: '天台落日、温暖爵士光影与旋转黑胶唱机',
             icon: '🌅',
-            type: 'image',
-            file: R2_AMBIENT_BASE + 'sunset.jpg',
-            fallback: 'src/assets/images/sunset.jpg'
+            file: VIDEO_BASE + 'sunset.webm',
+            localFile: 'src/assets/video/sunset.webm',
+            fallbackFile: VIDEO_BASE + 'sunset.mp4',
+            imageFallback: 'src/assets/images/sunset.jpg'
         },
         none: {
             id: 'none',
@@ -401,7 +402,7 @@
         }, duration);
     }
 
-    // ==================== 动态音频频谱可视化引擎 (Web Audio API) ====================
+    // ==================== 动态音频频谱可视化引擎 (Web Audio API · 录音室级柔顺化) ====================
     let audioCtx = null;
     let analyser = null;
     let sourceNode = null;
@@ -410,10 +411,12 @@
     let visualizerCtx = null;
     let isVisualizerRunning = false;
 
-    // 频谱参数 (48根纯白圆角跳动光柱，居中对齐中下部，与所有屏保场景统一联动)
+    // 频谱参数 (48根纯白圆角跳动光柱，柔顺阻尼与对数分频)
     const VIZ_BAR_COUNT = 48;
     const VIZ_BAR_SPACING = 3;
-    const VIZ_SENSITIVITY = 1.35;
+    const VIZ_SENSITIVITY = 1.32;
+    // 物理阻尼惯性状态数组 (平滑保存当前高度，彻底消除 60Hz 帧间抖颤)
+    let smoothedHeights = new Float32Array(VIZ_BAR_COUNT);
 
     function initAudioVisualizer() {
         if (audioCtx) {
@@ -432,7 +435,8 @@
             audioCtx = new AudioContext();
             analyser = audioCtx.createAnalyser();
             analyser.fftSize = 512;
-            analyser.smoothingTimeConstant = 0.82;
+            // 提高时间平滑系数至 0.88，消除高频底噪毛刺
+            analyser.smoothingTimeConstant = 0.88;
 
             if (!audio._sourceConnected) {
                 sourceNode = audioCtx.createMediaElementSource(audio);
@@ -442,7 +446,7 @@
             }
 
             freqDataArray = new Uint8Array(analyser.frequencyBinCount);
-            console.log('✓ 实时音频频谱引擎已就绪，直连播放器音频流');
+            console.log('✓ 实时音频频谱引擎已就绪 (对数分频+高斯滤波+物理阻尼)');
         } catch (err) {
             console.warn('[Visualizer] Web Audio 初始化提示:', err);
         }
@@ -507,24 +511,56 @@
 
         analyser.getByteFrequencyData(freqDataArray);
 
-        // 截取人耳最具节奏感的 180 个频段进行多组平均抽样
-        const usableBins = Math.min(freqDataArray.length, 180);
-        const step = Math.floor(usableBins / VIZ_BAR_COUNT);
+        // 1. 人耳听觉对数分频 (Logarithmic / Perceptual Frequency Mapping)
+        // 截取人耳最具节奏感的 210 个频段，低中频密集精细采样，高频柔和过渡
+        const usableBins = Math.min(freqDataArray.length, 210);
+        const rawHeights = new Float32Array(VIZ_BAR_COUNT);
+
+        for (let i = 0; i < VIZ_BAR_COUNT; i++) {
+            // 对数指数采样：使贝斯/人声/鼓点/吉他各具表现力
+            const logProgress = Math.pow(i / VIZ_BAR_COUNT, 1.35);
+            const startBin = Math.max(1, Math.floor(logProgress * (usableBins - 5)) + 1);
+            const span = Math.max(2, Math.floor((i + 1) * 0.18));
+            const endBin = Math.min(usableBins - 1, startBin + span);
+
+            let sum = 0;
+            let count = 0;
+            for (let b = startBin; b <= endBin; b++) {
+                sum += freqDataArray[b] || 0;
+                count++;
+            }
+            let val = count > 0 ? (sum / (count * 255.0)) : 0;
+
+            // 轻度非线性响应曲线，轻柔吉他与澎湃鼓点皆富呼吸感
+            val = Math.pow(val, 1.15) * VIZ_SENSITIVITY;
+            val = Math.min(1.0, Math.max(0.02, val));
+            rawHeights[i] = val * (height * 0.92);
+        }
+
+        // 2. 空间横向 3 点高斯平滑滤波 (消除频柱断层与孤立跳动)
+        const targetHeights = new Float32Array(VIZ_BAR_COUNT);
+        for (let i = 0; i < VIZ_BAR_COUNT; i++) {
+            const prev = i > 0 ? rawHeights[i - 1] : rawHeights[i];
+            const curr = rawHeights[i];
+            const next = i < VIZ_BAR_COUNT - 1 ? rawHeights[i + 1] : rawHeights[i];
+            targetHeights[i] = prev * 0.22 + curr * 0.56 + next * 0.22;
+        }
+
+        // 3. 时间维度物理阻尼惯性 (Attack 快速起跳, Decay 丝滑缓降, 彻底消除微小震动感)
         const totalSpacing = (VIZ_BAR_COUNT - 1) * VIZ_BAR_SPACING;
         const barWidth = Math.max(3, (width - totalSpacing) / VIZ_BAR_COUNT);
 
         for (let i = 0; i < VIZ_BAR_COUNT; i++) {
-            let sum = 0;
-            for (let j = 0; j < step; j++) {
-                sum += freqDataArray[i * step + j] || 0;
+            const target = targetHeights[i];
+            if (target > smoothedHeights[i]) {
+                // 快速冲顶 (Attack) 快速捕捉打击乐动态
+                smoothedHeights[i] += (target - smoothedHeights[i]) * 0.38;
+            } else {
+                // 丝滑缓降 (Decay) 类似物理重力阻尼，柔顺飘落
+                smoothedHeights[i] += (target - smoothedHeights[i]) * 0.14;
             }
-            let val = (sum / step) / 255.0;
 
-            // 非线性振幅提升，让轻柔乐句与澎湃鼓点皆有灵性跳动
-            val = Math.pow(val, 1.22) * VIZ_SENSITIVITY;
-            val = Math.min(1.0, Math.max(0.04, val));
-
-            const barHeight = Math.max(4, val * (height * 0.94));
+            const barHeight = Math.max(4, smoothedHeights[i]);
             const x = i * (barWidth + VIZ_BAR_SPACING);
             const y = height - barHeight;
 
@@ -555,14 +591,17 @@
         ctx.save();
         const totalSpacing = (VIZ_BAR_COUNT - 1) * VIZ_BAR_SPACING;
         const barWidth = Math.max(3, (width - totalSpacing) / VIZ_BAR_COUNT);
-        const time = Date.now() * 0.0025;
+        const time = Date.now() * 0.0016; // 慢速宁静呼吸
 
         for (let i = 0; i < VIZ_BAR_COUNT; i++) {
+            // 让现有高度平滑缓降过渡到闲置微动波浪，避免瞬间突变
+            const wave = (Math.sin(time * 1.8 + i * 0.18) * 0.5 + 0.5) * 6 + 5;
+            smoothedHeights[i] += (wave - smoothedHeights[i]) * 0.12;
+            const idleHeight = Math.max(4, smoothedHeights[i]);
             const x = i * (barWidth + VIZ_BAR_SPACING);
-            const idleHeight = Math.max(4, Math.sin(time + i * 0.22) * 5 + 7);
             const y = height - idleHeight;
 
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.30)';
             ctx.beginPath();
             if (ctx.roundRect) {
                 ctx.roundRect(x, y, barWidth, idleHeight, [barWidth / 2, barWidth / 2, 0, 0]);
