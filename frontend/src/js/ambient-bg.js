@@ -12,10 +12,12 @@
 
     // ==================== 微动画素材配置 ====================
     // 优先从生产环境云端服务器 / R2 存储加载动态屏保视频，离线或未就绪时自动平滑回退至本地 assets
+    const isLocalHost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
     const R2_AMBIENT_BASE = (typeof window !== 'undefined' && window.MOODY_CONFIG && window.MOODY_CONFIG.R2_BASE)
         ? `${window.MOODY_CONFIG.R2_BASE}/ambient/`
         : 'https://r2.changgepd.ccwu.cc/ambient/';
-    const VIDEO_BASE = (typeof window !== 'undefined' && window.AMBIENT_VIDEO_BASE_URL) || R2_AMBIENT_BASE;
+    // 本地开发模式下优先直读本地 assets/video，生产部署直连已剔除频谱的 R2 干净视频
+    const VIDEO_BASE = isLocalHost ? 'src/assets/video/' : ((typeof window !== 'undefined' && window.AMBIENT_VIDEO_BASE_URL) || R2_AMBIENT_BASE);
 
     const AMBIENT_SCENES = {
         ocean: {
@@ -51,9 +53,9 @@
             name: '日落暖阳',
             desc: '天台落日、温暖爵士光影与旋转黑胶唱机',
             icon: '🌅',
-            file: VIDEO_BASE + 'sunset.webm',
-            localFile: 'src/assets/video/sunset.webm',
-            fallbackFile: VIDEO_BASE + 'sunset.mp4',
+            file: VIDEO_BASE + 'sunset_clean.webm',
+            localFile: 'src/assets/video/sunset_clean.webm',
+            fallbackFile: VIDEO_BASE + 'sunset_clean.mp4',
             imageFallback: 'src/assets/images/sunset.jpg'
         },
         none: {
@@ -411,10 +413,10 @@
     let visualizerCtx = null;
     let isVisualizerRunning = false;
 
-    // 频谱参数 (52根纯白圆角跳动光柱，全画幅柔顺覆盖与等响度均衡补偿)
-    const VIZ_BAR_COUNT = 52;
-    const VIZ_BAR_SPACING = 3.5;
-    const VIZ_SENSITIVITY = 1.30;
+    // 频谱参数 (80根半透明纤细跳动光柱，全画幅柔顺覆盖，增强起伏感与温润半透质感)
+    const VIZ_BAR_COUNT = 80;
+    const VIZ_BAR_SPACING = 3.0;
+    const VIZ_SENSITIVITY = 1.35;
     // 物理阻尼惯性状态数组 (平滑保存当前高度，彻底消除 60Hz 帧间抖颤)
     let smoothedHeights = new Float32Array(VIZ_BAR_COUNT);
 
@@ -435,8 +437,8 @@
             audioCtx = new AudioContext();
             analyser = audioCtx.createAnalyser();
             analyser.fftSize = 512;
-            // 提高时间平滑系数至 0.88，消除高频底噪毛刺
-            analyser.smoothingTimeConstant = 0.88;
+            // 采用 0.80 时间常数，兼顾瞬态冲击力与平滑度，让音乐高低起伏更灵动
+            analyser.smoothingTimeConstant = 0.80;
 
             if (!audio._sourceConnected) {
                 sourceNode = audioCtx.createMediaElementSource(audio);
@@ -446,7 +448,7 @@
             }
 
             freqDataArray = new Uint8Array(analyser.frequencyBinCount);
-            console.log('✓ 实时音频频谱引擎已就绪 (对数分频+高斯滤波+物理阻尼)');
+            console.log('✓ 实时音频频谱引擎已就绪 (80柱纤细半透 + Gamma动态展开 + 物理阻尼)');
         } catch (err) {
             console.warn('[Visualizer] Web Audio 初始化提示:', err);
         }
@@ -519,9 +521,9 @@
         for (let i = 0; i < VIZ_BAR_COUNT; i++) {
             const p = i / (VIZ_BAR_COUNT - 1);
             // 对数指数分布：前半段呈现丰满低频律动，后半段呈现灵动的中高频
-            const logProgress = Math.pow(p, 1.25);
-            const startBin = Math.max(1, Math.floor(logProgress * (usableBins - 6)) + 1);
-            const span = Math.max(2, Math.floor(Math.pow(p, 0.75) * 6) + 2);
+            const logProgress = Math.pow(p, 1.30);
+            const startBin = Math.max(1, Math.floor(logProgress * (usableBins - 8)) + 1);
+            const span = Math.max(1, Math.floor(Math.pow(p, 0.75) * 4) + 1);
             const endBin = Math.min(usableBins - 1, startBin + span);
 
             let sum = 0;
@@ -532,37 +534,37 @@
             }
             let val = count > 0 ? (sum / (count * 255.0)) : 0;
 
-            // 高频等响度曲线补偿 (Treble Boost: 让人声、吉他清音及高频泛音充满活力，消除右侧平坠)
-            const eqBoost = 0.90 + Math.pow(p, 0.65) * 1.80;
+            // 动态等响度均衡补偿 (优雅的听觉加权，让中高频泛音充满活力，但不过度抬升导致平顶饱和)
+            const eqBoost = 0.85 + Math.pow(p, 0.70) * 1.65;
             val = val * eqBoost;
 
-            // 轻度非线性响应曲线，轻柔吉他与澎湃鼓点皆富呼吸感
-            val = Math.pow(Math.min(1.0, val), 1.12) * VIZ_SENSITIVITY;
-            val = Math.min(1.0, Math.max(0.02, val));
+            // 高动态对比度非线性展开 (Gamma 展开：低噪下沉，瞬态峰值突破，呈现出波澜壮阔的起伏感)
+            val = Math.pow(Math.min(1.0, val), 1.50) * VIZ_SENSITIVITY;
+            val = Math.min(0.96, Math.max(0.02, val));
             rawHeights[i] = val * (height * 0.92);
         }
 
-        // 2. 空间横向 3 点高斯平滑滤波 (消除频柱断层与孤立跳动)
+        // 2. 空间轻度滤波 (0.10 / 0.80 / 0.10 既保留各柱独立的音符起伏与山峰峡谷，又消除孤立闪烁)
         const targetHeights = new Float32Array(VIZ_BAR_COUNT);
         for (let i = 0; i < VIZ_BAR_COUNT; i++) {
             const prev = i > 0 ? rawHeights[i - 1] : rawHeights[i];
             const curr = rawHeights[i];
             const next = i < VIZ_BAR_COUNT - 1 ? rawHeights[i + 1] : rawHeights[i];
-            targetHeights[i] = prev * 0.22 + curr * 0.56 + next * 0.22;
+            targetHeights[i] = prev * 0.10 + curr * 0.80 + next * 0.10;
         }
 
         // 3. 时间维度物理阻尼惯性 (Attack 快速起跳, Decay 丝滑缓降, 彻底消除微小震动感)
         const totalSpacing = (VIZ_BAR_COUNT - 1) * VIZ_BAR_SPACING;
-        const barWidth = Math.max(3, (width - totalSpacing) / VIZ_BAR_COUNT);
+        const barWidth = Math.max(2.5, (width - totalSpacing) / VIZ_BAR_COUNT);
 
         for (let i = 0; i < VIZ_BAR_COUNT; i++) {
             const target = targetHeights[i];
             if (target > smoothedHeights[i]) {
                 // 快速冲顶 (Attack) 快速捕捉打击乐动态
-                smoothedHeights[i] += (target - smoothedHeights[i]) * 0.38;
+                smoothedHeights[i] += (target - smoothedHeights[i]) * 0.40;
             } else {
                 // 丝滑缓降 (Decay) 类似物理重力阻尼，柔顺飘落
-                smoothedHeights[i] += (target - smoothedHeights[i]) * 0.14;
+                smoothedHeights[i] += (target - smoothedHeights[i]) * 0.15;
             }
 
             const barHeight = Math.max(4, smoothedHeights[i]);
@@ -576,12 +578,13 @@
     function drawSingleBar(ctx, x, y, width, barHeight, totalHeight) {
         ctx.save();
         const grad = ctx.createLinearGradient(0, y, 0, totalHeight);
-        grad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
-        grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.72)');
-        grad.addColorStop(1, 'rgba(255, 255, 255, 0.22)');
+        // 原版温润半透明质感：顶部微亮柔白(0.65)，中部通透晶莹(0.38)，底部与露台暗部自然消融(0.08)
+        grad.addColorStop(0, 'rgba(255, 255, 255, 0.65)');
+        grad.addColorStop(0.55, 'rgba(255, 255, 255, 0.38)');
+        grad.addColorStop(1, 'rgba(255, 255, 255, 0.08)');
         ctx.fillStyle = grad;
-        ctx.shadowColor = 'rgba(255, 255, 255, 0.45)';
-        ctx.shadowBlur = 8;
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.25)';
+        ctx.shadowBlur = 3;
         ctx.beginPath();
         if (ctx.roundRect) {
             ctx.roundRect(x, y, width, barHeight, [width / 2, width / 2, 0, 0]);
@@ -595,18 +598,18 @@
     function drawIdleBars(ctx, width, height) {
         ctx.save();
         const totalSpacing = (VIZ_BAR_COUNT - 1) * VIZ_BAR_SPACING;
-        const barWidth = Math.max(3, (width - totalSpacing) / VIZ_BAR_COUNT);
+        const barWidth = Math.max(2.5, (width - totalSpacing) / VIZ_BAR_COUNT);
         const time = Date.now() * 0.0016; // 慢速宁静呼吸
 
         for (let i = 0; i < VIZ_BAR_COUNT; i++) {
             // 让现有高度平滑缓降过渡到闲置微动波浪，避免瞬间突变
-            const wave = (Math.sin(time * 1.8 + i * 0.18) * 0.5 + 0.5) * 6 + 5;
+            const wave = (Math.sin(time * 1.8 + i * 0.14) * 0.5 + 0.5) * 5 + 4;
             smoothedHeights[i] += (wave - smoothedHeights[i]) * 0.12;
-            const idleHeight = Math.max(4, smoothedHeights[i]);
+            const idleHeight = Math.max(3, smoothedHeights[i]);
             const x = i * (barWidth + VIZ_BAR_SPACING);
             const y = height - idleHeight;
 
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.30)';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
             ctx.beginPath();
             if (ctx.roundRect) {
                 ctx.roundRect(x, y, barWidth, idleHeight, [barWidth / 2, barWidth / 2, 0, 0]);
