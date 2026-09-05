@@ -756,8 +756,8 @@
 
         if (dom.zenTrackTitle) dom.zenTrackTitle.textContent = songTitle;
 
-        // 5. 同步时间与进度条
-        if (audio && audio.duration) {
+        // 5. 同步时间与进度条（拖动期间跳过，防止与拖拽视觉冲突）
+        if (audio && audio.duration && !dom._zenProgressDragging?.()) {
             const cur = audio.currentTime || 0;
             const dur = audio.duration || 0;
             if (dom.zenCurrentTime) dom.zenCurrentTime.textContent = formatTime(cur);
@@ -917,19 +917,88 @@
                 if (nextBtn) nextBtn.click();
             });
         }
+        }
 
-        // 进度条拖动/点击寻道
+        // 进度条拖动/点击寻道（支持鼠标拖拽 + 触摸）
         if (dom.zenProgressBar) {
-            dom.zenProgressBar.addEventListener('click', (e) => {
-                e.stopPropagation();
+            let zenIsDragging = false;
+            let zenSeekPercent = -1;
+
+            // 用于计算位置的公共函数
+            const calcZenPct = (clientX) => {
                 const rect = dom.zenProgressBar.getBoundingClientRect();
-                const clickX = e.clientX - rect.left;
-                const pct = Math.max(0, Math.min(1, clickX / rect.width));
+                return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+            };
+
+            // 拖动时实时更新进度条视觉
+            const updateZenFill = (pct) => {
+                if (dom.zenProgressFill) {
+                    dom.zenProgressFill.style.width = `${pct * 100}%`;
+                }
                 const audio = document.getElementById('audioPlayer');
-                if (audio && audio.duration) {
-                    audio.currentTime = pct * audio.duration;
+                if (audio && audio.duration && dom.zenCurrentTime) {
+                    dom.zenCurrentTime.textContent = formatTime(pct * audio.duration);
+                }
+            };
+
+            // --- 鼠标事件 ---
+            dom.zenProgressBar.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                zenIsDragging = true;
+                zenSeekPercent = calcZenPct(e.clientX);
+                updateZenFill(zenSeekPercent);
+                document.body.style.userSelect = 'none';
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (zenIsDragging) {
+                    zenSeekPercent = calcZenPct(e.clientX);
+                    updateZenFill(zenSeekPercent);
                 }
             });
+
+            document.addEventListener('mouseup', () => {
+                if (zenIsDragging) {
+                    zenIsDragging = false;
+                    document.body.style.userSelect = '';
+                    const audio = document.getElementById('audioPlayer');
+                    if (audio && audio.duration && zenSeekPercent >= 0) {
+                        audio.currentTime = zenSeekPercent * audio.duration;
+                    }
+                    zenSeekPercent = -1;
+                }
+            });
+
+            // --- 触摸事件 ---
+            dom.zenProgressBar.addEventListener('touchstart', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                zenIsDragging = true;
+                zenSeekPercent = calcZenPct(e.touches[0].clientX);
+                updateZenFill(zenSeekPercent);
+            }, { passive: false });
+
+            document.addEventListener('touchmove', (e) => {
+                if (zenIsDragging) {
+                    zenSeekPercent = calcZenPct(e.touches[0].clientX);
+                    updateZenFill(zenSeekPercent);
+                }
+            }, { passive: true });
+
+            document.addEventListener('touchend', () => {
+                if (zenIsDragging) {
+                    zenIsDragging = false;
+                    const audio = document.getElementById('audioPlayer');
+                    if (audio && audio.duration && zenSeekPercent >= 0) {
+                        audio.currentTime = zenSeekPercent * audio.duration;
+                    }
+                    zenSeekPercent = -1;
+                }
+            });
+
+            // 将 zenIsDragging 挂到 dom 上，供 syncZenStateWithPlayer 检测
+            dom._zenProgressDragging = () => zenIsDragging;
         }
 
         // --- 5. 全局键盘快捷键 ---
@@ -1000,7 +1069,17 @@
             });
         }
 
-        // --- 8. 智能节电：浏览器后台 Tab 切换时暂停微动背景 ---
+        // --- 8. 监听歌词异步加载完成事件，Zen 模式下立即重建歌词列表 ---
+        // 解决：歌词通过网络异步加载时，切歌瞬间 buildZenLyrics() 检测到空歌词后隐藏区域，
+        // 后续歌词加载完成却无人通知 Zen Mode 重绘的竞态问题。
+        window.addEventListener('moody:lyricsLoaded', (e) => {
+            if (isZenMode) {
+                console.log(`[Zen Lyrics] 收到歌词加载完成通知 (source: ${e.detail?.source})，重建 Zen 歌词列表`);
+                buildZenLyrics();
+            }
+        });
+
+        // --- 9. 智能节电：浏览器后台 Tab 切换时暂停微动背景 ---
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 if (dom.video) dom.video.pause();

@@ -542,6 +542,9 @@ function bindPlayerEvents() {
     if (player.progressContainer) {
         player.progressContainer.addEventListener('mousedown', (e) => {
             isDragging = true;
+            // 阻止文字选中等原生行为
+            e.preventDefault();
+            document.body.style.userSelect = 'none';
             handleProgressSeek(e);
         });
 
@@ -554,10 +557,36 @@ function bindPlayerEvents() {
         document.addEventListener('mouseup', () => {
             if (isDragging) {
                 isDragging = false;
-                const seekTime = (parseFloat(player.progressBar.style.width) / 100) * playerState.duration;
-                if (!isNaN(seekTime)) {
-                    player.audio.currentTime = seekTime;
+                document.body.style.userSelect = '';
+                // 使用 _seekPercent 精确跳转，避免读 DOM style 被 timeupdate 覆盖的问题
+                if (_seekPercent >= 0 && playerState.duration) {
+                    player.audio.currentTime = _seekPercent * playerState.duration;
                 }
+                // 重置，允许 timeupdate 继续刷新进度条
+                _seekPercent = -1;
+            }
+        });
+
+        // 支持触摸设备
+        player.progressContainer.addEventListener('touchstart', (e) => {
+            isDragging = true;
+            e.preventDefault();
+            handleProgressSeek(e.touches[0]);
+        }, { passive: false });
+
+        document.addEventListener('touchmove', (e) => {
+            if (isDragging) {
+                handleProgressSeek(e.touches[0]);
+            }
+        }, { passive: true });
+
+        document.addEventListener('touchend', () => {
+            if (isDragging) {
+                isDragging = false;
+                if (_seekPercent >= 0 && playerState.duration) {
+                    player.audio.currentTime = _seekPercent * playerState.duration;
+                }
+                _seekPercent = -1;
             }
         });
     }
@@ -1720,8 +1749,13 @@ window.updateAlbumViewActiveState = function (songName, artistName) {
 }
 
 // ==================== 进度条 ====================
+// 用于记录当前拖动到的百分比 (0~1)，-1 表示未在拖动状态
+let _seekPercent = -1;
+
 function updateProgressBar() {
     if (!playerState.duration || !player.progressBar) return;
+    // 拖动期间屏蔽 timeupdate 覆盖，避免进度条被播放进度打架拉回
+    if (_seekPercent >= 0) return;
     const percent = (playerState.currentTime / playerState.duration) * 100;
     player.progressBar.style.width = `${percent}%`;
 
@@ -1737,6 +1771,8 @@ function handleProgressSeek(e) {
     if (!player.progressContainer) return;
     const rect = player.progressContainer.getBoundingClientRect();
     const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    // 用模块变量记录当前拖动位置，松手时由 mouseup 读取精确 seek
+    _seekPercent = percent;
     if (player.progressBar) {
         player.progressBar.style.width = `${percent * 100}%`;
     }
@@ -2046,6 +2082,8 @@ async function loadLyrics(item) {
                     renderParsedLyrics(LyricsSync.parseLRC(lrcText));
                     LyricsSync.load(lrcText);
                     updateLyricAdjBtnVisibility(true); // 文件加载成功，显示按钮
+                    // 通知 Zen 沉浸模式重建歌词列表
+                    window.dispatchEvent(new CustomEvent('moody:lyricsLoaded', { detail: { source: 'lrcPath' } }));
                 } catch (parseErr) {
                     console.error('[Lyrics] 解析 LRC 失败:', parseErr);
                     if (item.id) reportClientError('lyric', item.id, `歌词解析失败: ${parseErr.message}`);
@@ -2068,6 +2106,8 @@ async function loadLyrics(item) {
             renderParsedLyrics(LyricsSync.parseLRC(lrcText));
             LyricsSync.load(lrcText);
             updateLyricAdjBtnVisibility(true); // 内置库加载成功，显示按钮
+            // 通知 Zen 沉浸模式重建歌词列表
+            window.dispatchEvent(new CustomEvent('moody:lyricsLoaded', { detail: { source: 'localDB' } }));
             return;
         }
     }
@@ -2105,6 +2145,8 @@ async function loadLyrics(item) {
             // 纯文本歌词，直接显示
             renderPlainLyrics(lyrics);
         }
+        // 通知 Zen 沉浸模式重建歌词列表
+        window.dispatchEvent(new CustomEvent('moody:lyricsLoaded', { detail: { source: 'api' } }));
     } else {
         // 底部面板
         player.lyricsContent.innerHTML = `
@@ -2667,7 +2709,8 @@ window.audioPlayer = {
             const songData = songs[i];
             const songName = typeof songData === 'string' ? songData : songData.title;
             const songPath = typeof songData === 'string' ? null : songData.path;
-            const songLrcPath = typeof songData === 'string' ? null : songData.lrcPath;
+            // 兼容后端蛇形命名 lrc_path 与前端驼峰命名 lrcPath，防止歌词路径丢失
+            const songLrcPath = typeof songData === 'string' ? null : (songData.lrcPath || songData.lrc_path || null);
 
             let audioUrl = '';
             const exactKey = `${songName} - ${artist}`;
