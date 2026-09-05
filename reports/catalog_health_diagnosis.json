@@ -1,0 +1,3381 @@
+{
+  "summary": {
+    "total_full_lit": 125,
+    "total_partially_lit": 76,
+    "total_zero_lit": 1633,
+    "cat_a_count": 77,
+    "cat_b_count": 1,
+    "cat_c_count": 13,
+    "cat_d_count": 441
+  },
+  "details": {
+    "CAT_A_LOCAL_FOUND_UNLIT": [
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 532,
+        "title": "大地",
+        "file": "大地-Beyond-正東10X10我至愛唱片_- Beyond『秘密警察』.mp3",
+        "size_mb": 9.05
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 534,
+        "title": "可知道",
+        "file": "可知道-Beyond-命運派對.mp3",
+        "size_mb": 7.13
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 536,
+        "title": "兩顆心",
+        "file": "兩顆心-Beyond-命運派對.mp3",
+        "size_mb": 7.78
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 537,
+        "title": "喜歡妳",
+        "file": "喜歡妳-Beyond-正東10X10我至愛唱片_- Beyond『秘密警察』.mp3",
+        "size_mb": 8.59
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 538,
+        "title": "懷念你",
+        "file": "懷念你-Beyond-命運派對.mp3",
+        "size_mb": 7.8
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 540,
+        "title": "又是黃昏",
+        "file": "又是黃昏-Beyond-真的見証.mp3",
+        "size_mb": 8.64
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 541,
+        "title": "千金一刻",
+        "file": "千金一刻-Beyond-真的見証.mp3",
+        "size_mb": 7.82
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 543,
+        "title": "午夜怨曲",
+        "file": "午夜怨曲-Beyond-真的見証.mp3",
+        "size_mb": 8.7
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 550,
+        "title": "光輝歲月",
+        "file": "光輝歲月-Beyond-命運派對.mp3",
+        "size_mb": 9.32
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 552,
+        "title": "再見理想",
+        "file": "再見理想-Beyond-正東10X10我至愛唱片_- Beyond『秘密警察』.mp3",
+        "size_mb": 9.44
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 555,
+        "title": "沙丘魔女",
+        "file": "沙丘魔女-Beyond-復黑_ 亞拉伯跳舞女郎.mp3",
+        "size_mb": 6.85
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 557,
+        "title": "孤單一吻",
+        "file": "孤單一吻-Beyond-復黑_ 亞拉伯跳舞女郎.mp3",
+        "size_mb": 11.85
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 559,
+        "title": "東方寶藏",
+        "file": "東方寶藏-Beyond-復黑_ 亞拉伯跳舞女郎.mp3",
+        "size_mb": 7.43
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 561,
+        "title": "相依的心",
+        "file": "相依的心-Beyond-命運派對.mp3",
+        "size_mb": 5.33
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 562,
+        "title": "俾面派對",
+        "file": "俾面派對-Beyond-命運派對.mp3",
+        "size_mb": 8.74
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 564,
+        "title": "秘密警察",
+        "file": "秘密警察-Beyond-正東10X10我至愛唱片_- Beyond『秘密警察』.mp3",
+        "size_mb": 5.42
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 572,
+        "title": "無名的歌",
+        "file": "無名的歌-Beyond-真的見証.mp3",
+        "size_mb": 7.36
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 573,
+        "title": "歲月無聲",
+        "file": "歲月無聲-Beyond-真的見証.mp3",
+        "size_mb": 8.4
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 578,
+        "title": "衝開一切",
+        "file": "衝開一切-Beyond-正東10X10我至愛唱片_- Beyond『秘密警察』.mp3",
+        "size_mb": 1.88
+      },
+      {
+        "artist": "Beyond",
+        "album": "Paradise",
+        "song_id": 812,
+        "title": "Paradise",
+        "file": "Paradise-Beyond-Paradise.mp3",
+        "size_mb": 13.81
+      },
+      {
+        "artist": "王力宏",
+        "album": "王力宏全新創作大碟 心.跳",
+        "song_id": 17617,
+        "title": "Everything",
+        "file": "Everything-王力宏-心跳.mp3",
+        "size_mb": 7.62
+      },
+      {
+        "artist": "王力宏",
+        "album": "2006王力宏蓋世英雄演唱會影音全記錄",
+        "song_id": 17676,
+        "title": "公轉自轉",
+        "file": "公轉自轉-王力宏-公轉.自轉.mp3",
+        "size_mb": 7.37
+      },
+      {
+        "artist": "王力宏",
+        "album": "2006王力宏蓋世英雄演唱會影音全記錄",
+        "song_id": 17677,
+        "title": "愛的就是你",
+        "file": "愛的就是你-王力宏-唯一.mp3",
+        "size_mb": 8.21
+      },
+      {
+        "artist": "王力宏",
+        "album": "2006王力宏蓋世英雄演唱會影音全記錄",
+        "song_id": 17678,
+        "title": "Kiss Goodbye",
+        "file": "Kiss Goodbye-王力宏-蓋世英雄.mp3",
+        "size_mb": 7.78
+      },
+      {
+        "artist": "王力宏",
+        "album": "2006王力宏蓋世英雄演唱會影音全記錄",
+        "song_id": 17679,
+        "title": "永遠的第一天",
+        "file": "永遠的第一天-王力宏-永遠的第一天.mp3",
+        "size_mb": 9.6
+      },
+      {
+        "artist": "王力宏",
+        "album": "2006王力宏蓋世英雄演唱會影音全記錄",
+        "song_id": 17684,
+        "title": "不要害怕",
+        "file": "不要害怕-王力宏-永遠的第一天.mp3",
+        "size_mb": 7.86
+      },
+      {
+        "artist": "王力宏",
+        "album": "2006王力宏蓋世英雄演唱會影音全記錄",
+        "song_id": 17686,
+        "title": "Follow Me",
+        "file": "Follow Me-王力宏-心中的日月.mp3",
+        "size_mb": 6.97
+      },
+      {
+        "artist": "王力宏",
+        "album": "2006王力宏蓋世英雄演唱會影音全記錄",
+        "song_id": 17688,
+        "title": "一首簡單的歌",
+        "file": "一首簡單的歌-王力宏-心中的日月.mp3",
+        "size_mb": 6.83
+      },
+      {
+        "artist": "王力宏",
+        "album": "2006王力宏蓋世英雄演唱會影音全記錄",
+        "song_id": 17690,
+        "title": "流淚手心",
+        "file": "流淚手心-王力宏-不可能錯過你.mp3",
+        "size_mb": 8.43
+      },
+      {
+        "artist": "王力宏",
+        "album": "2006王力宏蓋世英雄演唱會影音全記錄",
+        "song_id": 17691,
+        "title": "Love Love Love",
+        "file": "Love Love Love-王力宏-不可思議.mp3",
+        "size_mb": 7.17
+      },
+      {
+        "artist": "王力宏",
+        "album": "2006王力宏蓋世英雄演唱會影音全記錄",
+        "song_id": 17693,
+        "title": "Forever Love",
+        "file": "Forever Love-王力宏-心中的日月.mp3",
+        "size_mb": 8.51
+      },
+      {
+        "artist": "王力宏",
+        "album": "2006王力宏蓋世英雄演唱會影音全記錄",
+        "song_id": 17694,
+        "title": "Julia",
+        "file": "Julia-王力宏-不可能錯過你.mp3",
+        "size_mb": 7.97
+      },
+      {
+        "artist": "王力宏",
+        "album": "2006王力宏蓋世英雄演唱會影音全記錄",
+        "song_id": 17697,
+        "title": "心中的日月",
+        "file": "心中的日月-王力宏-心中的日月.mp3",
+        "size_mb": 7.41
+      },
+      {
+        "artist": "王力宏",
+        "album": "2006王力宏蓋世英雄演唱會影音全記錄",
+        "song_id": 17698,
+        "title": "在那遙遠的地方",
+        "file": "在那遙遠的地方-王力宏-心中的日月.mp3",
+        "size_mb": 7.04
+      },
+      {
+        "artist": "王力宏",
+        "album": "2006王力宏蓋世英雄演唱會影音全記錄",
+        "song_id": 17699,
+        "title": "龍的傳人",
+        "file": "龍的傳人-王力宏-永遠的第一天.mp3",
+        "size_mb": 8.2
+      },
+      {
+        "artist": "王力宏",
+        "album": "2006王力宏蓋世英雄演唱會影音全記錄",
+        "song_id": 17700,
+        "title": "不可能錯過你",
+        "file": "不可能錯過你-王力宏-不可能錯過你.mp3",
+        "size_mb": 8.95
+      },
+      {
+        "artist": "王力宏",
+        "album": "2006王力宏蓋世英雄演唱會影音全記錄",
+        "song_id": 17701,
+        "title": "唯一",
+        "file": "唯一-王力宏-唯一.mp3",
+        "size_mb": 6.9
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17929,
+        "title": "擁抱",
+        "file": "擁抱-五月天-五月天第一張創作專輯.mp3",
+        "size_mb": 7.17
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17934,
+        "title": "倔強",
+        "file": "倔強-五月天-神的孩子都在跳舞.mp3",
+        "size_mb": 8.21
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17935,
+        "title": "突然好想你",
+        "file": "突然好想你-五月天-後青春期的詩.mp3",
+        "size_mb": 8.51
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17936,
+        "title": "戀愛ing",
+        "file": "戀愛ing-五月天-知足 just my pride 最真傑作選.mp3",
+        "size_mb": 5.47
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17940,
+        "title": "人生海海",
+        "file": "人生海海-五月天-人生海海.mp3",
+        "size_mb": 9.32
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17941,
+        "title": "知足",
+        "file": "知足-五月天-知足 just my pride 最真傑作選.mp3",
+        "size_mb": 8.07
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17945,
+        "title": "如煙",
+        "file": "如煙-五月天-後青春期的詩.mp3",
+        "size_mb": 9.95
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17947,
+        "title": "一顆蘋果",
+        "file": "一顆蘋果-五月天-人生海海.mp3",
+        "size_mb": 7.64
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17949,
+        "title": "孫悟空",
+        "file": "孫悟空-五月天-神的孩子都在跳舞.mp3",
+        "size_mb": 7.53
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17951,
+        "title": "最重要的小事",
+        "file": "最重要的小事-五月天-為愛而生.mp3",
+        "size_mb": 8.27
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17952,
+        "title": "愛情萬歲",
+        "file": "愛情萬歲-五月天-愛情萬歲.mp3",
+        "size_mb": 11.25
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17953,
+        "title": "雌雄同體",
+        "file": "雌雄同體-五月天-時光機.mp3",
+        "size_mb": 10.32
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17954,
+        "title": "生命有一種絕對",
+        "file": "生命有一種絕對-五月天-時光機.mp3",
+        "size_mb": 7.35
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17956,
+        "title": "我心中尚未崩壞的地方 ",
+        "file": "我心中尚未崩壞的地方-五月天-後青春期的詩.mp3",
+        "size_mb": 10.36
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17957,
+        "title": "憨人",
+        "file": "憨人-五月天-愛情萬歲.mp3",
+        "size_mb": 9.97
+      },
+      {
+        "artist": "五月天",
+        "album": "第二人生 (明日版)",
+        "song_id": 17972,
+        "title": "有些事現在不做 一輩子都不會做了",
+        "file": "有些事現在不做 一輩子都不會做了-五月天-第二人生.mp3",
+        "size_mb": 6.38
+      },
+      {
+        "artist": "五月天",
+        "album": "第二人生 (明日版)",
+        "song_id": 17977,
+        "title": "歪腰",
+        "file": "歪腰-五月天-第二人生.mp3",
+        "size_mb": 5.96
+      },
+      {
+        "artist": "五月天",
+        "album": "第二人生 (明日版)",
+        "song_id": 17980,
+        "title": "2012",
+        "file": "2012-五月天-第二人生.mp3",
+        "size_mb": 8.31
+      },
+      {
+        "artist": "五月天",
+        "album": "第二人生 (明日版)",
+        "song_id": 17981,
+        "title": "第二人生",
+        "file": "第二人生-五月天-第二人生.mp3",
+        "size_mb": 8.98
+      },
+      {
+        "artist": "五月天",
+        "album": "第二人生 (明日版)",
+        "song_id": 17983,
+        "title": "明日",
+        "file": "明日-五月天-第二人生.mp3",
+        "size_mb": 5.7
+      },
+      {
+        "artist": "五月天",
+        "album": "知足 just my pride 最真傑作選",
+        "song_id": 18044,
+        "title": "亂世浮生",
+        "file": "亂世浮生-五月天-神的孩子都在跳舞.mp3",
+        "size_mb": 5.94
+      },
+      {
+        "artist": "五月天",
+        "album": "知足 just my pride 最真傑作選",
+        "song_id": 18047,
+        "title": "擁抱",
+        "file": "擁抱-五月天-五月天第一張創作專輯.mp3",
+        "size_mb": 7.17
+      },
+      {
+        "artist": "五月天",
+        "album": "知足 just my pride 最真傑作選",
+        "song_id": 18048,
+        "title": "終結孤單",
+        "file": "終結孤單-五月天-愛情萬歲.mp3",
+        "size_mb": 7.07
+      },
+      {
+        "artist": "五月天",
+        "album": "知足 just my pride 最真傑作選",
+        "song_id": 18049,
+        "title": "而我知道",
+        "file": "而我知道-五月天-時光機.mp3",
+        "size_mb": 7.79
+      },
+      {
+        "artist": "五月天",
+        "album": "知足 just my pride 最真傑作選",
+        "song_id": 18050,
+        "title": "孫悟空",
+        "file": "孫悟空-五月天-神的孩子都在跳舞.mp3",
+        "size_mb": 7.53
+      },
+      {
+        "artist": "五月天",
+        "album": "知足 just my pride 最真傑作選",
+        "song_id": 18051,
+        "title": "人生海海",
+        "file": "人生海海-五月天-人生海海.mp3",
+        "size_mb": 9.32
+      },
+      {
+        "artist": "五月天",
+        "album": "知足 just my pride 最真傑作選",
+        "song_id": 18052,
+        "title": "瘋狂世界",
+        "file": "瘋狂世界-五月天-五月天第一張創作專輯.mp3",
+        "size_mb": 8.73
+      },
+      {
+        "artist": "五月天",
+        "album": "知足 just my pride 最真傑作選",
+        "song_id": 18053,
+        "title": "愛情萬歲",
+        "file": "愛情萬歲-五月天-愛情萬歲.mp3",
+        "size_mb": 11.25
+      },
+      {
+        "artist": "五月天",
+        "album": "知足 just my pride 最真傑作選",
+        "song_id": 18056,
+        "title": "倔強",
+        "file": "倔強-五月天-神的孩子都在跳舞.mp3",
+        "size_mb": 8.21
+      },
+      {
+        "artist": "五月天",
+        "album": "知足 just my pride 最真傑作選",
+        "song_id": 18059,
+        "title": "志明與春嬌",
+        "file": "志明與春嬌-五月天-五月天第一張創作專輯.mp3",
+        "size_mb": 6.0
+      },
+      {
+        "artist": "五月天",
+        "album": "知足 just my pride 最真傑作選",
+        "song_id": 18060,
+        "title": "心中無別人",
+        "file": "心中無別人-五月天-愛情萬歲.mp3",
+        "size_mb": 8.32
+      },
+      {
+        "artist": "五月天",
+        "album": "知足 just my pride 最真傑作選",
+        "song_id": 18061,
+        "title": "好不好",
+        "file": "好不好-五月天-人生海海.mp3",
+        "size_mb": 8.22
+      },
+      {
+        "artist": "五月天",
+        "album": "知足 just my pride 最真傑作選",
+        "song_id": 18062,
+        "title": "憨人",
+        "file": "憨人-五月天-愛情萬歲.mp3",
+        "size_mb": 9.97
+      },
+      {
+        "artist": "五月天",
+        "album": "知足 just my pride 最真傑作選",
+        "song_id": 18063,
+        "title": "OK 啦!",
+        "file": "OK啦-五月天-人生海海.mp3",
+        "size_mb": 5.5
+      },
+      {
+        "artist": "五月天",
+        "album": "知足 just my pride 最真傑作選",
+        "song_id": 18065,
+        "title": "叫我第一名",
+        "file": "叫我第一名-五月天-愛情萬歲.mp3",
+        "size_mb": 5.17
+      },
+      {
+        "artist": "五月天",
+        "album": "知足 just my pride 最真傑作選",
+        "song_id": 18066,
+        "title": "軋車",
+        "file": "軋車-五月天-五月天第一張創作專輯.mp3",
+        "size_mb": 6.27
+      },
+      {
+        "artist": "五月天",
+        "album": "知足 just my pride 最真傑作選",
+        "song_id": 18067,
+        "title": "I Love You 無望",
+        "file": "I Love You 無望-五月天-五月天第一張創作專輯.mp3",
+        "size_mb": 8.3
+      },
+      {
+        "artist": "五月天",
+        "album": "知足 just my pride 最真傑作選",
+        "song_id": 18068,
+        "title": "永遠的永遠",
+        "file": "永遠的永遠-五月天-人生海海.mp3",
+        "size_mb": 8.57
+      },
+      {
+        "artist": "五月天",
+        "album": "知足 just my pride 最真傑作選",
+        "song_id": 18069,
+        "title": "借問眾神明",
+        "file": "借問眾神明-五月天-人生海海.mp3",
+        "size_mb": 7.85
+      },
+      {
+        "artist": "五月天",
+        "album": "第二人生",
+        "song_id": 24197,
+        "title": "突然好想你",
+        "file": "突然好想你-五月天-後青春期的詩.mp3",
+        "size_mb": 8.51
+      }
+    ],
+    "CAT_B_SKELETON_DIRTY": [
+      {
+        "artist": "陈奕迅",
+        "album": "？",
+        "song_id": 25588,
+        "title": "张氏桂兰",
+        "reason": "疑似骨架导入脏数据/错别字: 《张氏桂兰》"
+      }
+    ],
+    "CAT_C_SHORT_SKIT_INTRO": [
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "特務J",
+        "song_id": 1747,
+        "title": "Prologue of Tacit Violence",
+        "reason": "包含 Intro/Outro/Skit/序曲 关键词，被默认下载脚本中的 75 秒过滤规则丢弃"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "舞孃",
+        "song_id": 1779,
+        "title": "The Prologue",
+        "reason": "包含 Intro/Outro/Skit/序曲 关键词，被默认下载脚本中的 75 秒过滤规则丢弃"
+      },
+      {
+        "artist": "王力宏",
+        "album": "你的愛。",
+        "song_id": 17536,
+        "title": "Intro",
+        "reason": "包含 Intro/Outro/Skit/序曲 关键词，被默认下载脚本中的 75 秒过滤规则丢弃"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17583,
+        "title": "Overture (Live)",
+        "reason": "包含 Intro/Outro/Skit/序曲 关键词，被默认下载脚本中的 75 秒过滤规则丢弃"
+      },
+      {
+        "artist": "王力宏",
+        "album": "改變自己",
+        "song_id": 17634,
+        "title": "Intro",
+        "reason": "包含 Intro/Outro/Skit/序曲 关键词，被默认下载脚本中的 75 秒过滤规则丢弃"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2006王力宏蓋世英雄演唱會影音全記錄",
+        "song_id": 17674,
+        "title": "Overture-蓋世英雄",
+        "reason": "包含 Intro/Outro/Skit/序曲 关键词，被默认下载脚本中的 75 秒过滤规则丢弃"
+      },
+      {
+        "artist": "王力宏",
+        "album": "心中的日月",
+        "song_id": 17712,
+        "title": "開場Intro",
+        "reason": "包含 Intro/Outro/Skit/序曲 关键词，被默认下载脚本中的 75 秒过滤规则丢弃"
+      },
+      {
+        "artist": "王力宏",
+        "album": "心中的日月",
+        "song_id": 17723,
+        "title": "Intro",
+        "reason": "包含 Intro/Outro/Skit/序曲 关键词，被默认下载脚本中的 75 秒过滤规则丢弃"
+      },
+      {
+        "artist": "王力宏",
+        "album": "永遠的第一天",
+        "song_id": 17758,
+        "title": "Introduction (你可以告訴我你還愛誰)",
+        "reason": "包含 Intro/Outro/Skit/序曲 关键词，被默认下载脚本中的 75 秒过滤规则丢弃"
+      },
+      {
+        "artist": "张国荣",
+        "album": "紅",
+        "song_id": 21435,
+        "title": "PROLOGUE",
+        "reason": "包含 Intro/Outro/Skit/序曲 关键词，被默认下载脚本中的 75 秒过滤规则丢弃"
+      },
+      {
+        "artist": "五月天",
+        "album": "為愛而生",
+        "song_id": 24273,
+        "title": "胎音",
+        "reason": "包含 Intro/Outro/Skit/序曲 关键词，被默认下载脚本中的 75 秒过滤规则丢弃"
+      },
+      {
+        "artist": "梁静茹",
+        "album": "亲亲",
+        "song_id": 26456,
+        "title": "序",
+        "reason": "包含 Intro/Outro/Skit/序曲 关键词，被默认下载脚本中的 75 秒过滤规则丢弃"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "和自己对话",
+        "song_id": 26813,
+        "title": "中场休息",
+        "reason": "包含 Intro/Outro/Skit/序曲 关键词，被默认下载脚本中的 75 秒过滤规则丢弃"
+      }
+    ],
+    "CAT_D_SEARCH_OR_DOWNLOAD_MISSING": [
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 530,
+        "title": "Amani"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 531,
+        "title": "Water Boy"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 533,
+        "title": "大地 (國)"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 535,
+        "title": "冷雨夜"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 539,
+        "title": "願我能"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 542,
+        "title": "不再猶豫"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 544,
+        "title": "午夜流浪"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 545,
+        "title": "午夜迷牆"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 546,
+        "title": "太陽的心"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 547,
+        "title": "文武英傑"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 548,
+        "title": "未曾後悔"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 549,
+        "title": "永遠等待"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 551,
+        "title": "光輝歲月 (國)"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 554,
+        "title": "灰色軌跡"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 556,
+        "title": "赤紅熱血"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 558,
+        "title": "昔日舞曲"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 560,
+        "title": "金屬狂人"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 563,
+        "title": "真的愛妳"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 565,
+        "title": "迷離境界"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 566,
+        "title": "高溫派對"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 567,
+        "title": "堅持信念"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 568,
+        "title": "現代舞台"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 569,
+        "title": "逝去日子"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 570,
+        "title": "報答一生"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 571,
+        "title": "曾是擁有"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 574,
+        "title": "歲月無聲 (國)"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 575,
+        "title": "與你共行"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 576,
+        "title": "摩登時代"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 577,
+        "title": "衡上雲宵"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Beyond音樂大全101",
+        "song_id": 579,
+        "title": "誰來主宰"
+      },
+      {
+        "artist": "Beyond",
+        "album": "正東10X10我至愛唱片:- Beyond『秘密警察』",
+        "song_id": 621,
+        "title": "昨日的牽絆"
+      },
+      {
+        "artist": "Beyond",
+        "album": "正東10X10我至愛唱片:- Beyond『秘密警察』",
+        "song_id": 622,
+        "title": "未知賽事的長跑"
+      },
+      {
+        "artist": "Beyond",
+        "album": "正東10X10我至愛唱片:- Beyond『秘密警察』",
+        "song_id": 626,
+        "title": "心內心外"
+      },
+      {
+        "artist": "Beyond",
+        "album": "正東10X10我至愛唱片:- Beyond『秘密警察』",
+        "song_id": 627,
+        "title": "願我能"
+      },
+      {
+        "artist": "Beyond",
+        "album": "正東10X10我至愛唱片:- Beyond『秘密警察』",
+        "song_id": 628,
+        "title": "大地 (國)"
+      },
+      {
+        "artist": "Beyond",
+        "album": "正東10X10我至愛唱片:- Beyond『秘密警察』",
+        "song_id": 629,
+        "title": "破壞遊戲的孩子 (國)"
+      },
+      {
+        "artist": "Beyond",
+        "album": "正東10X10我至愛唱片:- Beyond『秘密警察』",
+        "song_id": 630,
+        "title": "今天有我 (國)"
+      },
+      {
+        "artist": "Beyond",
+        "album": "這裡那裡",
+        "song_id": 712,
+        "title": "我的知己在街頭"
+      },
+      {
+        "artist": "Beyond",
+        "album": "這裡那裡",
+        "song_id": 716,
+        "title": "Amani"
+      },
+      {
+        "artist": "Beyond",
+        "album": "這裡那裡",
+        "song_id": 718,
+        "title": "Paradise (英文版)"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Sound",
+        "song_id": 791,
+        "title": "鐵馬騮 (instrumental version)"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Sound",
+        "song_id": 792,
+        "title": "教壞細路"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Sound",
+        "song_id": 797,
+        "title": "困獸鬥"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Sound",
+        "song_id": 799,
+        "title": "門外看"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Paradise",
+        "song_id": 816,
+        "title": "溫柔殺手"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Paradise",
+        "song_id": 817,
+        "title": "和平世界"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Paradise",
+        "song_id": 821,
+        "title": "We Don't Wanna Make It Without You"
+      },
+      {
+        "artist": "Beyond",
+        "album": "Paradise",
+        "song_id": 822,
+        "title": "祝您愉快"
+      },
+      {
+        "artist": "Beyond",
+        "album": "真的見証",
+        "song_id": 893,
+        "title": "交織千個心"
+      },
+      {
+        "artist": "Beyond",
+        "album": "復黑: 亞拉伯跳舞女郎",
+        "song_id": 902,
+        "title": "亞拉伯跳舞女郎"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "陳奕迅2010 Duo演唱會",
+        "song_id": 1182,
+        "title": "今天等我來 (Live)"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "陳奕迅2010 Duo演唱會",
+        "song_id": 1183,
+        "title": "好歌獻給你 (Live)"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "陳奕迅2010 Duo演唱會",
+        "song_id": 1186,
+        "title": "七百年後 (Live)"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "陳奕迅2010 Duo演唱會",
+        "song_id": 1192,
+        "title": "破曉 (Live)"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "陳奕迅2010 Duo演唱會",
+        "song_id": 1199,
+        "title": "Medley: 熱辣辣/反斗星/頭髮亂了/好戲在後頭 (Live)"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "陳奕迅2010 Duo演唱會",
+        "song_id": 1202,
+        "title": "富士山下 (Live)"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "陳奕迅2010 Duo演唱會",
+        "song_id": 1205,
+        "title": "歌.頌 (Live)"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "陳奕迅2010 Duo演唱會",
+        "song_id": 1206,
+        "title": "Pg家長指引 (Live)"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "陳奕迅2010 Duo演唱會",
+        "song_id": 1207,
+        "title": "那一夜有沒有說 (Live)"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "陳奕迅2010 Duo演唱會",
+        "song_id": 1216,
+        "title": "每一個明天 (Live)"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "陳奕迅2010 Duo演唱會",
+        "song_id": 1217,
+        "title": "Every Time We Say Goodbye (Live)"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "打得火熱",
+        "song_id": 1546,
+        "title": "吹微風"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "醞釀",
+        "song_id": 1591,
+        "title": "攤開雙手"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "醞釀",
+        "song_id": 1593,
+        "title": "預感 (Karaoke Version)"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Ugly Beauty",
+        "song_id": 1610,
+        "title": "Womxnly"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Ugly Beauty",
+        "song_id": 1611,
+        "title": "Ugly Beauty"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Ugly Beauty",
+        "song_id": 1612,
+        "title": "Karma"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Ugly Beauty",
+        "song_id": 1613,
+        "title": "Lady in Red"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Ugly Beauty",
+        "song_id": 1614,
+        "title": "Sweet Guilty Pleasure"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Ugly Beauty",
+        "song_id": 1615,
+        "title": "Romance"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Ugly Beauty",
+        "song_id": 1616,
+        "title": "Vulnerability"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Ugly Beauty",
+        "song_id": 1617,
+        "title": "Hubby"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Ugly Beauty",
+        "song_id": 1618,
+        "title": "Life Sucks"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Ugly Beauty",
+        "song_id": 1619,
+        "title": "Shadow Self"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "呸",
+        "song_id": 1620,
+        "title": "Gentlewomen"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "呸",
+        "song_id": 1622,
+        "title": "Medusa"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "呸",
+        "song_id": 1623,
+        "title": "Lip Reading"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "呸",
+        "song_id": 1625,
+        "title": "I Love, I Embrace"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "呸",
+        "song_id": 1626,
+        "title": "Miss Trouble"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "呸",
+        "song_id": 1627,
+        "title": "Phony Queen (Theme Song for \"We Dancing Online DX\")"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "呸",
+        "song_id": 1628,
+        "title": "The Third Person and I"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "呸",
+        "song_id": 1629,
+        "title": "We're All Different, Yet the Same"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "J女神 (典藏精選)",
+        "song_id": 1652,
+        "title": "招牌動作"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "J女神 (典藏精選)",
+        "song_id": 1653,
+        "title": "看我72變"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "J女神 (典藏精選)",
+        "song_id": 1654,
+        "title": "野蠻遊戲"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "J女神 (典藏精選)",
+        "song_id": 1655,
+        "title": "愛情36計"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "J女神 (典藏精選)",
+        "song_id": 1656,
+        "title": "Prove It"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "J女神 (典藏精選)",
+        "song_id": 1657,
+        "title": "Oh! Oh!"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "J女神 (典藏精選)",
+        "song_id": 1658,
+        "title": "睜一隻眼閉一隻眼"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "J女神 (典藏精選)",
+        "song_id": 1659,
+        "title": "爆米花的味道"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "J女神 (典藏精選)",
+        "song_id": 1660,
+        "title": "海盜"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "J女神 (典藏精選)",
+        "song_id": 1661,
+        "title": "騎士精神"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "J女神 (典藏精選)",
+        "song_id": 1662,
+        "title": "布拉格廣場"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "J女神 (典藏精選)",
+        "song_id": 1663,
+        "title": "許願池的希臘少女"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "J女神 (典藏精選)",
+        "song_id": 1664,
+        "title": "Love Love Love"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "J女神 (典藏精選)",
+        "song_id": 1665,
+        "title": "獨佔神話"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "J女神 (典藏精選)",
+        "song_id": 1666,
+        "title": "倒帶"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "J女神 (典藏精選)",
+        "song_id": 1667,
+        "title": "天空"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "J女神 (典藏精選)",
+        "song_id": 1668,
+        "title": "做一天的你"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "J女神 (典藏精選)",
+        "song_id": 1669,
+        "title": "檸檬草的味道"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "J女神 (典藏精選)",
+        "song_id": 1670,
+        "title": "始作俑者"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "J女神 (典藏精選)",
+        "song_id": 1671,
+        "title": "反覆記號"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "J女神 (典藏精選)",
+        "song_id": 1672,
+        "title": "酸甜"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "J女神 (典藏精選)",
+        "song_id": 1673,
+        "title": "說愛你"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "J女神 (典藏精選)",
+        "song_id": 1674,
+        "title": "就是愛"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "J女神 (典藏精選)",
+        "song_id": 1675,
+        "title": "好想你"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "花蝴蝶",
+        "song_id": 1722,
+        "title": "Butterfly"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "花蝴蝶",
+        "song_id": 1723,
+        "title": "Love Attraction"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "花蝴蝶",
+        "song_id": 1724,
+        "title": "The Shadow Dancer"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "花蝴蝶",
+        "song_id": 1725,
+        "title": "Compromise"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "花蝴蝶",
+        "song_id": 1726,
+        "title": "Real Man"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "花蝴蝶",
+        "song_id": 1727,
+        "title": "Parachute"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "花蝴蝶",
+        "song_id": 1728,
+        "title": "Slow Life"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "花蝴蝶",
+        "song_id": 1729,
+        "title": "Accompany With Me"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "花蝴蝶",
+        "song_id": 1730,
+        "title": "You Hurt My Feelings"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "花蝴蝶",
+        "song_id": 1731,
+        "title": "Hot Winter"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "特務J",
+        "song_id": 1742,
+        "title": "Agent J"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "特務J",
+        "song_id": 1743,
+        "title": "Bravo Lover"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "特務J",
+        "song_id": 1744,
+        "title": "Alone"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "特務J",
+        "song_id": 1745,
+        "title": "Fear-Free"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "特務J",
+        "song_id": 1746,
+        "title": "Ideal State"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "特務J",
+        "song_id": 1748,
+        "title": "Tacit Violence"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "特務J",
+        "song_id": 1749,
+        "title": "Priceless"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "特務J",
+        "song_id": 1750,
+        "title": "Metronome"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "特務J",
+        "song_id": 1751,
+        "title": "Golden Triangle"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "特務J",
+        "song_id": 1752,
+        "title": "Sun Will Never Set"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "舞孃",
+        "song_id": 1769,
+        "title": "Pulchritude"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "舞孃",
+        "song_id": 1770,
+        "title": "Dancing Diva"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "舞孃",
+        "song_id": 1771,
+        "title": "A Wonderful in Madrid"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "舞孃",
+        "song_id": 1772,
+        "title": "Pretending"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "舞孃",
+        "song_id": 1773,
+        "title": "Attraction of Sexy Lips"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "舞孃",
+        "song_id": 1774,
+        "title": "Love in the Shape of a Heart"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "舞孃",
+        "song_id": 1775,
+        "title": "Heart-Breaking Day"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "舞孃",
+        "song_id": 1776,
+        "title": "Mr. Q"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "舞孃",
+        "song_id": 1777,
+        "title": "Nice Guy"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "舞孃",
+        "song_id": 1778,
+        "title": "The Finale"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "野蠻遊戲",
+        "song_id": 1802,
+        "title": "追殺邱比特"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "看我72變",
+        "song_id": 1832,
+        "title": "爆米花的味道"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "看我72變",
+        "song_id": 1833,
+        "title": "馬甲上的繩索"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Lucky Number",
+        "song_id": 1836,
+        "title": "Bridge Over The Trouble Water"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Lucky Number",
+        "song_id": 1837,
+        "title": "看緊我"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Lucky Number",
+        "song_id": 1838,
+        "title": "Lucky Number"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Lucky Number",
+        "song_id": 1839,
+        "title": "如果不想要"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Lucky Number",
+        "song_id": 1841,
+        "title": "Take It Easy"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Lucky Number",
+        "song_id": 1842,
+        "title": "只有一個你"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Lucky Number",
+        "song_id": 1843,
+        "title": "你怎麼連話都說不清楚"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Lucky Number",
+        "song_id": 1844,
+        "title": "Surprise"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Lucky Number",
+        "song_id": 1845,
+        "title": "由我"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Show Your Love",
+        "song_id": 1846,
+        "title": "Show Your Love"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Show Your Love",
+        "song_id": 1848,
+        "title": "你還愛我嗎"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Show Your Love",
+        "song_id": 1849,
+        "title": "Baby Face"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Show Your Love",
+        "song_id": 1851,
+        "title": "捨不得"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Show Your Love",
+        "song_id": 1852,
+        "title": "愛上了一條街"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Show Your Love",
+        "song_id": 1853,
+        "title": "Pretty Pretty Day"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Show Your Love",
+        "song_id": 1854,
+        "title": "一眼就看見"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Show Your Love",
+        "song_id": 1855,
+        "title": "感覺你的存在"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Don't Stop",
+        "song_id": 1856,
+        "title": "Don't Stop (Bring it all back)"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Don't Stop",
+        "song_id": 1857,
+        "title": "你快樂嗎"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Don't Stop",
+        "song_id": 1858,
+        "title": "什麼樣的愛"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Don't Stop",
+        "song_id": 1860,
+        "title": "永恆"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Don't Stop",
+        "song_id": 1861,
+        "title": "嗨"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Don't Stop",
+        "song_id": 1862,
+        "title": "孤單的人總說無所謂"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Don't Stop",
+        "song_id": 1863,
+        "title": "飄浮"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Don't Stop",
+        "song_id": 1864,
+        "title": "唱這首歌"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "Don't Stop",
+        "song_id": 1865,
+        "title": "Sugar Sugar"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "1019",
+        "song_id": 1870,
+        "title": "你是誰"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "1019",
+        "song_id": 1871,
+        "title": "和世界做鄰居(我可以)"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "1019",
+        "song_id": 1872,
+        "title": "上街"
+      },
+      {
+        "artist": "JOLIN蔡依林",
+        "album": "1019",
+        "song_id": 1874,
+        "title": "Good-Bye"
+      },
+      {
+        "artist": "邓紫棋",
+        "album": "I AM GLORIA",
+        "song_id": 2524,
+        "title": "My Secret (G.E.M. Version)"
+      },
+      {
+        "artist": "邓紫棋",
+        "album": "I AM GLORIA",
+        "song_id": 2525,
+        "title": "Where Did U Go (G.E.M. Version)"
+      },
+      {
+        "artist": "邓紫棋",
+        "album": "I AM GLORIA",
+        "song_id": 2527,
+        "title": "Bubble (G.E.M. Version)"
+      },
+      {
+        "artist": "邓紫棋",
+        "album": "I AM GLORIA",
+        "song_id": 2528,
+        "title": "Sandglass (G.E.M. Version)"
+      },
+      {
+        "artist": "邓紫棋",
+        "album": "I AM GLORIA",
+        "song_id": 2529,
+        "title": "Red and White (G.E.M. Version)"
+      },
+      {
+        "artist": "邓紫棋",
+        "album": "I AM GLORIA",
+        "song_id": 2530,
+        "title": "Hua (G.E.M. Version)"
+      },
+      {
+        "artist": "邓紫棋",
+        "album": "I AM GLORIA",
+        "song_id": 2531,
+        "title": "Light Years Away (G.E.M. Version)"
+      },
+      {
+        "artist": "邓紫棋",
+        "album": "I AM GLORIA",
+        "song_id": 2532,
+        "title": "Sleeping Beauty (G.E.M. Version)"
+      },
+      {
+        "artist": "邓紫棋",
+        "album": "I AM GLORIA",
+        "song_id": 2533,
+        "title": "The Sky (Cantonese Version)"
+      },
+      {
+        "artist": "邓紫棋",
+        "album": "I AM GLORIA",
+        "song_id": 2534,
+        "title": "The Continent (G.E.M. Version)"
+      },
+      {
+        "artist": "邓紫棋",
+        "album": "I AM GLORIA",
+        "song_id": 2535,
+        "title": "Xi Huan Ni (G.E.M. Version)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9705,
+        "title": "曹操 (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9706,
+        "title": "殺手 (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9707,
+        "title": "編號89757 (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9708,
+        "title": "凍結 (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9709,
+        "title": "사랑해요只對你說 (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9710,
+        "title": "背對背擁抱 (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9711,
+        "title": "X (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9712,
+        "title": "黑武士 (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9713,
+        "title": "第二天堂 (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9714,
+        "title": "她說 (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9715,
+        "title": "他說:她說 金曲組曲 失落沙洲+拋物線+外面的世界+太陽+掉了 (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9716,
+        "title": "媽媽的娜魯娃 (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9717,
+        "title": "加油 (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9718,
+        "title": "無法克制 (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9719,
+        "title": "一個又一個 (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9720,
+        "title": "I AM (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9721,
+        "title": "記得 (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9723,
+        "title": "豆漿油條 (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9725,
+        "title": "跟屁蟲 (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9726,
+        "title": "街道 (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9727,
+        "title": "波間帶 (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9728,
+        "title": "江南 (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9729,
+        "title": "小酒窩 (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9730,
+        "title": "愛笑的眼睛 (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9731,
+        "title": "不潮不用花錢 (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9732,
+        "title": "轉動 (現場版)"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "2011 JJ林俊傑 I AM 世界巡迴演唱會 (小巨蛋 終極典藏版) (現場版)",
+        "song_id": 9733,
+        "title": "一千年以後 (現場版)"
+      },
+      {
+        "artist": "梁静茹",
+        "album": "情歌沒有告訴你",
+        "song_id": 11203,
+        "title": "La La La La"
+      },
+      {
+        "artist": "孙燕姿",
+        "album": "No.13 作品 : 跳舞的梵谷",
+        "song_id": 14825,
+        "title": "風衣"
+      },
+      {
+        "artist": "孙燕姿",
+        "album": "克卜勒",
+        "song_id": 14835,
+        "title": "Kepler"
+      },
+      {
+        "artist": "孙燕姿",
+        "album": "克卜勒",
+        "song_id": 14836,
+        "title": "Thirst"
+      },
+      {
+        "artist": "孙燕姿",
+        "album": "克卜勒",
+        "song_id": 14837,
+        "title": "Infinite Possibilities"
+      },
+      {
+        "artist": "孙燕姿",
+        "album": "克卜勒",
+        "song_id": 14838,
+        "title": "Best Days of My Youth"
+      },
+      {
+        "artist": "孙燕姿",
+        "album": "克卜勒",
+        "song_id": 14839,
+        "title": "Angel's Fingerprints"
+      },
+      {
+        "artist": "孙燕姿",
+        "album": "克卜勒",
+        "song_id": 14840,
+        "title": "Yintai"
+      },
+      {
+        "artist": "孙燕姿",
+        "album": "克卜勒",
+        "song_id": 14841,
+        "title": "Revolve Revolve"
+      },
+      {
+        "artist": "孙燕姿",
+        "album": "克卜勒",
+        "song_id": 14842,
+        "title": "Mirage"
+      },
+      {
+        "artist": "孙燕姿",
+        "album": "克卜勒",
+        "song_id": 14843,
+        "title": "Happier"
+      },
+      {
+        "artist": "孙燕姿",
+        "album": "克卜勒",
+        "song_id": 14844,
+        "title": "It Dosen't Stop Raining"
+      },
+      {
+        "artist": "孙燕姿",
+        "album": "克卜勒",
+        "song_id": 14850,
+        "title": "銀泰"
+      },
+      {
+        "artist": "孙燕姿",
+        "album": "克卜勒",
+        "song_id": 14852,
+        "title": "錯覺"
+      },
+      {
+        "artist": "孙燕姿",
+        "album": "克卜勒",
+        "song_id": 14854,
+        "title": "雨還是不停地落下"
+      },
+      {
+        "artist": "王力宏",
+        "album": "A.I. 愛",
+        "song_id": 17525,
+        "title": "World Without Tears"
+      },
+      {
+        "artist": "王力宏",
+        "album": "A.I. 愛",
+        "song_id": 17526,
+        "title": "A.I. Love"
+      },
+      {
+        "artist": "王力宏",
+        "album": "A.I. 愛",
+        "song_id": 17527,
+        "title": "Thousands Of Generations"
+      },
+      {
+        "artist": "王力宏",
+        "album": "A.I. 愛",
+        "song_id": 17528,
+        "title": "Silent Dancer"
+      },
+      {
+        "artist": "王力宏",
+        "album": "A.I. 愛",
+        "song_id": 17530,
+        "title": "Dearest"
+      },
+      {
+        "artist": "王力宏",
+        "album": "A.I. 愛",
+        "song_id": 17531,
+        "title": "Singularity"
+      },
+      {
+        "artist": "王力宏",
+        "album": "A.I. 愛",
+        "song_id": 17532,
+        "title": "Why Don't You Just Love Me"
+      },
+      {
+        "artist": "王力宏",
+        "album": "A.I. 愛",
+        "song_id": 17533,
+        "title": "Hearing Love"
+      },
+      {
+        "artist": "王力宏",
+        "album": "A.I. 愛",
+        "song_id": 17534,
+        "title": "Great Wall (feat. Tan Wei Wei)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "A.I. 愛",
+        "song_id": 17535,
+        "title": "Clash Of Kings"
+      },
+      {
+        "artist": "王力宏",
+        "album": "你的愛。",
+        "song_id": 17537,
+        "title": "Heaven and Earth Overturned"
+      },
+      {
+        "artist": "王力宏",
+        "album": "你的愛。",
+        "song_id": 17538,
+        "title": "Cracked Heart"
+      },
+      {
+        "artist": "王力宏",
+        "album": "你的愛。",
+        "song_id": 17539,
+        "title": "Lose Myself (feat. Avicii)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "你的愛。",
+        "song_id": 17540,
+        "title": "Your Love"
+      },
+      {
+        "artist": "王力宏",
+        "album": "你的愛。",
+        "song_id": 17541,
+        "title": "Now Is the Time"
+      },
+      {
+        "artist": "王力宏",
+        "album": "你的愛。",
+        "song_id": 17542,
+        "title": "7 Billion To 1"
+      },
+      {
+        "artist": "王力宏",
+        "album": "你的愛。",
+        "song_id": 17544,
+        "title": "Protect"
+      },
+      {
+        "artist": "王力宏",
+        "album": "你的愛。",
+        "song_id": 17545,
+        "title": "Dream Life"
+      },
+      {
+        "artist": "王力宏",
+        "album": "你的愛。",
+        "song_id": 17546,
+        "title": "Weibo Song"
+      },
+      {
+        "artist": "王力宏",
+        "album": "你的愛。",
+        "song_id": 17547,
+        "title": "Love a Little"
+      },
+      {
+        "artist": "王力宏",
+        "album": "你的愛。",
+        "song_id": 17548,
+        "title": "Lose Myself (Ballad Version)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "十八般武藝",
+        "song_id": 17572,
+        "title": "Dragon Dance"
+      },
+      {
+        "artist": "王力宏",
+        "album": "十八般武藝",
+        "song_id": 17573,
+        "title": "Du U ❤️ Me"
+      },
+      {
+        "artist": "王力宏",
+        "album": "十八般武藝",
+        "song_id": 17574,
+        "title": "18 Martial Arts"
+      },
+      {
+        "artist": "王力宏",
+        "album": "十八般武藝",
+        "song_id": 17575,
+        "title": "All The Things You Never Knew"
+      },
+      {
+        "artist": "王力宏",
+        "album": "十八般武藝",
+        "song_id": 17576,
+        "title": "Boya Breaks His Strings"
+      },
+      {
+        "artist": "王力宏",
+        "album": "十八般武藝",
+        "song_id": 17577,
+        "title": "Life's Daily Necessities"
+      },
+      {
+        "artist": "王力宏",
+        "album": "十八般武藝",
+        "song_id": 17578,
+        "title": "Beautiful"
+      },
+      {
+        "artist": "王力宏",
+        "album": "十八般武藝",
+        "song_id": 17579,
+        "title": "Need Some Company"
+      },
+      {
+        "artist": "王力宏",
+        "album": "十八般武藝",
+        "song_id": 17580,
+        "title": "The Ends of the Earth"
+      },
+      {
+        "artist": "王力宏",
+        "album": "十八般武藝",
+        "song_id": 17581,
+        "title": "All The Things You Never Knew (SONG XIAO QING version)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "十八般武藝",
+        "song_id": 17582,
+        "title": "My People"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17584,
+        "title": "搖滾怎麼了! (Live)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17585,
+        "title": "W-H-Y (Live)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17586,
+        "title": "花田錯 (Live)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17587,
+        "title": "龍的傳人 (Live)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17588,
+        "title": "愛錯 (Live)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17589,
+        "title": "Forever Love (Live)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17590,
+        "title": "安全感 (Live)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17591,
+        "title": "第一個清晨 (Live)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17592,
+        "title": "流淚手心 (Live)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17593,
+        "title": "如果你聽見我的歌 (Live)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17594,
+        "title": "竹林深處 (Live)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17596,
+        "title": "愛得得體 (Live)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17599,
+        "title": "一首簡單的歌 (Live)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17600,
+        "title": "你不在 (Live)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17601,
+        "title": "唯一 (Live)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17603,
+        "title": "Can You Feel My World (Live)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17604,
+        "title": "我完全沒有任何理由理你 (Live)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17605,
+        "title": "在梅邊 (Live)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17607,
+        "title": "心中的日月 (Live)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17608,
+        "title": "放開你的心 (Live)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17609,
+        "title": "愛你等於愛自己 (Live)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17610,
+        "title": "大城小愛 (Live)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17611,
+        "title": "Everything (Live)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17612,
+        "title": "Kiss Goodbye (Live)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2008 Sony Ericsson MUSIC-MAN 世界巡迴演唱會",
+        "song_id": 17613,
+        "title": "搖滾怎麼了! (Reprise) [Live]"
+      },
+      {
+        "artist": "王力宏",
+        "album": "心跳",
+        "song_id": 17624,
+        "title": "Dirty or Deti?"
+      },
+      {
+        "artist": "王力宏",
+        "album": "心跳",
+        "song_id": 17625,
+        "title": "Heart Beat"
+      },
+      {
+        "artist": "王力宏",
+        "album": "心跳",
+        "song_id": 17626,
+        "title": "The Sun After Washed by Spring Rain"
+      },
+      {
+        "artist": "王力宏",
+        "album": "心跳",
+        "song_id": 17628,
+        "title": "No Reason to Pay Attention to You"
+      },
+      {
+        "artist": "王力宏",
+        "album": "心跳",
+        "song_id": 17629,
+        "title": "Another Heaven (feat. Jane Zhang)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "心跳",
+        "song_id": 17630,
+        "title": "Puppet"
+      },
+      {
+        "artist": "王力宏",
+        "album": "心跳",
+        "song_id": 17631,
+        "title": "Screenplay"
+      },
+      {
+        "artist": "王力宏",
+        "album": "心跳",
+        "song_id": 17632,
+        "title": "Worthy Competitor"
+      },
+      {
+        "artist": "王力宏",
+        "album": "心跳",
+        "song_id": 17633,
+        "title": "What's Wrong With Me!!"
+      },
+      {
+        "artist": "王力宏",
+        "album": "改變自己",
+        "song_id": 17635,
+        "title": "Change Me"
+      },
+      {
+        "artist": "王力宏",
+        "album": "改變自己",
+        "song_id": 17636,
+        "title": "Falling Leaf Returns to Root"
+      },
+      {
+        "artist": "王力宏",
+        "album": "改變自己",
+        "song_id": 17637,
+        "title": "Opening Remarks"
+      },
+      {
+        "artist": "王力宏",
+        "album": "改變自己",
+        "song_id": 17638,
+        "title": "Our Song"
+      },
+      {
+        "artist": "王力宏",
+        "album": "改變自己",
+        "song_id": 17639,
+        "title": "You Are a Song in My Heart"
+      },
+      {
+        "artist": "王力宏",
+        "album": "改變自己",
+        "song_id": 17640,
+        "title": "Where is Love"
+      },
+      {
+        "artist": "王力宏",
+        "album": "改變自己",
+        "song_id": 17641,
+        "title": "Cockney Girl"
+      },
+      {
+        "artist": "王力宏",
+        "album": "改變自己",
+        "song_id": 17642,
+        "title": "Incomplete Melody"
+      },
+      {
+        "artist": "王力宏",
+        "album": "改變自己",
+        "song_id": 17643,
+        "title": "Love's Encouragement"
+      },
+      {
+        "artist": "王力宏",
+        "album": "改變自己",
+        "song_id": 17644,
+        "title": "Love Live Chinese"
+      },
+      {
+        "artist": "王力宏",
+        "album": "改變自己",
+        "song_id": 17645,
+        "title": "The Quiet Depths of a Saturday Night"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2006王力宏蓋世英雄演唱會影音全記錄",
+        "song_id": 17675,
+        "title": "蓋世英雄+放開你的心+愛你等於愛自己"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2006王力宏蓋世英雄演唱會影音全記錄",
+        "song_id": 17680,
+        "title": "DJ Part"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2006王力宏蓋世英雄演唱會影音全記錄",
+        "song_id": 17681,
+        "title": "Ya Birthday+我就喜歡"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2006王力宏蓋世英雄演唱會影音全記錄",
+        "song_id": 17682,
+        "title": "情敵貝多芬"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2006王力宏蓋世英雄演唱會影音全記錄",
+        "song_id": 17687,
+        "title": "W-H-Y"
+      },
+      {
+        "artist": "王力宏",
+        "album": "2006王力宏蓋世英雄演唱會影音全記錄",
+        "song_id": 17689,
+        "title": "如果你聽見我的歌"
+      },
+      {
+        "artist": "王力宏",
+        "album": "蓋世英雄",
+        "song_id": 17702,
+        "title": "By the Plum Blossom"
+      },
+      {
+        "artist": "王力宏",
+        "album": "蓋世英雄",
+        "song_id": 17703,
+        "title": "Mistake in the Flower Field"
+      },
+      {
+        "artist": "王力宏",
+        "album": "蓋世英雄",
+        "song_id": 17704,
+        "title": "Heroes of Earth (feat. MC Jin & 李岩)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "蓋世英雄",
+        "song_id": 17706,
+        "title": "Perfect Interaction (feat. J-Lim & Rain)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "蓋世英雄",
+        "song_id": 17707,
+        "title": "Big City Small Love"
+      },
+      {
+        "artist": "王力宏",
+        "album": "蓋世英雄",
+        "song_id": 17708,
+        "title": "First Morning"
+      },
+      {
+        "artist": "王力宏",
+        "album": "蓋世英雄",
+        "song_id": 17709,
+        "title": "Homies"
+      },
+      {
+        "artist": "王力宏",
+        "album": "蓋世英雄",
+        "song_id": 17710,
+        "title": "Get Out The Way"
+      },
+      {
+        "artist": "王力宏",
+        "album": "蓋世英雄",
+        "song_id": 17711,
+        "title": "Because Love Is In The Heart"
+      },
+      {
+        "artist": "王力宏",
+        "album": "心中的日月",
+        "song_id": 17724,
+        "title": "Open Your Heart"
+      },
+      {
+        "artist": "王力宏",
+        "album": "心中的日月",
+        "song_id": 17725,
+        "title": "Shangri-La"
+      },
+      {
+        "artist": "王力宏",
+        "album": "心中的日月",
+        "song_id": 17726,
+        "title": "Bamboo Forest"
+      },
+      {
+        "artist": "王力宏",
+        "album": "心中的日月",
+        "song_id": 17728,
+        "title": "Faraway Place"
+      },
+      {
+        "artist": "王力宏",
+        "album": "心中的日月",
+        "song_id": 17729,
+        "title": "A Simple Song"
+      },
+      {
+        "artist": "王力宏",
+        "album": "心中的日月",
+        "song_id": 17730,
+        "title": "Astrology"
+      },
+      {
+        "artist": "王力宏",
+        "album": "心中的日月",
+        "song_id": 17731,
+        "title": "Come Here"
+      },
+      {
+        "artist": "王力宏",
+        "album": "心中的日月",
+        "song_id": 17732,
+        "title": "Wrong Love"
+      },
+      {
+        "artist": "王力宏",
+        "album": "不可思議",
+        "song_id": 17735,
+        "title": "You're Not Here"
+      },
+      {
+        "artist": "王力宏",
+        "album": "不可思議",
+        "song_id": 17737,
+        "title": "Girlfriend"
+      },
+      {
+        "artist": "王力宏",
+        "album": "不可思議",
+        "song_id": 17738,
+        "title": "Who Are You Thinking of Now"
+      },
+      {
+        "artist": "王力宏",
+        "album": "不可思議",
+        "song_id": 17739,
+        "title": "Unbelievable Radio"
+      },
+      {
+        "artist": "王力宏",
+        "album": "不可思議",
+        "song_id": 17740,
+        "title": "You and Me"
+      },
+      {
+        "artist": "王力宏",
+        "album": "不可思議",
+        "song_id": 17741,
+        "title": "What Was I Thinking?"
+      },
+      {
+        "artist": "王力宏",
+        "album": "不可思議",
+        "song_id": 17742,
+        "title": "Not Your Average Thug"
+      },
+      {
+        "artist": "王力宏",
+        "album": "不可思議",
+        "song_id": 17743,
+        "title": "Mile High"
+      },
+      {
+        "artist": "王力宏",
+        "album": "不可思議",
+        "song_id": 17745,
+        "title": "Love Is All Around"
+      },
+      {
+        "artist": "王力宏",
+        "album": "不可思議",
+        "song_id": 17746,
+        "title": "I'm Lovin' it"
+      },
+      {
+        "artist": "王力宏",
+        "album": "唯一",
+        "song_id": 17755,
+        "title": "If You Knew"
+      },
+      {
+        "artist": "王力宏",
+        "album": "永遠的第一天",
+        "song_id": 17768,
+        "title": "你可以告訴我 (你還愛誰)"
+      },
+      {
+        "artist": "王力宏",
+        "album": "不可能錯過你",
+        "song_id": 17778,
+        "title": "Happy Ending"
+      },
+      {
+        "artist": "王力宏",
+        "album": "公轉.自轉",
+        "song_id": 17789,
+        "title": "Please Come Back to Me"
+      },
+      {
+        "artist": "五月天",
+        "album": "五月天 人生無限公司 Life Live 完整收錄篇",
+        "song_id": 17877,
+        "title": "派對動物 (Life Live)"
+      },
+      {
+        "artist": "五月天",
+        "album": "五月天 人生無限公司 Life Live 完整收錄篇",
+        "song_id": 17878,
+        "title": "最好的一天 (Life Live)"
+      },
+      {
+        "artist": "五月天",
+        "album": "五月天 人生無限公司 Life Live 完整收錄篇",
+        "song_id": 17879,
+        "title": "入陣曲 (Life Live)"
+      },
+      {
+        "artist": "五月天",
+        "album": "五月天 人生無限公司 Life Live 完整收錄篇",
+        "song_id": 17881,
+        "title": "超人 (Life Live)"
+      },
+      {
+        "artist": "五月天",
+        "album": "五月天 人生無限公司 Life Live 完整收錄篇",
+        "song_id": 17882,
+        "title": "你不是真正的快樂 (Life Live)"
+      },
+      {
+        "artist": "五月天",
+        "album": "五月天 人生無限公司 Life Live 完整收錄篇",
+        "song_id": 17884,
+        "title": "乾杯 (Life Live)"
+      },
+      {
+        "artist": "五月天",
+        "album": "五月天 人生無限公司 Life Live 完整收錄篇",
+        "song_id": 17885,
+        "title": "兄弟 (Life Live)"
+      },
+      {
+        "artist": "五月天",
+        "album": "五月天 人生無限公司 Life Live 完整收錄篇",
+        "song_id": 17886,
+        "title": "人生有限公司 (Life Live)"
+      },
+      {
+        "artist": "五月天",
+        "album": "五月天 人生無限公司 Life Live 完整收錄篇",
+        "song_id": 17887,
+        "title": "成名在望 (Life Live)"
+      },
+      {
+        "artist": "五月天",
+        "album": "五月天 人生無限公司 Life Live 完整收錄篇",
+        "song_id": 17888,
+        "title": "我心中尚未崩壞的地方 (Life Live)"
+      },
+      {
+        "artist": "五月天",
+        "album": "五月天 人生無限公司 Life Live 完整收錄篇",
+        "song_id": 17889,
+        "title": "知足 (Life Live)"
+      },
+      {
+        "artist": "五月天",
+        "album": "五月天 人生無限公司 Life Live 完整收錄篇",
+        "song_id": 17890,
+        "title": "少年他的奇幻漂流 (Life Live)"
+      },
+      {
+        "artist": "五月天",
+        "album": "五月天 人生無限公司 Life Live 完整收錄篇",
+        "song_id": 17891,
+        "title": "黑暗騎士 (Life Live)"
+      },
+      {
+        "artist": "五月天",
+        "album": "五月天 人生無限公司 Life Live 完整收錄篇",
+        "song_id": 17892,
+        "title": "頑固 (Life Live)"
+      },
+      {
+        "artist": "五月天",
+        "album": "五月天 人生無限公司 Life Live 完整收錄篇",
+        "song_id": 17893,
+        "title": "Do You Ever Shine? (Life Live)"
+      },
+      {
+        "artist": "五月天",
+        "album": "五月天 人生無限公司 Life Live 完整收錄篇",
+        "song_id": 17894,
+        "title": "離開地球表面 (Life Live)"
+      },
+      {
+        "artist": "五月天",
+        "album": "五月天 人生無限公司 Life Live 完整收錄篇",
+        "song_id": 17895,
+        "title": "傷心的人別聽慢歌 (feat. 黃渤) [Life Live]"
+      },
+      {
+        "artist": "五月天",
+        "album": "五月天 人生無限公司 Life Live 完整收錄篇",
+        "song_id": 17896,
+        "title": "任意門 (Life Live)"
+      },
+      {
+        "artist": "五月天",
+        "album": "五月天 人生無限公司 Life Live 完整收錄篇",
+        "song_id": 17897,
+        "title": "人生海海 (Life Live)"
+      },
+      {
+        "artist": "五月天",
+        "album": "五月天 人生無限公司 Life Live 完整收錄篇",
+        "song_id": 17898,
+        "title": "我不願讓你一個人 (Life Live)"
+      },
+      {
+        "artist": "五月天",
+        "album": "五月天 人生無限公司 Life Live 完整收錄篇",
+        "song_id": 17899,
+        "title": "轉眼 (Life Live)"
+      },
+      {
+        "artist": "五月天",
+        "album": "五月天 人生無限公司 Life Live 完整收錄篇",
+        "song_id": 17900,
+        "title": "倔強 (Life Live)"
+      },
+      {
+        "artist": "五月天",
+        "album": "自傳",
+        "song_id": 17915,
+        "title": "好好 (想把你寫成一首歌)"
+      },
+      {
+        "artist": "五月天",
+        "album": "自傳",
+        "song_id": 17926,
+        "title": "What's Your Story?"
+      },
+      {
+        "artist": "五月天",
+        "album": "自傳",
+        "song_id": 17927,
+        "title": "你說那C和弦就是..."
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17928,
+        "title": "步步"
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17930,
+        "title": "傷心的人別聽慢歌 (貫徹快樂)"
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17931,
+        "title": "洋蔥"
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17933,
+        "title": "入陣曲"
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17937,
+        "title": "離開地球表面"
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17942,
+        "title": "溫柔(還你自由版)"
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17943,
+        "title": "你是唯一"
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17944,
+        "title": "夜訪吸血鬼"
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17946,
+        "title": "盛夏光年"
+      },
+      {
+        "artist": "五月天",
+        "album": "步步自選作品輯 1999-2013",
+        "song_id": 17950,
+        "title": "摩記車日記"
+      },
+      {
+        "artist": "五月天",
+        "album": "第二人生 (明日版)",
+        "song_id": 17984,
+        "title": "OAOA (現在就是永遠)"
+      },
+      {
+        "artist": "五月天",
+        "album": "知足 just my pride 最真傑作選",
+        "song_id": 18054,
+        "title": "恆星的恆心"
+      },
+      {
+        "artist": "五月天",
+        "album": "知足 just my pride 最真傑作選",
+        "song_id": 18055,
+        "title": "溫柔 (還你自由版)"
+      },
+      {
+        "artist": "五月天",
+        "album": "知足 just my pride 最真傑作選",
+        "song_id": 18064,
+        "title": "垃圾車 (朋友版)"
+      },
+      {
+        "artist": "五月天",
+        "album": "知足 just my pride 最真傑作選",
+        "song_id": 18070,
+        "title": "未來(sailing , with me)"
+      },
+      {
+        "artist": "张学友",
+        "album": "Amour / 遙遠的她",
+        "song_id": 21124,
+        "title": "月半彎"
+      },
+      {
+        "artist": "张学友",
+        "album": "Amour / 遙遠的她",
+        "song_id": 21129,
+        "title": "遙遠的她"
+      },
+      {
+        "artist": "张学友",
+        "album": "Amour / 遙遠的她",
+        "song_id": 21130,
+        "title": "單車少女"
+      },
+      {
+        "artist": "张学友",
+        "album": "Amour / 遙遠的她",
+        "song_id": 21133,
+        "title": "霸王別姬"
+      },
+      {
+        "artist": "张学友",
+        "album": "Amour / 遙遠的她",
+        "song_id": 21134,
+        "title": "楚歌"
+      },
+      {
+        "artist": "五月天",
+        "album": "第二人生",
+        "song_id": 24186,
+        "title": "仓颉"
+      },
+      {
+        "artist": "五月天",
+        "album": "第二人生",
+        "song_id": 24189,
+        "title": "干杯"
+      },
+      {
+        "artist": "五月天",
+        "album": "第二人生",
+        "song_id": 24190,
+        "title": "几个轮回"
+      },
+      {
+        "artist": "五月天",
+        "album": "第二人生",
+        "song_id": 24191,
+        "title": "这里的空气"
+      },
+      {
+        "artist": "五月天",
+        "album": "第二人生",
+        "song_id": 24193,
+        "title": "诺亚方舟"
+      },
+      {
+        "artist": "五月天",
+        "album": "第二人生",
+        "song_id": 24195,
+        "title": "每一个明天"
+      },
+      {
+        "artist": "五月天",
+        "album": "第二人生",
+        "song_id": 24198,
+        "title": "你不是真正的快乐"
+      },
+      {
+        "artist": "五月天",
+        "album": "自传",
+        "song_id": 24201,
+        "title": "好好 (想把你写成一首歌)"
+      },
+      {
+        "artist": "五月天",
+        "album": "自传",
+        "song_id": 24205,
+        "title": "派对动物"
+      },
+      {
+        "artist": "五月天",
+        "album": "自传",
+        "song_id": 24208,
+        "title": "终于结束的起点"
+      },
+      {
+        "artist": "五月天",
+        "album": "自传",
+        "song_id": 24210,
+        "title": "顽固"
+      },
+      {
+        "artist": "五月天",
+        "album": "人生海海",
+        "song_id": 24231,
+        "title": "啾啾啾"
+      },
+      {
+        "artist": "五月天",
+        "album": "時光機",
+        "song_id": 24245,
+        "title": "我們 (時時刻刻)"
+      },
+      {
+        "artist": "张学友",
+        "album": "遥远的她",
+        "song_id": 24453,
+        "title": "你每句说话"
+      },
+      {
+        "artist": "张学友",
+        "album": "遥远的她",
+        "song_id": 24454,
+        "title": "楚歌"
+      },
+      {
+        "artist": "张学友",
+        "album": "遥远的她",
+        "song_id": 24455,
+        "title": "再度重遇你"
+      },
+      {
+        "artist": "张学友",
+        "album": "遥远的她",
+        "song_id": 24456,
+        "title": "情已逝 (国语)"
+      },
+      {
+        "artist": "张学友",
+        "album": "遥远的她",
+        "song_id": 24457,
+        "title": "梦"
+      },
+      {
+        "artist": "张学友",
+        "album": "遥远的她",
+        "song_id": 24458,
+        "title": "真面目、假面目"
+      },
+      {
+        "artist": "张学友",
+        "album": "遥远的她",
+        "song_id": 24459,
+        "title": "征途霸业"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "Getting Ready",
+        "song_id": 25446,
+        "title": "一個靈魂的獨白"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "Stranger Under My Skin",
+        "song_id": 25457,
+        "title": "六月飞霜"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "不想放手",
+        "song_id": 25475,
+        "title": "27 Month"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "不想放手",
+        "song_id": 25476,
+        "title": "且聽下回分解"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "不想放手",
+        "song_id": 25483,
+        "title": "那一夜有沒有雪"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "我的快樂時代",
+        "song_id": 25496,
+        "title": "五年"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "上五樓的快活",
+        "song_id": 25546,
+        "title": "給我一個吻"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "上五樓的快活",
+        "song_id": 25547,
+        "title": "這樣的一個麻煩"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "上五樓的快活",
+        "song_id": 25549,
+        "title": "Nothing Ever Happened"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "上五樓的快活",
+        "song_id": 25550,
+        "title": "你為什麼哭了呢"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "上五樓的快活",
+        "song_id": 25551,
+        "title": "我也知道"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "上五樓的快活",
+        "song_id": 25552,
+        "title": "我甲你"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "上五樓的快活",
+        "song_id": 25553,
+        "title": "心的距離"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "上五樓的快活",
+        "song_id": 25554,
+        "title": "床頭燈"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "上五樓的快活",
+        "song_id": 25555,
+        "title": "給你"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "L.O.V.E.",
+        "song_id": 25579,
+        "title": "从此以后"
+      },
+      {
+        "artist": "陈奕迅",
+        "album": "The Easy Ride",
+        "song_id": 25608,
+        "title": "人工智能"
+      },
+      {
+        "artist": "李宗盛",
+        "album": "生命中的精灵",
+        "song_id": 26271,
+        "title": "旧爱新欢"
+      },
+      {
+        "artist": "梁静茹",
+        "album": "丝路",
+        "song_id": 26444,
+        "title": "好夜晚"
+      },
+      {
+        "artist": "梁静茹",
+        "album": "崇拜",
+        "song_id": 26458,
+        "title": "C'est la vie"
+      },
+      {
+        "artist": "梁静茹",
+        "album": "麋鹿",
+        "song_id": 26479,
+        "title": "第六感"
+      },
+      {
+        "artist": "梁静茹",
+        "album": "麋鹿",
+        "song_id": 26482,
+        "title": "恰好"
+      },
+      {
+        "artist": "梁静茹",
+        "album": "麋鹿",
+        "song_id": 26485,
+        "title": "关于爱，我们都还在期待"
+      },
+      {
+        "artist": "梁静茹",
+        "album": "麋鹿",
+        "song_id": 26487,
+        "title": "叮当"
+      },
+      {
+        "artist": "梁静茹",
+        "album": "麋鹿",
+        "song_id": 26488,
+        "title": "终点以后"
+      },
+      {
+        "artist": "梁静茹",
+        "album": "Sunrise 我喜欢",
+        "song_id": 26509,
+        "title": "分手快乐 (合唱版)"
+      },
+      {
+        "artist": "梁静茹",
+        "album": "燕尾蝶",
+        "song_id": 26530,
+        "title": "Love is everything"
+      },
+      {
+        "artist": "梁静茹",
+        "album": "今天情人节",
+        "song_id": 26537,
+        "title": "崇拜 (Live)"
+      },
+      {
+        "artist": "梁静茹",
+        "album": "今天情人节",
+        "song_id": 26538,
+        "title": "会呼吸的痛 (Live)"
+      },
+      {
+        "artist": "梁静茹",
+        "album": "今天情人节",
+        "song_id": 26539,
+        "title": "知足 (Live)"
+      },
+      {
+        "artist": "梁静茹",
+        "album": "今天情人节",
+        "song_id": 26540,
+        "title": "爱很简单 (Live)"
+      },
+      {
+        "artist": "梁静茹",
+        "album": "今天情人节",
+        "song_id": 26541,
+        "title": "诱惑的街 (Live)"
+      },
+      {
+        "artist": "梁静茹",
+        "album": "今天情人节",
+        "song_id": 26542,
+        "title": "梦醒时分 (Live)"
+      },
+      {
+        "artist": "梁静茹",
+        "album": "今天情人节",
+        "song_id": 26543,
+        "title": "C'est la vie (Live)"
+      },
+      {
+        "artist": "梁静茹",
+        "album": "今天情人节",
+        "song_id": 26544,
+        "title": "Let's fall in love (Live)"
+      },
+      {
+        "artist": "梁静茹",
+        "album": "一夜长大",
+        "song_id": 26553,
+        "title": "纯情艳阳天"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "她说",
+        "song_id": 26760,
+        "title": "心墙"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "学不会",
+        "song_id": 26788,
+        "title": "独奏"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "和自己对话",
+        "song_id": 26822,
+        "title": "现在的我和她"
+      },
+      {
+        "artist": "林俊杰",
+        "album": "幸存者 • 如你",
+        "song_id": 26873,
+        "title": "Bedroom"
+      }
+    ]
+  }
+}
