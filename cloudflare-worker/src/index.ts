@@ -125,20 +125,65 @@ app.get('/storage/*', async (c) => {
   const pathPrefix = '/storage/'
   // e.g. /storage/music/Artist/Album/Song.mp3 -> music/Artist/Album/Song.mp3
   const key = decodeURIComponent(c.req.path.slice(pathPrefix.length))
-  
+
   if (!key) {
     return fail(c, 'STORAGE_OBJECT_KEY_MISSING')
   }
 
-  // Check cache first (Cloudflare CDN Cache)
+  // ---- 解析客户端 Range 请求头 ----
+  const rangeHeader = c.req.header('range')
+  let rangeOpts: R2GetOptions | undefined
+
+  if (rangeHeader) {
+    // 格式: "bytes=start-end" 或 "bytes=start-"
+    const match = rangeHeader.match(/^bytes=(\d+)-(\d*)$/)
+    if (match) {
+      const offset = parseInt(match[1], 10)
+      const endStr = match[2]
+      if (endStr) {
+        rangeOpts = { range: { offset, length: parseInt(endStr, 10) - offset + 1 } }
+      } else {
+        rangeOpts = { range: { offset } }
+      }
+    }
+  }
+
+  // ---- 有 Range 请求：直接去 R2 取分片，不走 CDN cache ----
+  if (rangeOpts) {
+    const object = await c.env.BUCKET.get(key, rangeOpts)
+    if (object === null) {
+      return fail(c, 'STORAGE_OBJECT_NOT_FOUND')
+    }
+
+    const headers = new Headers()
+    object.writeHttpMetadata(headers)
+    headers.set('etag', object.httpEtag)
+    headers.set('Cache-Control', 'public, max-age=2592000')
+    headers.set('Accept-Ranges', 'bytes')
+
+    // 构造 Content-Range 响应头
+    const fileSize = object.size
+    const rangeResult = (object as any).range as { offset?: number; length?: number } | undefined
+    const start = rangeResult?.offset ?? 0
+    const length = rangeResult?.length ?? fileSize
+    const end = start + length - 1
+    headers.set('Content-Range', `bytes ${start}-${end}/${fileSize}`)
+    headers.set('Content-Length', String(length))
+
+    return new Response(object.body, { status: 206, headers })
+  }
+
+  // ---- 无 Range 请求：走 CDN cache 逻辑 ----
   const cacheUrl = new URL(c.req.url)
   const cacheKey = new Request(cacheUrl.toString(), c.req)
   const cache = caches.default
-  
+
   let response = await cache.match(cacheKey)
   if (response) {
-    // Return cached response
-    return response
+    // 缓存命中时也要声明支持 Range 请求
+    const cachedHeaders = new Headers(response.headers)
+    cachedHeaders.set('Accept-Ranges', 'bytes')
+    return new Response(response.body, { status: response.status, headers: cachedHeaders })
   }
 
   const object = await c.env.BUCKET.get(key)
@@ -150,15 +195,18 @@ app.get('/storage/*', async (c) => {
   object.writeHttpMetadata(headers)
   headers.set('etag', object.httpEtag)
   // Cache the media objects at the Edge for 30 days
-  headers.set('Cache-Control', 'public, max-age=2592000') 
+  headers.set('Cache-Control', 'public, max-age=2592000')
+  // 声明支持 Range 请求，让浏览器知道可以 seek
+  headers.set('Accept-Ranges', 'bytes')
 
   response = new Response(object.body, { headers })
-  
+
   // Cache it in the background
   c.executionCtx.waitUntil(cache.put(cacheKey, response.clone()))
-  
+
   return response
 })
+
 
 // ==========================================
 // 2. Welcome Images
