@@ -15,16 +15,16 @@
     <link rel="stylesheet" href="src/css/style.css?v=20260904_1148">
     <link rel="stylesheet" href="src/css/user_system.css?v=12.52">
     <link rel="stylesheet" href="src/css/notion_compact.css?v=1.0">
-    <link rel="stylesheet" href="src/css/ambient_zen.css?v=20260904_1610">
+    <link rel="stylesheet" href="src/css/ambient_zen.css?v=20260905_1330">
 </head>
 
 <body>
     <!-- 微动画环境氛围背景 (双态协同体系) -->
     <div id="ambientBgContainer" class="ambient-bg-container">
-        <video id="ambientVideo" class="ambient-video" autoplay loop muted playsinline preload="auto">
-            <source src="src/assets/video/ocean.webm" type="video/webm">
-        </video>
+        <video id="ambientVideo" class="ambient-video" autoplay loop muted playsinline preload="auto"></video>
+        <img id="ambientImage" class="ambient-image" alt="Ambient Background" style="display: none;">
         <div class="ambient-vignette"></div>
+        <div id="ambientDustParticles" class="ambient-dust-particles" style="display: none;"></div>
     </div>
 
     <div class="sidebar">
@@ -261,7 +261,7 @@
         </div>
 
         <!-- 隐藏的音频播放器 -->
-        <audio id="audioPlayer" preload="auto"></audio>
+        <audio id="audioPlayer" preload="auto" crossorigin="anonymous"></audio>
     </div>
 
     <!-- 黑胶沉浸屏保 / 禅意视听层 (Zen Screensaver) -->
@@ -294,6 +294,11 @@
                 </div>
             </div>
         </main>
+
+        <!-- 实时音频频谱可视化 Canvas (所有屏保场景统一共鸣) -->
+        <div class="zen-visualizer-container" id="zenVisualizerContainer">
+            <canvas id="zenVisualizerCanvas"></canvas>
+        </div>
 
         <!-- 底部极简悬浮微控岛 (Minimal Floating Dock) -->
         <footer class="zen-dock-container">
@@ -344,7 +349,7 @@
     <script src="src/js/app.js?v=20260904_1340"></script>
     <script src="src/js/player.js?v=20260904_1540"></script>
     <!-- 微动画环境氛围与双态屏保模块 -->
-    <script src="src/js/ambient-bg.js?v=20260904_1700"></script>
+    <script src="src/js/ambient-bg.js?v=20260905_1330"></script>
     <!-- 引入雪花特效 (最后加载) -->
     <script src="src/js/snow.js"></script>
     <script>

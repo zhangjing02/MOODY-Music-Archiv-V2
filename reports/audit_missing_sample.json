@@ -1,0 +1,16 @@
+[
+  {
+    "id": 26271,
+    "title": "旧爱新欢",
+    "db_path": "music/李宗盛/生命中的精灵/s_26271.m4a",
+    "expected_r2_key": "music/李宗盛/生命中的精灵/s_26271.m4a",
+    "found_in_r2": false
+  },
+  {
+    "id": 27655,
+    "title": "我不该躲",
+    "db_path": "music/阿杜/我不该躲/s_27655.mp3",
+    "expected_r2_key": "music/阿杜/我不该躲/s_27655.mp3",
+    "found_in_r2": false
+  }
+]

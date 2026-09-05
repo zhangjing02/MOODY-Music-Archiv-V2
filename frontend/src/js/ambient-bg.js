@@ -46,6 +46,15 @@
             icon: '🍂',
             file: VIDEO_BASE + 'cafe_rain.webm'
         },
+        sunset: {
+            id: 'sunset',
+            name: '日落暖阳',
+            desc: '天台晚霞与吉他慢调 (原版定制音频动效)',
+            icon: '🌅',
+            type: 'image',
+            file: R2_AMBIENT_BASE + 'sunset.jpg',
+            fallback: 'src/assets/images/sunset.jpg'
+        },
         none: {
             id: 'none',
             name: '纯黑胶暗色',
@@ -55,7 +64,7 @@
         }
     };
 
-    const SCENE_KEYS = ['ocean', 'shinjuku', 'cozy_rain', 'cafe_rain'];
+    const SCENE_KEYS = ['ocean', 'shinjuku', 'cozy_rain', 'cafe_rain', 'sunset'];
 
     // ==================== 全局状态管理 ====================
     let currentSceneId = 'ocean';
@@ -70,6 +79,10 @@
     const dom = {
         videoContainer: null,
         video: null,
+        image: null,
+        dustParticles: null,
+        visualizerContainer: null,
+        visualizerCanvas: null,
         switchDock: null,
         switchBtn: null,
         sbAmbIcon: null,
@@ -190,6 +203,23 @@
         dom.zenPauseIcon = document.getElementById('zenPauseIcon');
         dom.zenNextBtn = document.getElementById('zenNextBtn');
 
+        // 实景图片与动态音频频谱 DOM 缓存
+        dom.image = document.getElementById('ambientImage');
+        dom.dustParticles = document.getElementById('ambientDustParticles');
+        dom.visualizerContainer = document.getElementById('zenVisualizerContainer');
+        dom.visualizerCanvas = document.getElementById('zenVisualizerCanvas');
+
+        if (dom.image) {
+            dom.image.addEventListener('error', function () {
+                const currentSrc = dom.image.src || '';
+                if (currentSrc.includes('r2.changgepd.ccwu.cc') || currentSrc.includes('ambient')) {
+                    const localFallback = 'src/assets/images/sunset.jpg';
+                    console.warn(`[Ambient] 远端日落素材加载受阻，平滑降级至本地资源: ${localFallback}`);
+                    dom.image.src = localFallback;
+                }
+            });
+        }
+
         // 远端微动视频加载容错降级机制：若远端资源暂未上传或网络抖动，自动平滑回退至本地资源
         if (dom.video) {
             dom.video.addEventListener('error', function () {
@@ -269,26 +299,55 @@
             localStorage.setItem('moody_ambient_scene', sceneId);
         }
 
-        // 切换视频源
-        if (scene.file) {
-            dom.video.style.display = 'block';
-            if (dom.video.getAttribute('data-loaded-scene') !== sceneId) {
-                dom.video.setAttribute('data-loaded-scene', sceneId);
-                dom.video.src = scene.file;
-                dom.video.muted = true;
-                dom.video.load();
-                // 仅在屏保激活状态下才启动解码播放，常态下保持 pause
-                if (isZenMode) {
-                    dom.video.play().catch(() => {});
-                } else {
-                    dom.video.pause();
+        // 切换背景介质 (支持 MP4/WebM 动态视频 与 1080P 高清实景插画)
+        if (scene.type === 'image' && scene.file) {
+            if (dom.video) {
+                dom.video.removeAttribute('data-loaded-scene');
+                dom.video.pause();
+                dom.video.style.display = 'none';
+            }
+            if (dom.image) {
+                dom.image.src = scene.file;
+                dom.image.style.display = 'block';
+            }
+            if (dom.dustParticles) {
+                dom.dustParticles.style.display = (scene.id === 'sunset') ? 'block' : 'none';
+            }
+        } else if (scene.file) {
+            if (dom.image) {
+                dom.image.style.display = 'none';
+            }
+            if (dom.dustParticles) {
+                dom.dustParticles.style.display = 'none';
+            }
+            if (dom.video) {
+                dom.video.style.display = 'block';
+                if (dom.video.getAttribute('data-loaded-scene') !== sceneId) {
+                    dom.video.setAttribute('data-loaded-scene', sceneId);
+                    dom.video.src = scene.file;
+                    dom.video.muted = true;
+                    dom.video.load();
+                    // 仅在屏保激活状态下才启动解码播放，常态下保持 pause
+                    if (isZenMode) {
+                        dom.video.play().catch(() => {});
+                    } else {
+                        dom.video.pause();
+                    }
                 }
             }
         } else {
             // 'none' 纯黑胶暗色
-            dom.video.removeAttribute('data-loaded-scene');
-            dom.video.pause();
-            dom.video.style.display = 'none';
+            if (dom.video) {
+                dom.video.removeAttribute('data-loaded-scene');
+                dom.video.pause();
+                dom.video.style.display = 'none';
+            }
+            if (dom.image) {
+                dom.image.style.display = 'none';
+            }
+            if (dom.dustParticles) {
+                dom.dustParticles.style.display = 'none';
+            }
         }
 
         // 更新侧边栏底部 Dock 的名称和图标
@@ -342,6 +401,179 @@
         }, duration);
     }
 
+    // ==================== 动态音频频谱可视化引擎 (Web Audio API) ====================
+    let audioCtx = null;
+    let analyser = null;
+    let sourceNode = null;
+    let freqDataArray = null;
+    let visualizerAnimId = null;
+    let visualizerCtx = null;
+    let isVisualizerRunning = false;
+
+    // 频谱参数 (48根纯白圆角跳动光柱，居中对齐中下部，与所有屏保场景统一联动)
+    const VIZ_BAR_COUNT = 48;
+    const VIZ_BAR_SPACING = 3;
+    const VIZ_SENSITIVITY = 1.35;
+
+    function initAudioVisualizer() {
+        if (audioCtx) {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume().catch(() => {});
+            }
+            return;
+        }
+
+        const audio = document.getElementById('audioPlayer');
+        if (!audio) return;
+
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            audioCtx = new AudioContext();
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 512;
+            analyser.smoothingTimeConstant = 0.82;
+
+            if (!audio._sourceConnected) {
+                sourceNode = audioCtx.createMediaElementSource(audio);
+                sourceNode.connect(analyser);
+                analyser.connect(audioCtx.destination);
+                audio._sourceConnected = true;
+            }
+
+            freqDataArray = new Uint8Array(analyser.frequencyBinCount);
+            console.log('✓ 实时音频频谱引擎已就绪，直连播放器音频流');
+        } catch (err) {
+            console.warn('[Visualizer] Web Audio 初始化提示:', err);
+        }
+    }
+
+    function resizeVisualizerCanvas() {
+        if (!dom.visualizerCanvas) return;
+        const rect = dom.visualizerCanvas.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
+        const dpr = window.devicePixelRatio || 1;
+        dom.visualizerCanvas.width = rect.width * dpr;
+        dom.visualizerCanvas.height = rect.height * dpr;
+        if (!visualizerCtx) {
+            visualizerCtx = dom.visualizerCanvas.getContext('2d');
+        }
+        if (visualizerCtx) {
+            visualizerCtx.setTransform(1, 0, 0, 1, 0, 0);
+            visualizerCtx.scale(dpr, dpr);
+        }
+    }
+
+    function startVisualizer() {
+        if (isVisualizerRunning) return;
+        isVisualizerRunning = true;
+        initAudioVisualizer();
+        resizeVisualizerCanvas();
+        renderVisualizerFrame();
+    }
+
+    function stopVisualizer() {
+        isVisualizerRunning = false;
+        if (visualizerAnimId) {
+            cancelAnimationFrame(visualizerAnimId);
+            visualizerAnimId = null;
+        }
+    }
+
+    function renderVisualizerFrame() {
+        if (!isVisualizerRunning) return;
+        visualizerAnimId = requestAnimationFrame(renderVisualizerFrame);
+
+        if (!dom.visualizerCanvas) return;
+        if (!visualizerCtx) {
+            visualizerCtx = dom.visualizerCanvas.getContext('2d');
+            resizeVisualizerCanvas();
+        }
+        if (!visualizerCtx) return;
+
+        const dpr = window.devicePixelRatio || 1;
+        const width = dom.visualizerCanvas.width / dpr;
+        const height = dom.visualizerCanvas.height / dpr;
+
+        visualizerCtx.clearRect(0, 0, width, height);
+
+        const audio = document.getElementById('audioPlayer');
+        const isAudioPlaying = audio && !audio.paused && audio.currentTime > 0;
+
+        if (!analyser || !isAudioPlaying) {
+            drawIdleBars(visualizerCtx, width, height);
+            return;
+        }
+
+        analyser.getByteFrequencyData(freqDataArray);
+
+        // 截取人耳最具节奏感的 180 个频段进行多组平均抽样
+        const usableBins = Math.min(freqDataArray.length, 180);
+        const step = Math.floor(usableBins / VIZ_BAR_COUNT);
+        const totalSpacing = (VIZ_BAR_COUNT - 1) * VIZ_BAR_SPACING;
+        const barWidth = Math.max(3, (width - totalSpacing) / VIZ_BAR_COUNT);
+
+        for (let i = 0; i < VIZ_BAR_COUNT; i++) {
+            let sum = 0;
+            for (let j = 0; j < step; j++) {
+                sum += freqDataArray[i * step + j] || 0;
+            }
+            let val = (sum / step) / 255.0;
+
+            // 非线性振幅提升，让轻柔乐句与澎湃鼓点皆有灵性跳动
+            val = Math.pow(val, 1.22) * VIZ_SENSITIVITY;
+            val = Math.min(1.0, Math.max(0.04, val));
+
+            const barHeight = Math.max(4, val * (height * 0.94));
+            const x = i * (barWidth + VIZ_BAR_SPACING);
+            const y = height - barHeight;
+
+            drawSingleBar(visualizerCtx, x, y, barWidth, barHeight, height);
+        }
+    }
+
+    function drawSingleBar(ctx, x, y, width, barHeight, totalHeight) {
+        ctx.save();
+        const grad = ctx.createLinearGradient(0, y, 0, totalHeight);
+        grad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+        grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.72)');
+        grad.addColorStop(1, 'rgba(255, 255, 255, 0.22)');
+        ctx.fillStyle = grad;
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.45)';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        if (ctx.roundRect) {
+            ctx.roundRect(x, y, width, barHeight, [width / 2, width / 2, 0, 0]);
+        } else {
+            ctx.rect(x, y, width, barHeight);
+        }
+        ctx.fill();
+        ctx.restore();
+    }
+
+    function drawIdleBars(ctx, width, height) {
+        ctx.save();
+        const totalSpacing = (VIZ_BAR_COUNT - 1) * VIZ_BAR_SPACING;
+        const barWidth = Math.max(3, (width - totalSpacing) / VIZ_BAR_COUNT);
+        const time = Date.now() * 0.0025;
+
+        for (let i = 0; i < VIZ_BAR_COUNT; i++) {
+            const x = i * (barWidth + VIZ_BAR_SPACING);
+            const idleHeight = Math.max(4, Math.sin(time + i * 0.22) * 5 + 7);
+            const y = height - idleHeight;
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+            ctx.beginPath();
+            if (ctx.roundRect) {
+                ctx.roundRect(x, y, barWidth, idleHeight, [barWidth / 2, barWidth / 2, 0, 0]);
+            } else {
+                ctx.rect(x, y, barWidth, idleHeight);
+            }
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+
     /**
      * 进入 Zen Mode (黑胶沉浸屏保)
      */
@@ -358,10 +590,13 @@
         syncZenStateWithPlayer(true);
 
         // 唤醒微动画视频解码播放
-        if (currentSceneId !== 'none' && dom.video) {
+        if (currentSceneId !== 'none' && dom.video && AMBIENT_SCENES[currentSceneId]?.type !== 'image') {
             dom.video.muted = true;
             dom.video.play().catch(() => {});
         }
+
+        // 启动所有屏保场景通用的实时音频动态频谱图
+        startVisualizer();
     }
 
     /**
@@ -378,6 +613,9 @@
         if (dom.video) {
             dom.video.pause();
         }
+
+        // 停止音频频谱渲染循环，释放 GPU/CPU
+        stopVisualizer();
 
         // 退出后重新启动闲置计时器
         resetIdleTimer();
@@ -723,6 +961,17 @@
                 if (isZenMode && currentSceneId !== 'none' && dom.video && dom.video.paused) {
                     dom.video.play().catch(() => {});
                 }
+            }
+        });
+
+        // --- 9. 频谱 Canvas 尺寸自适应与 AudioContext 唤醒 ---
+        window.addEventListener('resize', () => {
+            if (isZenMode) resizeVisualizerCanvas();
+        });
+
+        document.addEventListener('click', () => {
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume().catch(() => {});
             }
         });
 

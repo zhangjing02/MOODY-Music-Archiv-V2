@@ -359,6 +359,14 @@ def download_track(song: str, artist: str, album: str, output_dir: str = DEFAULT
                 print(f"   📊 音质报告: 码率={qa.get('bitrate')}, 采样率={qa.get('sample_rate')}, 声道={qa.get('channels')}, 时长={qa.get('duration')}")
                 print(f"   📝 官方歌词: {lrc_info.get('intro')}")
                 print(f"   🤖 AI 听音实测(Groq): {ai_heard}")
+                
+                # 自动非阻塞通知本地状态机底册：已下载就绪，准备 R2 推送
+                try:
+                    lrc_path = target_path[:-4] + ".lrc"
+                    notify_track_ready(artist, album, song, target_path, lrc_path, qa)
+                except Exception:
+                    pass
+                
                 return target_path, qa, lrc_info
         except Exception as e:
             print(f"   ❌ 候选音源下载出错: {e}")
@@ -367,6 +375,53 @@ def download_track(song: str, artist: str, album: str, output_dir: str = DEFAULT
             continue
             
     return None, None, lrc_info
+
+def notify_track_ready(artist: str, album: str, title: str, mp3_path: str, lrc_path: str, qa: dict):
+    """轻量级非阻塞通知本地数据库：歌曲已下载并通过 AI 听音校验，标记为 DOWNLOADED 状态等待 R2 推送"""
+    try:
+        db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "database", "catalog_sync.db"))
+        if not os.path.exists(db_path):
+            return
+        import sqlite3
+        conn = sqlite3.connect(db_path, timeout=5)
+        cur = conn.cursor()
+        file_size = os.path.getsize(mp3_path) if mp3_path and os.path.exists(mp3_path) else 0
+        has_lrc = lrc_path and os.path.exists(lrc_path)
+        
+        # 查找匹配的歌曲记录并更新
+        cur.execute("""
+            UPDATE tracks_sync_state
+            SET local_mp3 = ?,
+                local_lrc = ?,
+                file_size = ?,
+                duration = ?,
+                bitrate = ?,
+                qa_status = 'PASSED',
+                status = CASE WHEN status = 'R2_UPLOADED' THEN 'R2_UPLOADED' ELSE 'DOWNLOADED' END,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE artist_name = ? AND album_title = ? AND song_title = ?
+        """, (mp3_path, lrc_path if has_lrc else None, file_size, qa.get('duration'), qa.get('bitrate'), artist, album, title))
+        
+        if cur.rowcount == 0:
+            cur.execute("""
+                UPDATE tracks_sync_state
+                SET local_mp3 = ?,
+                    local_lrc = ?,
+                    file_size = ?,
+                    duration = ?,
+                    bitrate = ?,
+                    qa_status = 'PASSED',
+                    status = CASE WHEN status = 'R2_UPLOADED' THEN 'R2_UPLOADED' ELSE 'DOWNLOADED' END,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE artist_name = ? AND song_title = ?
+            """, (mp3_path, lrc_path if has_lrc else None, file_size, qa.get('duration'), qa.get('bitrate'), artist, title))
+            
+        conn.commit()
+        conn.close()
+    except Exception:
+        # 高容错保护：绝不因本地数据库写入异常打断抓轨主流水线
+        pass
+
 
 def upload_to_moody(file_path: str, artist: str, album: str, title: str, api_base: str = DEFAULT_API_BASE):
     """自动上传到 MOODY CMS /api/admin/upload 接口完成点亮"""

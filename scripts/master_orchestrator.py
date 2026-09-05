@@ -11,11 +11,8 @@ SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
 PYTHON_EXE = sys.executable
 
 PIPELINES = [
-    ("邓紫棋 (G.E.M.)", "gem_pipeline.py"),
-    ("梁静茹 (Fish Leong)", "fish_leong_pipeline.py"),
-    ("李荣浩 (Ronghao Li)", "ronghao_pipeline.py"),
-    ("五月天 (Mayday)", "mayday_pipeline.py"),
-    ("王力宏 (Leehom Wang)", "leehom_pipeline.py"),
+    ("王菲 (Faye Wong)", "faye_wong_pipeline.py"),
+    ("苏打绿 (Sodagreen)", "sodagreen_pipeline.py"),
 ]
 
 def is_david_tao_running():
@@ -82,8 +79,8 @@ def main():
     print("🚀 MOODY 全歌手全专辑自动化连续处理流水线启动 (Master Orchestrator)")
     print("=" * 80)
     
-    # 1. Wait for David Tao if currently running
-    wait_for_david_tao()
+    # 1. Previous artists are all completed!
+    # wait_for_david_tao()
     
     # 2. Run remaining artists sequentially
     for name, script in PIPELINES:

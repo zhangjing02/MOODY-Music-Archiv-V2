@@ -38,6 +38,31 @@
     pointer-events: none;
 }
 
+.ambient-image {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    min-width: 100%;
+    min-height: 100%;
+    width: auto;
+    height: auto;
+    transform: translate(-50%, -50%);
+    object-fit: cover;
+    opacity: 0.95;
+    filter: brightness(0.96) contrast(1.03);
+    transition: opacity 0.5s ease;
+}
+
+.ambient-dust-particles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(circle at 18% 78%, rgba(251, 146, 60, 0.16) 0%, transparent 45%),
+                radial-gradient(circle at 85% 20%, rgba(245, 158, 11, 0.1) 0%, transparent 40%);
+    z-index: 2;
+    transition: opacity 0.5s ease;
+}
+
 /* 常态下主页面完全回归纯净暗夜黑胶质感，不叠加半透明微动背景 */
 .sidebar {
     background: var(--bg-sidebar, #181818) !important;
@@ -566,6 +591,30 @@ body.zen-active .zen-overlay {
     margin: 4px 0;
 }
 
+/* --- 5.5. 实时音频频谱可视化 Canvas (所有屏保场景统一共鸣) --- */
+.zen-visualizer-container {
+    position: fixed;
+    left: 50%;
+    bottom: 85px;
+    transform: translateX(-50%);
+    width: 58vw;
+    max-width: 860px;
+    min-width: 280px;
+    height: 105px;
+    z-index: 35;
+    pointer-events: none;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    transition: opacity 0.5s ease;
+}
+
+#zenVisualizerCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
 /* --- 6. 底部极简悬浮微控岛 (Minimal Floating Dock) --- */
 .zen-dock-container {
     display: flex;
@@ -726,5 +775,10 @@ body.zen-active .zen-overlay {
     }
     .zen-overlay {
         padding: 20px;
+    }
+    .zen-visualizer-container {
+        width: 84vw;
+        height: 75px;
+        bottom: 75px;
     }
 }

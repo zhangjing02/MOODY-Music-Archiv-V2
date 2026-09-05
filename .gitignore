@@ -68,6 +68,15 @@ inject_test_data.py
 
 # 9. 本地下载缓存与大媒体文件 (防止推送数 GB 音视频资产)
 downloads/
+downloads_optimized/
+r2_recovered_320k/
 tmp/
 tools/downloaded_avatars/
 
+# 10. 密钥配置与本地数据缓存
+r2_config.json
+database/
+*.json.bak
+r2_all_mp3_keys.json
+r2_historical_pending_found.json
+d1_lit_songs_659.json

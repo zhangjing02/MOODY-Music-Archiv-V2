@@ -415,6 +415,38 @@ export function registerUploadRoutes(app: Hono<{ Bindings: Bindings; Variables: 
     }
   });
 
+  // 批量纯主键秒级点亮 API (用于定时任务或 R2 同步后高效批处理点亮)
+  app.post('/api/admin/songs/batch-light', async (c) => {
+    try {
+      const body = await c.req.json<{ updates: Array<{ id: number; file_path: string; lrc_path?: string }> }>();
+      const updates = body?.updates || [];
+      if (!updates || updates.length === 0) {
+        return c.json({ code: 400, message: '请传入 updates 数组' }, 400);
+      }
+
+      const stmts = [];
+      for (const u of updates) {
+        if (!u.id || !u.file_path) continue;
+        stmts.push(
+          c.env.DB.prepare('UPDATE songs SET file_path = ?, lrc_path = ? WHERE id = ?')
+            .bind(u.file_path, u.lrc_path || null, u.id)
+        );
+      }
+
+      if (stmts.length > 0) {
+        await c.env.DB.batch(stmts);
+      }
+
+      return c.json({
+        code: 200,
+        message: `成功点亮 ${stmts.length} 首歌曲`,
+        data: { count: stmts.length }
+      });
+    } catch (error: any) {
+      return serverError(c, error);
+    }
+  });
+
   // 视觉与图片资产上传 API (新增：支持海报、专辑封面、歌手写真、随笔插图等)
   app.post('/api/admin/assets/upload', async (c) => {
     try {

@@ -5,7 +5,319 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MOODY CMS | 管理控制台</title>
-    <link rel="stylesheet" href="admin.css">
+    <link rel="stylesheet" href="admin.css?v=20260905_0005">
+    <style id="storage-hub-inline-style">
+        /* Storage Hub Dark Luxury Styling (Dual-Bucket Cluster) */
+        .storage-hub-card {
+            margin-top: 24px;
+            background: linear-gradient(180deg, rgba(26, 26, 30, 0.95) 0%, rgba(18, 18, 22, 0.98) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 24px 28px;
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.03);
+            position: relative;
+            overflow: hidden;
+        }
+        .storage-hub-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, rgba(212, 175, 55, 0.6) 0%, rgba(255, 255, 255, 0.15) 50%, rgba(212, 175, 55, 0.6) 100%);
+        }
+        .hub-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 18px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .hub-title-group {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .hub-icon-wrap {
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(212, 175, 55, 0.08);
+            border: 1px solid rgba(212, 175, 55, 0.25);
+            border-radius: 10px;
+            color: #d4af37;
+            box-shadow: 0 0 16px rgba(212, 175, 55, 0.15);
+        }
+        .hub-title-line {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .hub-title-main {
+            font-size: 18px;
+            font-weight: 600;
+            color: #ffffff;
+            letter-spacing: 0.3px;
+        }
+        .hub-sub-pill {
+            font-size: 11px;
+            padding: 2px 10px;
+            border-radius: 20px;
+            background: rgba(212, 175, 55, 0.12);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            color: #f0c950;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+        .hub-meta-line {
+            font-size: 12.5px;
+            color: #8a8a93;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .hub-meta-line strong {
+            color: #ffffff;
+            font-weight: 500;
+        }
+        .hub-dot {
+            opacity: 0.4;
+        }
+        .hub-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .hub-status-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.2px;
+        }
+        .hub-status-pill.status-healthy {
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #10b981;
+        }
+        .hub-status-pill.status-warning {
+            background: rgba(245, 158, 11, 0.14);
+            border: 1px solid rgba(245, 158, 11, 0.35);
+            color: #f59e0b;
+        }
+        .hub-status-pill.status-critical {
+            background: rgba(244, 63, 94, 0.15);
+            border: 1px solid rgba(244, 63, 94, 0.4);
+            color: #f43f5e;
+        }
+        .pulse-beacon {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            background-color: currentColor;
+            box-shadow: 0 0 10px currentColor;
+            animation: beaconPulse 2s infinite ease-in-out;
+        }
+        @keyframes beaconPulse {
+            0%, 100% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.3); opacity: 0.4; }
+        }
+        .btn-hub-refresh {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e4e4e7;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 12.5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+        .btn-hub-refresh:hover {
+            background: rgba(212, 175, 55, 0.15);
+            border-color: rgba(212, 175, 55, 0.4);
+            color: #f0c950;
+        }
+        .btn-hub-refresh.loading .refresh-icon {
+            animation: spin 0.8s linear infinite;
+        }
+
+        /* Dual Bucket Grid */
+        .dual-bucket-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-top: 18px;
+        }
+        .bucket-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 10px;
+            padding: 18px 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: all 0.25s ease;
+        }
+        .bucket-card:hover {
+            background: rgba(255, 255, 255, 0.035);
+            border-color: rgba(212, 175, 55, 0.3);
+            transform: translateY(-2px);
+        }
+        .bucket-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .bucket-tag-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .bucket-code-pill {
+            font-size: 11px;
+            padding: 2px 7px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.06);
+            color: #a1a1aa;
+            font-family: monospace;
+        }
+        .bucket-code-pill.highlight-gold {
+            background: rgba(212, 175, 55, 0.15);
+            color: #f0c950;
+            border: 1px solid rgba(212, 175, 55, 0.25);
+        }
+        .bucket-sub-meta {
+            font-size: 11px;
+            color: #8a8a93;
+            margin-top: 4px;
+        }
+        .bucket-badge {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .bucket-badge.badge-healthy {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.35);
+            color: #10b981;
+        }
+        .bucket-badge.badge-warning {
+            background: rgba(245, 158, 11, 0.15);
+            border: 1px solid rgba(245, 158, 11, 0.35);
+            color: #f59e0b;
+        }
+        .bucket-badge.badge-critical {
+            background: rgba(244, 63, 94, 0.15);
+            border: 1px solid rgba(244, 63, 94, 0.35);
+            color: #f43f5e;
+        }
+        .bucket-card-body {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            margin: 14px 0 10px 0;
+        }
+        .bucket-dial-wrap {
+            width: 96px;
+            height: 96px;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .bucket-svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+        .gauge-track {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.06);
+        }
+        .gauge-progress {
+            fill: none;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1), stroke 0.4s ease;
+        }
+        .gauge-progress.stroke-healthy {
+            stroke: #10b981;
+            filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.5));
+        }
+        .gauge-progress.stroke-warning {
+            stroke: #f59e0b;
+            filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.5));
+        }
+        .gauge-progress.stroke-critical {
+            stroke: #f43f5e;
+            filter: drop-shadow(0 0 8px rgba(244, 63, 94, 0.6));
+        }
+        .bucket-dial-center {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        .bucket-dial-pct {
+            font-size: 19px;
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+        }
+        .bucket-dial-sub {
+            font-size: 10px;
+            color: #8a8a93;
+            margin-top: 3px;
+            font-variant-numeric: tabular-nums;
+        }
+        .bucket-simple-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            justify-content: center;
+        }
+        .simple-stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            font-size: 13px;
+        }
+        .simple-stat-row .stat-label {
+            color: #8a8a93;
+        }
+        .simple-stat-row .stat-val {
+            color: #a1a1aa;
+            font-variant-numeric: tabular-nums;
+        }
+        .simple-stat-row .stat-val strong {
+            color: #ffffff;
+            font-size: 14.5px;
+            font-weight: 600;
+        }
+        @media (max-width: 860px) {
+            .dual-bucket-grid { grid-template-columns: 1fr; }
+        }
+    </style>
 </head>
 
 <body>
@@ -49,14 +361,120 @@
                     <div class="stat-card">
                         <h3>Artists</h3>
                         <div class="value" id="stat-artists">--</div>
+                        <div class="stat-sub">全量入库歌手</div>
                     </div>
                     <div class="stat-card">
                         <h3>Albums</h3>
                         <div class="value" id="stat-albums">--</div>
+                        <div class="stat-sub">正规音乐大碟</div>
                     </div>
                     <div class="stat-card">
                         <h3>Tracks</h3>
                         <div class="value" id="stat-tracks">--</div>
+                        <div class="stat-sub">名录登记音轨</div>
+                    </div>
+                </div>
+
+                <!-- Cloudflare R2 Storage Overview -->
+                <div class="storage-hub-card" id="storage-hub-panel">
+                    <!-- 头部：精简标题与刷新 -->
+                    <div class="hub-header">
+                        <div class="hub-title-group">
+                            <div class="hub-icon-wrap">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="hub-title-main">Cloudflare R2 存储</div>
+                                <div class="hub-meta-line">
+                                    <span>双桶总用量: <strong id="cluster-total-summary">8.55 GB / 20 GB</strong></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="hub-actions">
+                            <button class="btn-hub-refresh" id="btn-refresh-r2" title="刷新容量数据">
+                                <svg class="refresh-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                    <path d="M3 3v5h5"/>
+                                    <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+                                    <path d="M16 21h5v-5"/>
+                                </svg>
+                                <span>刷新</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 双桶极简并列卡片 -->
+                    <div class="dual-bucket-grid">
+                        <!-- Bucket 01 (主桶) -->
+                        <div class="bucket-card" id="bucket1-card">
+                            <div class="bucket-card-header">
+                                <div class="bucket-tag-title">
+                                    <span>Bucket 01</span>
+                                    <span class="bucket-code-pill" id="b1-name-pill">moody-music-asset</span>
+                                </div>
+                                <span class="bucket-badge badge-warning" id="b1-status-badge">83.3% 预警</span>
+                            </div>
+
+                            <div class="bucket-card-body">
+                                <div class="bucket-dial-wrap">
+                                    <svg class="bucket-svg" viewBox="0 0 100 100">
+                                        <circle class="gauge-track" cx="50" cy="50" r="40" stroke-width="7" />
+                                        <circle class="gauge-progress stroke-warning" id="b1-gauge-progress" cx="50" cy="50" r="40" stroke-width="7" stroke-dasharray="251.33" stroke-dashoffset="41.97" />
+                                    </svg>
+                                    <div class="bucket-dial-center">
+                                        <span class="bucket-dial-pct" id="b1-gauge-pct">83.3%</span>
+                                        <span class="bucket-dial-sub" id="b1-gauge-val">8.33 GB</span>
+                                    </div>
+                                </div>
+                                <div class="bucket-simple-info">
+                                    <div class="simple-stat-row">
+                                        <span class="stat-label">已用容量</span>
+                                        <span class="stat-val"><strong id="b1-stat-size">8.33 GB</strong> / 10 GB</span>
+                                    </div>
+                                    <div class="simple-stat-row">
+                                        <span class="stat-label">已存曲目</span>
+                                        <span class="stat-val"><strong id="b1-stat-songs">1,571</strong> 首</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bucket 02 (扩展桶) -->
+                        <div class="bucket-card" id="bucket2-card">
+                            <div class="bucket-card-header">
+                                <div class="bucket-tag-title">
+                                    <span>Bucket 02</span>
+                                    <span class="bucket-code-pill highlight-gold" id="b2-name-pill">moody-music-asset-02</span>
+                                </div>
+                                <span class="bucket-badge badge-healthy" id="b2-status-badge">正常写入</span>
+                            </div>
+
+                            <div class="bucket-card-body">
+                                <div class="bucket-dial-wrap">
+                                    <svg class="bucket-svg" viewBox="0 0 100 100">
+                                        <circle class="gauge-track" cx="50" cy="50" r="40" stroke-width="7" />
+                                        <circle class="gauge-progress stroke-healthy" id="b2-gauge-progress" cx="50" cy="50" r="40" stroke-width="7" stroke-dasharray="251.33" stroke-dashoffset="245.80" />
+                                    </svg>
+                                    <div class="bucket-dial-center">
+                                        <span class="bucket-dial-pct" id="b2-gauge-pct">2.2%</span>
+                                        <span class="bucket-dial-sub" id="b2-gauge-val">0.22 GB</span>
+                                    </div>
+                                </div>
+                                <div class="bucket-simple-info">
+                                    <div class="simple-stat-row">
+                                        <span class="stat-label">已用容量</span>
+                                        <span class="stat-val"><strong id="b2-stat-size">220.9 MB</strong> / 10 GB</span>
+                                    </div>
+                                    <div class="simple-stat-row">
+                                        <span class="stat-label">已存曲目</span>
+                                        <span class="stat-val"><strong id="b2-stat-songs">48</strong> 首</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -444,7 +862,7 @@ Smile Again 玛莉亚,11"></textarea>
 
     <!-- 全局环境配置 (Single Source of Truth) -->
     <script src="config.js?v=1.0"></script>
-    <script src="admin.js?v=20260903_1420"></script>
+    <script src="admin.js?v=20260905_1245"></script>
     <script src="album-manager.js?v=20260816_1615"></script>
     <script src="asset-manager.js?v=20260816_1700"></script>
 </body>
