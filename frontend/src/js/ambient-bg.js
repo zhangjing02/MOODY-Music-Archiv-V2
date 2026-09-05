@@ -868,7 +868,6 @@
                 if (nextBtn) nextBtn.click();
             });
         }
-        }
 
         // 进度条拖动/点击寻道（支持鼠标拖拽 + 触摸）
         if (dom.zenProgressBar) {
