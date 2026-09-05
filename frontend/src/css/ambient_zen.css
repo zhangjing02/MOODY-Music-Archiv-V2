@@ -595,12 +595,12 @@ body.zen-active .zen-overlay {
 .zen-visualizer-container {
     position: fixed;
     left: 50%;
-    bottom: 60px;
+    bottom: 72px;
     transform: translateX(-50%);
-    width: 44vw;
-    max-width: 780px;
-    min-width: 280px;
-    height: 110px;
+    width: 58vw;
+    max-width: 1080px;
+    min-width: 320px;
+    height: 120px;
     z-index: 35;
     pointer-events: none;
     display: flex;
@@ -622,9 +622,9 @@ body.zen-active .zen-overlay {
     align-items: flex-start;
     gap: 8px;
     width: auto;
-    max-width: 540px;
-    padding-left: 45px;
-    padding-bottom: 10px;
+    max-width: 460px;
+    padding-left: 35px;
+    padding-bottom: 22px;
     pointer-events: auto;
     z-index: 100;
     background: transparent !important;
@@ -633,21 +633,21 @@ body.zen-active .zen-overlay {
 .zen-floating-dock {
     display: inline-flex;
     align-items: center;
-    gap: 16px;
-    padding: 8px 22px;
-    background: rgba(14, 14, 18, 0.55);
+    gap: 12px;
+    padding: 7px 18px;
+    background: rgba(14, 14, 18, 0.65);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 999px;
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(212, 175, 55, 0.08);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
     transition: all 0.3s ease;
-    opacity: 0.85;
+    opacity: 0.90;
 }
 
 .zen-floating-dock:hover {
     opacity: 1;
-    background: rgba(16, 16, 22, 0.72);
+    background: rgba(16, 16, 22, 0.78);
     border-color: rgba(212, 175, 55, 0.3);
     box-shadow: 0 18px 45px rgba(0, 0, 0, 0.7), 0 0 25px rgba(212, 175, 55, 0.15);
     transform: translateY(-2px);
@@ -657,19 +657,19 @@ body.zen-active .zen-overlay {
 .zen-dock-progress {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 .zen-time {
     font-size: 11px;
     font-family: monospace;
     color: rgba(255, 255, 255, 0.6);
-    min-width: 36px;
+    min-width: 34px;
     text-align: center;
 }
 
 .zen-progress-bar {
-    width: 160px;
+    width: 125px;
     height: 3px;
     background: rgba(255, 255, 255, 0.18);
     border-radius: 999px;

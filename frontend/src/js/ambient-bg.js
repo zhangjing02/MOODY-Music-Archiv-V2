@@ -411,10 +411,10 @@
     let visualizerCtx = null;
     let isVisualizerRunning = false;
 
-    // 频谱参数 (48根纯白圆角跳动光柱，柔顺阻尼与对数分频)
-    const VIZ_BAR_COUNT = 48;
-    const VIZ_BAR_SPACING = 3;
-    const VIZ_SENSITIVITY = 1.32;
+    // 频谱参数 (52根纯白圆角跳动光柱，全画幅柔顺覆盖与等响度均衡补偿)
+    const VIZ_BAR_COUNT = 52;
+    const VIZ_BAR_SPACING = 3.5;
+    const VIZ_SENSITIVITY = 1.30;
     // 物理阻尼惯性状态数组 (平滑保存当前高度，彻底消除 60Hz 帧间抖颤)
     let smoothedHeights = new Float32Array(VIZ_BAR_COUNT);
 
@@ -517,10 +517,11 @@
         const rawHeights = new Float32Array(VIZ_BAR_COUNT);
 
         for (let i = 0; i < VIZ_BAR_COUNT; i++) {
-            // 对数指数采样：使贝斯/人声/鼓点/吉他各具表现力
-            const logProgress = Math.pow(i / VIZ_BAR_COUNT, 1.35);
-            const startBin = Math.max(1, Math.floor(logProgress * (usableBins - 5)) + 1);
-            const span = Math.max(2, Math.floor((i + 1) * 0.18));
+            const p = i / (VIZ_BAR_COUNT - 1);
+            // 对数指数分布：前半段呈现丰满低频律动，后半段呈现灵动的中高频
+            const logProgress = Math.pow(p, 1.25);
+            const startBin = Math.max(1, Math.floor(logProgress * (usableBins - 6)) + 1);
+            const span = Math.max(2, Math.floor(Math.pow(p, 0.75) * 6) + 2);
             const endBin = Math.min(usableBins - 1, startBin + span);
 
             let sum = 0;
@@ -531,8 +532,12 @@
             }
             let val = count > 0 ? (sum / (count * 255.0)) : 0;
 
+            // 高频等响度曲线补偿 (Treble Boost: 让人声、吉他清音及高频泛音充满活力，消除右侧平坠)
+            const eqBoost = 0.90 + Math.pow(p, 0.65) * 1.80;
+            val = val * eqBoost;
+
             // 轻度非线性响应曲线，轻柔吉他与澎湃鼓点皆富呼吸感
-            val = Math.pow(val, 1.15) * VIZ_SENSITIVITY;
+            val = Math.pow(Math.min(1.0, val), 1.12) * VIZ_SENSITIVITY;
             val = Math.min(1.0, Math.max(0.02, val));
             rawHeights[i] = val * (height * 0.92);
         }
