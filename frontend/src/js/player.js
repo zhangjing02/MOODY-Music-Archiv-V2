@@ -204,10 +204,33 @@ function finishLoading() {
 }
 
 
-// [Race Condition Guard] 播放代次计数器
+// [Race Condition Guard] 播放代次计数器与定时器管理器
 // 每次发起新的播放请求时递增，旧请求的回调通过比对代次来判断自己是否已过期
 // 过期的回调会静默退出，不会影响用户最新点击的状态
 let _playGeneration = 0;
+let _autoSkipTimer = null;
+let _retryTimer = null;
+
+function nextPlayGeneration() {
+    _playGeneration++;
+    if (_autoSkipTimer) {
+        clearTimeout(_autoSkipTimer);
+        _autoSkipTimer = null;
+    }
+    if (_retryTimer) {
+        clearTimeout(_retryTimer);
+        _retryTimer = null;
+    }
+    if (typeof player !== 'undefined' && player && player.audio) {
+        try {
+            player.audio.pause();
+        } catch (e) {}
+    }
+    console.log(`[Generation Lock] 🔒 Active generation bumped to: ${_playGeneration}`);
+    return _playGeneration;
+}
+window.nextPlayGeneration = nextPlayGeneration;
+window._getPlayGeneration = () => _playGeneration;
 
 /**
  * 检查资源可用性 (HEAD 请求)
@@ -1558,17 +1581,26 @@ function getCurrentPlaylistIndex() {
     );
 }
 
-async function playSongAtIndex(index) {
-    console.log('[UI Trace] playSongAtIndex() called with index:', index);
+async function playSongAtIndex(index, expectedGen = null) {
+    console.log('[UI Trace] playSongAtIndex() called with index:', index, 'expectedGen:', expectedGen);
     if (index < 0 || index >= playerState.playlist.length) return;
     const item = playerState.playlist[index];
 
-    // [Race Condition Guard] 每次调用递增代次，捕获本次代次
-    // 后续所有异步操作完成后都会检查：如果用户已经点击了新歌曲（代次已变），则静默退出
-    const myGeneration = ++_playGeneration;
+    // [Race Condition Guard] 获取本次执行的代次
+    // 如果外部传入了代次（来自 playAlbum 或主动切歌），直接沿用；否则生成新代次
+    const myGeneration = expectedGen !== null ? expectedGen : nextPlayGeneration();
+
+    if (myGeneration !== _playGeneration) {
+        console.log(`[Race Guard] Stale play request for index ${index} (gen ${myGeneration} vs current ${_playGeneration}), aborting.`);
+        return false;
+    }
 
     // === 自动跳过辅助函数 ===
     const autoSkipToNext = (reason) => {
+        if (myGeneration !== _playGeneration) {
+            console.log(`[AutoSkip Guard] Superseded generation, ignoring auto-skip for: "${item.song}"`);
+            return false;
+        }
         console.warn(`[AutoSkip] ${reason}: "${item.song}"`);
         if (playerState._skipCount < playerState.playlist.length) {
             playerState._skipCount++;
@@ -1585,7 +1617,12 @@ async function playSongAtIndex(index) {
                     return false;
                 }
             }
-            setTimeout(() => playSongAtIndex(nextIdx), 200);
+            if (_autoSkipTimer) clearTimeout(_autoSkipTimer);
+            _autoSkipTimer = setTimeout(() => {
+                if (myGeneration === _playGeneration) {
+                    playSongAtIndex(nextIdx, myGeneration);
+                }
+            }, 200);
         } else {
             console.warn('[AutoSkip] 已连续跳过全部曲目，停止播放');
             showNotification('当前专辑暂无可播放的歌曲');
@@ -1629,7 +1666,18 @@ async function playSongAtIndex(index) {
         if (window.resourceAvailabilityCache) {
             window.resourceAvailabilityCache.delete(finalAudioUrl);
         }
-        await new Promise(resolve => setTimeout(resolve, 500)); // 等 500ms 再重试
+        if (_retryTimer) clearTimeout(_retryTimer);
+        await new Promise(resolve => {
+            _retryTimer = setTimeout(resolve, 500);
+        });
+
+        // 重试后再次检查代次
+        if (myGeneration !== _playGeneration) {
+            setLoadingState(false);
+            console.log(`[Race Guard] Generation mismatch after retry wait, aborting "${item.song}"`);
+            return false;
+        }
+
         isAvailable = await checkResourceAvailability(finalAudioUrl);
 
         // 重试后再次检查代次
@@ -2735,59 +2783,19 @@ window.audioPlayer = {
         const index = await addToPlaylist(song, artist, album, audioUrl, lyrics);
         return playSongAtIndex(index); // [Modified] 返回播放结果
     },
-    // 播放整张专辑 (重构: 基于 HEAD 检查的精简逻辑)
-    playAlbum: async (songs, artist, albumInfo, startSongIndex) => {
-        console.log(`[Player] ========== playAlbum Start (Simplified HEAD Check) ==========`);
+    // 播放整张专辑 (纯同步构建播放列表 + 单一入口播放，彻底消除异步竞态窗口)
+    playAlbum: async (songs, artist, albumInfo, startSongIndex, targetGen = null) => {
+        console.log(`[Player] ========== playAlbum Start ==========`);
 
-        // --- 1. 预检阶段 (Pre-Check) ---
-        // 关键：在修改全局状态之前，先通过 HEAD 请求确认目标地址是否有效
-        if (startSongIndex >= 0 && startSongIndex < songs.length) {
-            const targetSongData = songs[startSongIndex];
-            const songName = typeof targetSongData === 'string' ? targetSongData : targetSongData.title;
-            const songPath = typeof targetSongData === 'string' ? null : targetSongData.path;
+        // 如果调用方已分配代次（例如 app.js 乐观点击），直接沿用；否则生成新代次
+        const myGen = targetGen !== null ? targetGen : nextPlayGeneration();
 
-            // 获取目标 URL (这里的逻辑与下方循环一致)
-            let targetAudioUrl = '';
-            const exactKey = `${songName} - ${artist}`;
-            const bulkKey = `${songName} - 本地音乐`;
-
-            if (window.localSongsMap && window.localSongsMap.has(exactKey)) {
-                targetAudioUrl = window.localSongsMap.get(exactKey).audioUrl;
-            } else if (window.localSongsMap && window.localSongsMap.has(bulkKey)) {
-                targetAudioUrl = window.localSongsMap.get(bulkKey).audioUrl;
-            } else if (playerState.uploadedFiles.has(songName)) {
-                targetAudioUrl = playerState.uploadedFiles.get(songName);
-            } else if (songPath) {
-                if (songPath.startsWith('http')) {
-                    targetAudioUrl = songPath;
-                } else {
-                    targetAudioUrl = `${window.API_BASE || ''}/storage/${songPath.split(/[\\/]/).map(segment => encodeURIComponent(segment)).join('/')}?t=${Date.now()}`;
-                }
-            }
-
-            // 执行检查
-            if (targetAudioUrl) {
-                console.log(`[Gatekeeper] 🚀 START CHECK for: ${songName}`);
-                console.log(`[Gatekeeper] Target URL: ${targetAudioUrl}`);
-                const isAvailable = await checkResourceAvailability(targetAudioUrl);
-                console.log(`[Gatekeeper] Result for ${songName}: ${isAvailable ? '✅ SUCCESS' : '❌ FAILED'}`);
-
-                if (!isAvailable) {
-                    console.warn('[Gatekeeper] ⚠️ PRE-CHECK FAILED. Will auto-skip in playSongAtIndex.');
-                    // 不再 abort，让 playSongAtIndex 的 autoSkip 来处理跳过逻辑
-                }
-                console.log('[Gatekeeper] 💎 PRE-CHECK PASSED. Proceeding to update state.');
-            } else {
-                console.warn('[Gatekeeper] ⚠️ NO URL FOUND. Will auto-skip in playSongAtIndex.');
-                // 不再 abort，让 playlist 正常建立，然后由 playSongAtIndex 自行跳过
-            }
+        if (myGen !== _playGeneration) {
+            console.log(`[playAlbum Guard] Generation superseded before setup (gen ${myGen} vs ${_playGeneration}), aborting.`);
+            return false;
         }
 
-        // --- 2. 提交阶段 (Commit Phase) ---
-        // 只有预检通过，才开始修改播放列表和 UI
-        console.log('[Gatekeeper] 🏗️ COMMITTING STATE CHANGE: Updating playlist and UI');
-        console.log('[Validation] Check passed. Updating state and UI...');
-
+        // --- 纯同步装配播放列表 ---
         playerState.playlist = [];
         const albumCoverUrl = albumInfo.cover || '';
 
@@ -2828,9 +2836,14 @@ window.audioPlayer = {
             });
         }
 
+        if (myGen !== _playGeneration) {
+            console.log(`[playAlbum Guard] Generation superseded after setup (gen ${myGen} vs ${_playGeneration}), aborting.`);
+            return false;
+        }
+
         updatePlaylistUI();
-        console.log(`========== 开始播放索引 ${startSongIndex} 的歌曲 ==========`);
-        return playSongAtIndex(startSongIndex);
+        console.log(`========== 开始播放索引 ${startSongIndex} 的歌曲 (Gen: ${myGen}) ==========`);
+        return playSongAtIndex(startSongIndex, myGen);
     },
     addToPlaylist,
     playNext,

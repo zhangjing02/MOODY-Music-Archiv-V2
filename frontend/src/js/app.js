@@ -2164,6 +2164,11 @@ async function playSong(e, songData, artist) {
         document.activeElement.blur();
     }
 
+    // [Generation Lock] 点击瞬间立即获取最新全局代次，前置旧任务（重试/自动跳过/网络预检）全部即刻作废！
+    const currentGen = typeof window.nextPlayGeneration === 'function' 
+        ? window.nextPlayGeneration() 
+        : ++window._playGeneration;
+
     // 获取专辑信息
     if (!Array.isArray(allArtistsData)) {
         console.error('[MOODY] allArtistsData is not an array!', allArtistsData);
@@ -2178,12 +2183,11 @@ async function playSong(e, songData, artist) {
     const album = currentArtist.albums[viewState.aIdx];
 
     // [Optimistic UI] 点击瞬间立即高亮对应歌曲行，无需等待网络
-    // 这让用户感受到即时响应，播放失败时由 player.js 负责回滚
     if (window.updateAlbumViewActiveState) {
         window.updateAlbumViewActiveState(name, artist, /* optimistic= */ true);
     }
 
-    // 直接调用播放器 - 让 playAlbum 来处理音频查找
+    // 直接调用播放器 - 让 playAlbum 来处理音频查找，传入当前代次锁
     if (window.audioPlayer && window.audioPlayer.playAlbum) {
         // 找到点击的歌曲在专辑中的索引 (避免对象引用不一致导致的 -1)
         const songIndex = album.songs.findIndex(s => {
@@ -2192,7 +2196,7 @@ async function playSong(e, songData, artist) {
         });
 
         if (songIndex !== -1) {
-            await window.audioPlayer.playAlbum(album.songs, artist, album, songIndex);
+            await window.audioPlayer.playAlbum(album.songs, artist, album, songIndex, currentGen);
         } else {
             console.warn(`在专辑中找不到歌曲: ${name}`);
             // 兜底方案：如果找不到索引，至少尝试播放这首单曲
