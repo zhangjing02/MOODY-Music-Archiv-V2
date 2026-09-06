@@ -204,15 +204,41 @@ function finishLoading() {
 }
 
 
-// [Race Condition Guard] 播放代次计数器与定时器管理器
-// 每次发起新的播放请求时递增，旧请求的回调通过比对代次来判断自己是否已过期
-// 过期的回调会静默退出，不会影响用户最新点击的状态
+// [Race Condition Guard] 播放代次计数器、定时器与网络请求物理中断控制器
+// 每次发起新的播放请求时递增，并物理取消上一次进行中的 HEAD 检查和歌词请求
 let _playGeneration = 0;
 let _autoSkipTimer = null;
 let _retryTimer = null;
+let _activeResourceAbortController = null;
+let _activeLyricsAbortController = null;
 
 function nextPlayGeneration() {
     _playGeneration++;
+
+    // 1. 物理掐断上一次未完成的资源预检网络请求
+    if (_activeResourceAbortController) {
+        try {
+            _activeResourceAbortController.abort('New song selected');
+        } catch (e) {}
+        _activeResourceAbortController = null;
+    }
+
+    // 2. 物理掐断上一次未完成的歌词网络请求
+    if (_activeLyricsAbortController) {
+        try {
+            _activeLyricsAbortController.abort('New song selected');
+        } catch (e) {}
+        _activeLyricsAbortController = null;
+    }
+
+    // 3. 物理掐断当前 HTML5 Audio 的网络流缓冲
+    if (typeof player !== 'undefined' && player && player.audio) {
+        try {
+            player.audio.pause();
+        } catch (e) {}
+    }
+
+    // 4. 清理定时器
     if (_autoSkipTimer) {
         clearTimeout(_autoSkipTimer);
         _autoSkipTimer = null;
@@ -221,12 +247,8 @@ function nextPlayGeneration() {
         clearTimeout(_retryTimer);
         _retryTimer = null;
     }
-    if (typeof player !== 'undefined' && player && player.audio) {
-        try {
-            player.audio.pause();
-        } catch (e) {}
-    }
-    console.log(`[Generation Lock] 🔒 Active generation bumped to: ${_playGeneration}`);
+
+    console.log(`[Generation Lock] 🔒 Active generation bumped to: ${_playGeneration}, previous network requests physically aborted.`);
     return _playGeneration;
 }
 window.nextPlayGeneration = nextPlayGeneration;
@@ -257,11 +279,12 @@ async function checkResourceAvailability(url) {
 
     // 实时检查
     // console.log(`[Resource Check] Checking: ${url}`); // Muted for cleaner console
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3秒超时
+    const controller = new AbortController();
+    _activeResourceAbortController = controller;
+    const timeoutId = setTimeout(() => controller.abort('HEAD timeout (3s)'), 3000); // 3秒超时
 
-        // 使用 HEAD 请求只检查头信息
+    try {
+        // 使用 HEAD 请求只检查头信息，支持主动物理取消
         const response = await fetch(url, {
             method: 'HEAD',
             signal: controller.signal,
@@ -269,6 +292,9 @@ async function checkResourceAvailability(url) {
         });
 
         clearTimeout(timeoutId);
+        if (_activeResourceAbortController === controller) {
+            _activeResourceAbortController = null;
+        }
 
         // 404 或其他错误都算不可用
         const available = response.ok;
@@ -281,6 +307,17 @@ async function checkResourceAvailability(url) {
         // console.log(`[Resource Check] Result: ${available}`); // Muted
         return available;
     } catch (e) {
+        clearTimeout(timeoutId);
+        if (_activeResourceAbortController === controller) {
+            _activeResourceAbortController = null;
+        }
+
+        // [Physical Cancellation] 若请求被主动中断（用户切换了新歌曲），静默退出
+        if (e.name === 'AbortError') {
+            console.log(`[Resource Check] 🛑 HEAD request physically aborted for: ${url}`);
+            return false;
+        }
+
         // [CORS Handling] 网络 URL 如果报错且 URL 是 http 开头，可能是 CORS 引起的
         // 在这种情况下，我们不能断定资源不可用，应该让浏览器 audio 标签去尝试加载
         if (url.startsWith('http')) {
@@ -288,7 +325,6 @@ async function checkResourceAvailability(url) {
             return true;
         }
 
-        // console.warn('[Resource Check] Failed:', url); // Muted to avoid console noise for missing files
         // 本地资源网络错误或超时标记为不可用
         window.resourceAvailabilityCache.set(url, {
             available: false,
@@ -2207,8 +2243,15 @@ async function loadLyrics(item) {
         const cacheBusterUrl = `${fetchUrl}${separator}t=${Date.now()}`;
 
         console.log(`[Lyrics] 尝试从后端路径加载 (带缓存击穿): ${cacheBusterUrl}`);
+        const lyricsController = new AbortController();
+        _activeLyricsAbortController = lyricsController;
+
         try {
-            const response = await fetch(cacheBusterUrl);
+            const response = await fetch(cacheBusterUrl, { signal: lyricsController.signal });
+            if (_activeLyricsAbortController === lyricsController) {
+                _activeLyricsAbortController = null;
+            }
+
             if (response.ok) {
                 lrcText = await response.text();
                 console.log(`✓ 成功从远程加载歌词: ${fetchUrl}`);
@@ -2227,6 +2270,13 @@ async function loadLyrics(item) {
                 if (item.id) reportClientError('lyric', item.id, `云端响应错误: ${response.status} ${item.lrcPath}`);
             }
         } catch (e) {
+            if (_activeLyricsAbortController === lyricsController) {
+                _activeLyricsAbortController = null;
+            }
+            if (e.name === 'AbortError') {
+                console.log(`[Lyrics] 🛑 Lyrics request physically aborted for: ${item.song}`);
+                return;
+            }
             console.warn(`[Lyrics] 远程加载失败: ${item.lrcPath}`, e);
             if (item.id) reportClientError('lyric', item.id, `远程加载网络异常: ${e.message}`);
         }
