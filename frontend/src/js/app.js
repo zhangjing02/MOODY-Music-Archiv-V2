@@ -2158,13 +2158,11 @@ function checkAlbumResources(artistName, album) {
 async function playSong(e, songData, artist) {
     const name = typeof songData === 'string' ? songData : songData.title;
     e.stopPropagation();
-    // [Modified] 移除UI抢跑逻辑，等待播放结果
 
     // 移除焦点，防止出现光标
     if (document.activeElement) {
         document.activeElement.blur();
     }
-
 
     // 获取专辑信息
     if (!Array.isArray(allArtistsData)) {
@@ -2178,6 +2176,12 @@ async function playSong(e, songData, artist) {
     }
 
     const album = currentArtist.albums[viewState.aIdx];
+
+    // [Optimistic UI] 点击瞬间立即高亮对应歌曲行，无需等待网络
+    // 这让用户感受到即时响应，播放失败时由 player.js 负责回滚
+    if (window.updateAlbumViewActiveState) {
+        window.updateAlbumViewActiveState(name, artist, /* optimistic= */ true);
+    }
 
     // 直接调用播放器 - 让 playAlbum 来处理音频查找
     if (window.audioPlayer && window.audioPlayer.playAlbum) {
