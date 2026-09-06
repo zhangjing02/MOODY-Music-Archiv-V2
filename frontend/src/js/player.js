@@ -204,6 +204,10 @@ function finishLoading() {
 }
 
 
+// [Race Condition Guard] 播放代次计数器
+// 每次发起新的播放请求时递增，旧请求的回调通过比对代次来判断自己是否已过期
+// 过期的回调会静默退出，不会影响用户最新点击的状态
+let _playGeneration = 0;
 
 /**
  * 检查资源可用性 (HEAD 请求)
@@ -1559,6 +1563,10 @@ async function playSongAtIndex(index) {
     if (index < 0 || index >= playerState.playlist.length) return;
     const item = playerState.playlist[index];
 
+    // [Race Condition Guard] 每次调用递增代次，捕获本次代次
+    // 后续所有异步操作完成后都会检查：如果用户已经点击了新歌曲（代次已变），则静默退出
+    const myGeneration = ++_playGeneration;
+
     // === 自动跳过辅助函数 ===
     const autoSkipToNext = (reason) => {
         console.warn(`[AutoSkip] ${reason}: "${item.song}"`);
@@ -1586,10 +1594,12 @@ async function playSongAtIndex(index) {
         return false;
     };
 
-    // 1. 资源完整性检查：URL 缺失直接跳过
+    // 1. 资源完整性检查：URL 缺失直接跳过（无需等待，立即判定）
     if (!item.audioUrl) {
-        // [Optimistic UI Rollback] 资源缺失时回滚高亮
-        if (window.clearAlbumViewActiveState) window.clearAlbumViewActiveState();
+        // 过期请求静默退出，不影响新点击的状态
+        if (myGeneration !== _playGeneration) return false;
+        // 清除当前行的乐观高亮（不恢复旧歌曲），等 autoSkip 后由下一首确定高亮
+        _clearStaleHighlight();
         return autoSkipToNext('音频地址缺失');
     }
 
@@ -1603,13 +1613,38 @@ async function playSongAtIndex(index) {
         finalAudioUrl = `${window.API_BASE}${finalAudioUrl.startsWith('/') ? '' : '/'}${finalAudioUrl}`;
     }
 
-    const isAvailable = await checkResourceAvailability(finalAudioUrl);
+    let isAvailable = await checkResourceAvailability(finalAudioUrl);
+
+    // [Race Guard] 异步等待后检查代次，用户可能已点击新歌曲
+    if (myGeneration !== _playGeneration) {
+        setLoadingState(false);
+        console.log(`[Race Guard] Generation mismatch after HEAD check, aborting "${item.song}"`);
+        return false;
+    }
+
+    // [Retry] 首次预检失败时，清除该 URL 的缓存并重试一次
+    // 给容错空间，避免因缓存旧的失败结果而误判
+    if (!isAvailable) {
+        console.warn(`[Retry] HEAD check failed for "${item.song}", clearing cache and retrying once...`);
+        if (window.resourceAvailabilityCache) {
+            window.resourceAvailabilityCache.delete(finalAudioUrl);
+        }
+        await new Promise(resolve => setTimeout(resolve, 500)); // 等 500ms 再重试
+        isAvailable = await checkResourceAvailability(finalAudioUrl);
+
+        // 重试后再次检查代次
+        if (myGeneration !== _playGeneration) {
+            setLoadingState(false);
+            console.log(`[Race Guard] Generation mismatch after retry, aborting "${item.song}"`);
+            return false;
+        }
+    }
 
     if (!isAvailable) {
         setLoadingState(false);
-        // [Optimistic UI Rollback] 资源不可用时回滚高亮
-        if (window.clearAlbumViewActiveState) window.clearAlbumViewActiveState();
-        return autoSkipToNext('资源不可用');
+        // 清除乐观高亮（不恢复旧歌曲），autoSkipToNext 会高亮下一首
+        _clearStaleHighlight();
+        return autoSkipToNext('资源不可用（重试后仍失败）');
     }
 
     player.audio.src = finalAudioUrl;
@@ -1621,6 +1656,14 @@ async function playSongAtIndex(index) {
     // [Modified] 必须等待播放结果，否则函数会立即返回 true
     try {
         await player.audio.play();
+
+        // [Race Guard] play() 本身也是异步的，play 完成后再次检查代次
+        if (myGeneration !== _playGeneration) {
+            player.audio.pause();
+            setLoadingState(false);
+            console.log(`[Race Guard] Generation mismatch after play(), stopping "${item.song}"`);
+            return false;
+        }
 
         // 播放成功，移除加载状态
         setLoadingState(false);
@@ -1682,6 +1725,13 @@ async function playSongAtIndex(index) {
 
         return true;
     } catch (err) {
+        // [Race Guard] 播放异常时先检查代次
+        if (myGeneration !== _playGeneration) {
+            setLoadingState(false);
+            console.log(`[Race Guard] Generation mismatch in catch, ignoring error for "${item.song}"`);
+            return false;
+        }
+
         console.error('播放失败 (Play Promise Reject):', err);
 
         if (err.name === 'NotAllowedError') {
@@ -1694,16 +1744,26 @@ async function playSongAtIndex(index) {
             showNotification(`播放失败: ${err.message}`);
         }
 
-        // [Optimistic UI Rollback] 播放失败时回滚乐观高亮，恢复到真实播放状态
-        if (window.clearAlbumViewActiveState) {
-            window.clearAlbumViewActiveState();
-        }
+        // [No Rollback] 失败时清除乐观高亮，但不恢复旧歌曲高亮
+        // 这样比"回滚到上一首"更符合直觉：播放失败就是没有高亮，autoSkipToNext 会高亮下一首
+        _clearStaleHighlight();
 
         setLoadingState(false);
         playerState.isPlaying = false;
         updatePlayPauseButton();
-        return false;
+        return autoSkipToNext('play() 失败，跳到下一首');
     }
+}
+
+// 清除当前行的乐观高亮，但不恢复任何旧状态
+// 区别于 clearAlbumViewActiveState（后者会尝试恢复旧歌曲高亮）
+function _clearStaleHighlight() {
+    const rows = document.querySelectorAll('.st-row');
+    rows.forEach(row => {
+        row.classList.remove('active', 'playing');
+        const bars = row.querySelector('.playing-bars');
+        if (bars) bars.remove();
+    });
 }
 
 // 同步更新专辑页面的歌曲选中状态 (Injects Playing Indicator)
@@ -1766,19 +1826,12 @@ window.updateAlbumViewActiveState = function (songName, artistName, optimistic =
     }
 }
 
-// [Optimistic UI] 播放失败时调用，清除乐观高亮，回滚到播放前状态
+// [Optimistic UI] 外部可调用的高亮清除函数（供 app.js 等外部模块使用）
+// 注意：只负责清除，不恢复旧歌曲高亮 —— 恢复逻辑由播放成功的 Commit Phase 负责
+// 移除了旧的"恢复 playerState.currentSong 高亮"逻辑，避免在竞态情况下覆盖用户新点击的高亮
 window.clearAlbumViewActiveState = function () {
-    const rows = document.querySelectorAll('.st-row');
-    rows.forEach(row => {
-        row.classList.remove('active', 'playing');
-        const bars = row.querySelector('.playing-bars');
-        if (bars) bars.remove();
-    });
-    // 若有当前正在播放的歌曲，恢复其高亮
-    if (typeof playerState !== 'undefined' && playerState.currentSong) {
-        window.updateAlbumViewActiveState(playerState.currentSong, playerState.currentArtist);
-    }
-    console.log('[Indicator] Rolled back optimistic highlight.');
+    _clearStaleHighlight();
+    console.log('[Indicator] Cleared stale optimistic highlight (no rollback).');
 }
 
 // ==================== 进度条 ====================
