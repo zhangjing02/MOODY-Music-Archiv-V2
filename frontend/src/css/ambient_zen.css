@@ -94,9 +94,9 @@
 /* --- 2. 侧边栏底部切换按钮 Dock (歌手列表正下方) --- */
 .sidebar-ambient-dock {
     position: relative;
-    padding: 12px 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.07);
-    background: rgba(18, 18, 20, 0.85);
+    padding: 10px 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    background: transparent;
     flex-shrink: 0;
     z-index: 25;
 }
@@ -105,89 +105,88 @@
     width: 100%;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-    color: #e0e0e0;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 7px 10px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.85);
     cursor: pointer;
-    transition: all 0.25s ease;
-    text-align: left;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     user-select: none;
 }
 
 .sidebar-ambient-btn:hover {
-    background: rgba(212, 175, 55, 0.12);
-    border-color: rgba(212, 175, 55, 0.35);
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.14);
     color: #ffffff;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
 .sidebar-ambient-btn:active {
     transform: scale(0.98);
 }
 
+.sb-amb-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
+}
+
 .sb-amb-icon {
-    font-size: 18px;
+    font-size: 14px;
     line-height: 1;
     flex-shrink: 0;
-}
-
-.sb-amb-info {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    overflow: hidden;
-    line-height: 1.25;
-}
-
-.sb-amb-title {
-    font-size: 10px;
-    color: rgba(255, 255, 255, 0.45);
-    letter-spacing: 0.6px;
-    text-transform: uppercase;
+    opacity: 0.9;
 }
 
 .sb-amb-name {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--accent, #d4af37);
+    font-size: 12px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.85);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    letter-spacing: 0.3px;
 }
 
-.sb-amb-arrow {
-    font-size: 10px;
+.sb-amb-chevron {
+    width: 12px;
+    height: 12px;
     color: rgba(255, 255, 255, 0.4);
-    transition: transform 0.25s ease;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s;
     flex-shrink: 0;
 }
 
-.sidebar-ambient-dock.open .sb-amb-arrow {
-    transform: rotate(180deg);
+.sidebar-ambient-btn:hover .sb-amb-chevron {
+    color: rgba(255, 255, 255, 0.8);
 }
 
-/* 向上弹出的场景切换菜单 */
+.sidebar-ambient-dock.open .sb-amb-chevron {
+    transform: rotate(180deg);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* 向上弹出的场景切换菜单 (低调克制毛玻璃悬浮窗) */
 .sidebar-ambient-dock .bg-switch-menu {
     position: absolute;
-    bottom: calc(100% + 8px);
-    left: 12px;
-    right: 12px;
-    background: rgba(18, 18, 22, 0.96);
-    border: 1px solid rgba(212, 175, 55, 0.3);
-    border-radius: 14px;
-    box-shadow: 0 16px 45px rgba(0, 0, 0, 0.85), 0 0 20px rgba(212, 175, 55, 0.1);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    padding: 14px;
+    bottom: calc(100% + 6px);
+    left: 10px;
+    right: 10px;
+    background: rgba(20, 20, 24, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 10px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75), 0 0 1px rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding: 6px;
     z-index: 1000;
     opacity: 0;
     visibility: hidden;
-    transform: translateY(8px) scale(0.97);
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    transform: translateY(6px) scale(0.98);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     pointer-events: none;
 }
 
@@ -198,56 +197,49 @@
     pointer-events: auto;
 }
 
-.bg-menu-title {
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    color: var(--accent, #d4af37);
-    margin-bottom: 10px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+.bg-menu-header {
+    padding: 4px 8px 6px 8px;
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
 }
 
-.bg-menu-title span.badge {
-    font-size: 10px;
-    font-weight: 400;
-    color: rgba(255, 255, 255, 0.45);
+.bg-menu-title {
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.38);
+    letter-spacing: 0.5px;
 }
 
 .bg-menu-items {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 2px;
 }
 
 .bg-menu-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 10px;
-    border-radius: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
     background: transparent;
-    border: 1px solid transparent;
-    color: #e0e0e0;
-    font-size: 13px;
+    border: none;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 12px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
     text-align: left;
     width: 100%;
 }
 
 .bg-menu-item:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.05);
     color: #ffffff;
-    transform: translateX(2px);
 }
 
 .bg-menu-item.active {
-    background: rgba(212, 175, 55, 0.16);
-    border-color: rgba(212, 175, 55, 0.4);
+    background: rgba(255, 255, 255, 0.08);
     color: #ffffff;
     font-weight: 500;
 }
@@ -255,33 +247,31 @@
 .bg-item-left {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+    min-width: 0;
 }
 
 .bg-item-icon {
-    font-size: 16px;
+    font-size: 14px;
     line-height: 1;
-}
-
-.bg-item-meta {
-    display: flex;
-    flex-direction: column;
+    flex-shrink: 0;
 }
 
 .bg-item-name {
     font-size: 12px;
-}
-
-.bg-item-desc {
-    font-size: 10px;
-    color: rgba(255, 255, 255, 0.45);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .bg-item-check {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: var(--accent, #d4af37);
-    font-size: 13px;
     opacity: 0;
-    transition: opacity 0.2s;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
 }
 
 .bg-menu-item.active .bg-item-check {
@@ -290,55 +280,71 @@
 
 .bg-menu-divider {
     height: 1px;
-    background: rgba(255, 255, 255, 0.08);
-    margin: 10px 0;
+    background: rgba(255, 255, 255, 0.06);
+    margin: 5px 2px;
 }
 
 .bg-menu-actions {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
+    padding: 2px;
 }
 
 .bg-menu-zen-btn {
     width: 100%;
-    padding: 8px 12px;
-    background: rgba(212, 175, 55, 0.15);
-    border: 1px solid rgba(212, 175, 55, 0.35);
-    border-radius: 8px;
-    color: #fef08a;
-    font-size: 12px;
-    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 11px;
+    font-weight: 400;
     cursor: pointer;
     transition: all 0.2s ease;
-    text-align: center;
 }
 
 .bg-menu-zen-btn:hover {
-    background: rgba(212, 175, 55, 0.28);
-    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+}
+
+.bg-menu-zen-btn svg {
+    opacity: 0.7;
+}
+
+.bg-menu-zen-btn:hover svg {
+    opacity: 1;
 }
 
 .bg-menu-zen-toggle {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 11px;
-    color: rgba(255, 255, 255, 0.7);
+    gap: 6px;
+    font-size: 10.5px;
+    color: rgba(255, 255, 255, 0.38);
     cursor: pointer;
     user-select: none;
-    padding: 2px 4px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    transition: color 0.15s;
+}
+
+.bg-menu-zen-toggle:hover {
+    color: rgba(255, 255, 255, 0.65);
 }
 
 .bg-menu-zen-toggle input[type="checkbox"] {
     accent-color: var(--accent, #d4af37);
     cursor: pointer;
-    width: 13px;
-    height: 13px;
-}
-
-.bg-menu-zen-toggle:hover {
-    color: #fff;
+    width: 12px;
+    height: 12px;
+    margin: 0;
 }
 
 

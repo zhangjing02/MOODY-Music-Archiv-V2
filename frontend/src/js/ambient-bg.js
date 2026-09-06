@@ -242,7 +242,7 @@
     }
 
     /**
-     * 渲染浮动菜单中的背景选项
+     * 渲染浮动菜单中的背景选项 (简约低调单行排版，无多余说明文本)
      */
     function renderSwitchMenu() {
         if (!dom.menuItems) return;
@@ -250,12 +250,13 @@
             <button class="bg-menu-item ${scene.id === currentSceneId ? 'active' : ''}" data-scene="${scene.id}">
                 <div class="bg-item-left">
                     <span class="bg-item-icon">${scene.icon}</span>
-                    <div class="bg-item-meta">
-                        <span class="bg-item-name">${scene.name}</span>
-                        <span class="bg-item-desc">${scene.desc}</span>
-                    </div>
+                    <span class="bg-item-name">${scene.name}</span>
                 </div>
-                <span class="bg-item-check">✓</span>
+                <span class="bg-item-check">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </span>
             </button>
         `).join('');
 

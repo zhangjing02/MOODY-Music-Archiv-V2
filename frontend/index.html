@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="src/css/style.css?v=20260904_1148">
     <link rel="stylesheet" href="src/css/user_system.css?v=12.52">
     <link rel="stylesheet" href="src/css/notion_compact.css?v=1.0">
-    <link rel="stylesheet" href="src/css/ambient_zen.css?v=20260906_1250">
+    <link rel="stylesheet" href="src/css/ambient_zen.css?v=20260906_1355">
 </head>
 
 <body>
@@ -55,31 +55,34 @@
         <div class="list-container" id="artistList"></div>
         <div class="index-bar" id="indexBar"></div>
 
-        <!-- 侧边栏底部微动背景切换 Dock (歌手最下方) -->
+        <!-- 侧边栏底部微动背景切换 Dock (低调极简设计) -->
         <div class="sidebar-ambient-dock" id="sidebarAmbientDock">
-            <button class="sidebar-ambient-btn" id="bgSwitchBtn" title="切换微动环境背景">
-                <span class="sb-amb-icon" id="sbAmbIcon">🌊</span>
-                <div class="sb-amb-info">
-                    <span class="sb-amb-title">微动环境背景</span>
+            <button class="sidebar-ambient-btn" id="bgSwitchBtn" title="切换氛围背景">
+                <div class="sb-amb-left">
+                    <span class="sb-amb-icon" id="sbAmbIcon">🌊</span>
                     <span class="sb-amb-name" id="sbAmbCurrentName">深海荧光</span>
                 </div>
-                <span class="sb-amb-arrow">▲</span>
+                <svg class="sb-amb-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
             </button>
-            <!-- 侧边栏浮动背景切换菜单 (向上弹出) -->
+            <!-- 侧边栏浮动背景切换菜单 (向上弹出 - 低调简约毛玻璃) -->
             <div class="bg-switch-menu" id="bgSwitchMenu">
-                <div class="bg-menu-title">
-                    <span>微动画环境氛围</span>
-                    <span class="badge">双态协同</span>
+                <div class="bg-menu-header">
+                    <span class="bg-menu-title">氛围背景</span>
                 </div>
                 <div class="bg-menu-items" id="bgMenuItems"></div>
                 <div class="bg-menu-divider"></div>
                 <div class="bg-menu-actions">
                     <button class="bg-menu-zen-btn" id="zenModeQuickBtn" title="快捷键: Z">
-                        <span>✨ 立即进入屏保 (Z)</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                        <span>进入沉浸屏保</span>
                     </button>
-                    <label class="bg-menu-zen-toggle" title="鼠标闲置18秒自动进入黑胶屏保">
+                    <label class="bg-menu-zen-toggle" title="播放中闲置自动进入屏保">
                         <input type="checkbox" id="autoZenCheckbox" checked>
-                        <span>闲置 18 秒进入屏保</span>
+                        <span>闲置自动唤醒</span>
                     </label>
                 </div>
             </div>
@@ -349,8 +352,8 @@
     <script src="src/js/player.js?v=20260906_0001"></script>
     <!-- 微动画环境氛围与双态屏保模块 -->
     <!-- audioMotion-analyzer v4.5.4 专业频谱库（必须在 ambient-bg.js 之前加载） -->
-    <script src="src/js/audiomotion-analyzer.js?v=20260906_1250"></script>
-    <script src="src/js/ambient-bg.js?v=20260906_1250"></script>
+    <script src="src/js/audiomotion-analyzer.js?v=20260906_1355"></script>
+    <script src="src/js/ambient-bg.js?v=20260906_1355"></script>
     <!-- 引入雪花特效 (最后加载) -->
     <script src="src/js/snow.js"></script>
     <script>
