@@ -1850,7 +1850,7 @@ function _clearStaleHighlight() {
     });
 }
 
-// 同步更新专辑页面的歌曲选中状态 (Injects Playing Indicator)
+// 同步更新专辑页面的歌曲选中状态 (Injects Playing Indicator Immediately)
 window.updateAlbumViewActiveState = function (songName, artistName, optimistic = false) {
     if (!songName) return;
     const rows = document.querySelectorAll('.st-row');
@@ -1876,26 +1876,16 @@ window.updateAlbumViewActiveState = function (songName, artistName, optimistic =
 
             if (currentTitle === songName) {
                 matchedCount++;
-                row.classList.add('active');
+                // [Zero-Latency Feedback] 无论是乐观更新还是确认播放，第 0 毫秒立即赋予完整的点亮状态与波浪条
+                row.classList.add('active', 'playing');
 
-                if (optimistic) {
-                    // [Optimistic] 乐观高亮：立即切换选中状态，但不加播放动画指示器
-                    // 避免在网络还没确认前就显示"正在播放"动画
-                    row.classList.remove('playing');
-                    const bars = row.querySelector('.playing-bars');
-                    if (bars) bars.remove();
-                } else {
-                    // [Confirmed] 播放已确认：加上完整的播放中动画
-                    row.classList.toggle('playing', playerState.isPlaying);
-
-                    // 注入指示器 HTML（如果不存在）
-                    let bars = row.querySelector('.playing-bars');
-                    if (!bars) {
-                        bars = document.createElement('span');
-                        bars.className = 'playing-bars';
-                        bars.innerHTML = '<span></span><span></span><span></span><span></span>';
-                        songNameEl.appendChild(bars);
-                    }
+                // 立即注入指示器 HTML（如果不存在）
+                let bars = row.querySelector('.playing-bars');
+                if (!bars) {
+                    bars = document.createElement('span');
+                    bars.className = 'playing-bars';
+                    bars.innerHTML = '<span></span><span></span><span></span><span></span>';
+                    songNameEl.appendChild(bars);
                 }
                 return;
             }
@@ -1906,7 +1896,7 @@ window.updateAlbumViewActiveState = function (songName, artistName, optimistic =
     });
 
     if (matchedCount > 0) {
-        console.log(`[Indicator] ${optimistic ? 'Optimistic' : 'Confirmed'} sync: "${songName}", Matched: ${matchedCount}, Playing: ${optimistic ? 'pending' : playerState.isPlaying}`);
+        console.log(`[Indicator] Sync: "${songName}", Matched: ${matchedCount}, Optimistic: ${optimistic}`);
     }
 }
 
