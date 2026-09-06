@@ -32,7 +32,10 @@
             name: '新宿雨夜',
             desc: '新宿街头真实长镜头车水马龙 (5分钟不重复实录)',
             icon: '🌧️',
-            file: VIDEO_BASE + 'shinjuku.mp4'
+            file: VIDEO_BASE + 'shinjuku_clean.mp4?v=20260906_1510',
+            localFile: 'src/assets/video/shinjuku_clean.mp4',
+            fallbackFile: VIDEO_BASE + 'shinjuku_clean.webm?v=20260906_1510',
+            imageFallback: 'src/assets/images/shinjuku_clean.jpg'
         },
         cozy_rain: {
             id: 'cozy_rain',
