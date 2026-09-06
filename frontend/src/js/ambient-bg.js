@@ -411,9 +411,14 @@
      * 用 audioMotion-analyzer 初始化并启动频谱渲染
      */
     function startVisualizer() {
-        // 如果已经运行，只需确保 audioContext 未挂起
+        // 1. 如果实例已存在，只需确保 AudioContext 唤醒并恢复动画循环（绝不重新创建 MediaElementSource）
         if (audioMotion) {
-            try { audioMotion.audioCtx.resume(); } catch (e) {}
+            try {
+                if (audioMotion.audioCtx && audioMotion.audioCtx.state === 'suspended') {
+                    audioMotion.audioCtx.resume().catch(() => {});
+                }
+                audioMotion.start();
+            } catch (e) {}
             return;
         }
 
@@ -427,16 +432,18 @@
         }
 
         try {
+            // 2. 初始化 audioMotion 实例（注意：此处不可直接传入未注册的 gradient 名称，必须使用默认值初始构建）
             audioMotion = new AudioMotionAnalyzer(null, {
                 canvas: dom.visualizerCanvas,   // 复用现有 Canvas
-                source: audioEl,                // 直接传 <audio> 元素，库内部 createMediaElementSource
+                source: audioEl,                // 首次且唯一一次绑定 <audio> 元素
                 connectSpeakers: true,          // 同时接通扬声器
                 smoothing: 0.82,
                 mode: 2,                        // 1/6 八度频段，柱状图密度与 YouTube 原版一致
                 minFreq: 30,
                 maxFreq: 11000,
+                minDecibels: -70,               // 关键：适度抬高噪音门限，声音微弱或静默时高度绝对归零，无微弱冒头
                 barSpace: 0.30,                 // 柱间距
-                roundBars: false,               // 关键：平齐柱身，落下时彻底归零，绝不漏出任何圆头或小点
+                roundBars: false,               // 关键：平齐柱身，无凸出圆头，落下时与地面齐平并彻底消失
                 showPeaks: false,               // 不显示浮动峰值帽
                 fillAlpha: 0.82,                // 半透明柔顺度
                 lineWidth: 0,
@@ -446,11 +453,10 @@
                 overlay: true,                  // 叠加在视频画卷之上
                 reflexRatio: 0,                 // 无倒影
                 mirror: 0,
-                weightingFilter: 'D',           // D 加权，贴近人耳感知
-                gradient: 'moody-white',        // 自定义纯白半透质感
+                weightingFilter: 'D',           // D 加权，贴近人耳听觉感知
             });
 
-            // 注册自定义白色半透明渐变，匹配原版柔白质感
+            // 3. 构建成功后，注册并应用专有的 moody-white 半透明柔白渐变
             audioMotion.registerGradient('moody-white', {
                 bgColor: 'transparent',
                 colorStops: [
@@ -461,19 +467,26 @@
             });
             audioMotion.gradient = 'moody-white';
 
-            console.log('[Visualizer] audioMotion-analyzer 已启动 (mode=2, gradient=moody-white)');
+            // 启动渲染循环
+            audioMotion.start();
+            console.log('✓ [Visualizer] audioMotion-analyzer 已就绪并启动 (mode=2, flush-bars, moody-white)');
         } catch (err) {
-            console.warn('[Visualizer] audioMotion-analyzer 初始化失败，回退到自绘模式:', err);
+            console.warn('[Visualizer] audioMotion-analyzer 初始化异常，启用无底点纯净兜底:', err);
             _startFallbackVisualizer();
         }
     }
 
     function stopVisualizer() {
+        // 关键：退出屏保时仅停止渲染动画循环，保留 AudioContext 与 MediaElementSource，避免再次进入时 InvalidStateError
         if (audioMotion) {
-            try { audioMotion.destroy(); } catch (e) {}
-            audioMotion = null;
+            try { audioMotion.stop(); } catch (e) {}
         }
-        // 清理 fallback
+        // 彻底清空 Canvas，绝不残留任何柱身与微小头部
+        if (dom.visualizerCanvas) {
+            const ctx = dom.visualizerCanvas.getContext('2d');
+            if (ctx) ctx.clearRect(0, 0, dom.visualizerCanvas.width, dom.visualizerCanvas.height);
+        }
+        // 清理 fallback 动画帧
         if (_fallbackAnimId) {
             cancelAnimationFrame(_fallbackAnimId);
             _fallbackAnimId = null;
@@ -481,7 +494,7 @@
         _isFallbackRunning = false;
     }
 
-    // ==================== Fallback 自绘频谱（audioMotion 加载失败时兜底）====================
+    // ==================== Fallback 自绘频谱（仅在库加载异常时兜底，静默时绝对 0 绘制）====================
     let _audioCtxFallback = null;
     let _analyserFallback = null;
     let _freqDataFallback = null;
@@ -525,48 +538,50 @@
         const H = canvas.height / dpr;
         ctx.clearRect(0, 0, W, H);
 
+        const audio = document.getElementById('audioPlayer');
+        const playing = audio && !audio.paused && audio.currentTime > 0;
+
+        // 核心要求：当没有音频播放、处于静默或未就绪时，彻底保持全透空白，绝对不画任何闲置虚线或多余小头部
+        if (!playing || !_analyserFallback || !_freqDataFallback) {
+            return;
+        }
+
+        _analyserFallback.getByteFrequencyData(_freqDataFallback);
+
         const BAR_N = 80, SPACING = 3;
         const totalSpacing = (BAR_N - 1) * SPACING;
         const bw = Math.max(2.5, (W - totalSpacing) / BAR_N);
 
-        const audio = document.getElementById('audioPlayer');
-        const playing = audio && !audio.paused && audio.currentTime > 0;
-
-        // Set clip so rounded tops can never bleed below baseline
         ctx.save();
         ctx.beginPath();
         ctx.rect(0, 0, W, H);
         ctx.clip();
 
         for (let i = 0; i < BAR_N; i++) {
-            let target = 0;
-            if (_analyserFallback && playing && _freqDataFallback) {
-                _analyserFallback.getByteFrequencyData(_freqDataFallback);
-                const p = i / (BAR_N - 1);
-                const bin = Math.floor(Math.pow(p, 1.3) * Math.min(_freqDataFallback.length - 1, 210));
-                const eq = 0.85 + Math.pow(p, 0.7) * 1.65;
-                let val = (_freqDataFallback[bin] / 255) * eq;
-                val = Math.pow(Math.min(val, 1), 1.5) * 1.35;
-                target = Math.min(0.96, Math.max(0.02, val)) * H * 0.92;
-            } else {
-                const t = Date.now() * 0.0016;
-                target = (Math.sin(t * 1.8 + i * 0.14) * 0.5 + 0.5) * 5 + 4;
-            }
+            const p = i / (BAR_N - 1);
+            const bin = Math.floor(Math.pow(p, 1.3) * Math.min(_freqDataFallback.length - 1, 210));
+            const eq = 0.85 + Math.pow(p, 0.7) * 1.65;
+            let val = (_freqDataFallback[bin] / 255) * eq;
+            val = Math.pow(Math.min(val, 1), 1.5) * 1.35;
+            let target = val > 0.04 ? Math.min(0.96, val) * H * 0.92 : 0;
+
             _smoothedHeights[i] += (target > _smoothedHeights[i])
                 ? (target - _smoothedHeights[i]) * 0.4
                 : (target - _smoothedHeights[i]) * 0.15;
 
             const bh = _smoothedHeights[i];
-            if (bh < 1.0) continue; // 关键：低于 1px 直接不绘制，彻底消除地面残留小点
+            // 关键：低于 2px 视为静默，完全不绘制，彻底消除地面残留微小头部
+            if (bh < 2.0) continue;
+
             const x = i * (bw + SPACING);
             const y = H - bh;
 
             const grad = ctx.createLinearGradient(0, y, 0, H);
-            grad.addColorStop(0, playing ? 'rgba(255,255,255,0.80)' : 'rgba(255,255,255,0.22)');
-            grad.addColorStop(0.6, playing ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.12)');
+            grad.addColorStop(0, 'rgba(255,255,255,0.82)');
+            grad.addColorStop(0.55, 'rgba(255,255,255,0.48)');
             grad.addColorStop(1, 'rgba(255,255,255,0.08)');
             ctx.fillStyle = grad;
-            ctx.fillRect(x, y, bw, bh); // 平齐长方形柱体，与 YouTube 原版一致
+            ctx.fillRect(x, y, bw, bh); // 平齐直柱
         }
         ctx.restore();
     }
@@ -996,6 +1011,9 @@
         if (audio) {
             audio.addEventListener('play', () => {
                 resetIdleTimer();
+                if (audioMotion && audioMotion.audioCtx && audioMotion.audioCtx.state === 'suspended') {
+                    audioMotion.audioCtx.resume().catch(() => {});
+                }
                 if (isZenMode) {
                     syncZenStateWithPlayer();
                     if (currentSceneId !== 'none' && dom.video) dom.video.play().catch(() => {});
